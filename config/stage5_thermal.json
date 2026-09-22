@@ -1,0 +1,12 @@
+{
+  "stage": "5",
+  "cavity_config": "config/thin_disk_resonator_250mm_2pct.json",
+  "source": "cycle-resolved four-manifold first-law accounting",
+  "manifold_energy_model": "legacy unweighted Stark centroids; provisional, not measured fluorescence means",
+  "bulk": {"conductivity_W_mK": 14.0, "density_kg_m3": 4560.0, "heat_capacity_J_kgK": 680.0, "dn_dT_K1": 9.1e-6},
+  "boundary": {"sink_temperature_K": 293.15, "rear_h_W_m2K": 100000.0, "front_h_W_m2K": 0.0, "rim_h_W_m2K": 0.0},
+  "boundary_status": "Assumed rear contact conductance; front and rim adiabatic. Not measured mount properties.",
+  "numerics": {"transverse_points": 96, "thermal_z_cells": 12, "radial_quadrature_points": 36, "optical_z_slices": 4, "max_outer": 12, "mixing": 0.5, "relative_outer_tolerance": 0.005},
+  "feedback_model": "Axisymmetric Gaussian mode updated from a weighted quadratic thermal OPD; full OPD separately supported by FFT cavity operator",
+  "excluded": ["thermoelastic bulging", "photoelastic birefringence", "sigma(lambda,T) feedback", "temperature-dependent bulk properties", "fluorescence reabsorption", "coating absorption heating", "coherent overlapping counterpropagating pump pulses", "full nonquadratic mode competition"]
+}

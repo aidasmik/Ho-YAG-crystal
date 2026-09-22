@@ -7,6 +7,10 @@ on:
 jobs:
   pytest:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -15,3 +19,15 @@ jobs:
       - run: python -m pip install --upgrade pip
       - run: pip install -e ".[dev]"
       - run: pytest -q
+      - name: Stage 5 thermal-feedback integration
+        run: |
+          python examples/stage5_demo.py --output /tmp/hoyag-stage5-ci
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          result = json.loads(Path('/tmp/hoyag-stage5-ci/summary.json').read_text())
+          assert result['converged'], result['reason']
+          assert result['optical_energy_closure_relative'] < 5e-4
+          assert abs(result['thermal_flux_residual_W']) < 1e-6
+          print('Stage 5 integration: converged; optical and thermal balances passed')
+          PY

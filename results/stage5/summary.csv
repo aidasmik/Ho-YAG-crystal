@@ -1,0 +1,17 @@
+metric,value
+pump_average_W,10.0
+absorbed_pump_W,2.2201851627088094
+bulk_heat_W,0.6339662338606978
+escaping_fluorescence_W,0.5237028488994226
+output_W,0.8347615744572614
+cold_rerun_output_W,0.8347585912138032
+other_cavity_optical_loss_W,0.2277794950721468
+maximum_temperature_K,301.61184045528523
+peak_rise_K,8.461840455285255
+single_pass_lens_power_m1,0.15632361910085307
+single_pass_focal_length_m,6.396985981720679
+nonquadratic_opd_rms_m,7.572908118271976e-10
+optical_energy_closure_relative,5.014246648934619e-07
+thermal_flux_residual_W,5.6772364587232005e-12
+outer_iterations,9
+converged,True
