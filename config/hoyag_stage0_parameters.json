@@ -1,0 +1,194 @@
+{
+  "metadata": {
+    "material": "Ho3+:YAG",
+    "stage": 0,
+    "purpose": "Baseline parameter database for reconstructing the Rupp-Eichhorn-Kieleck Ho:YAG CW 3D laser/thermal model",
+    "unit_system": "SI unless explicitly stated",
+    "primary_reference": {
+      "authors": "M. Rupp, M. Eichhorn, C. Kieleck",
+      "title": "Iterative 3D modeling of thermal effects in end-pumped continuous-wave Ho3+:YAG lasers",
+      "journal": "Applied Physics B 129, 4 (2023)",
+      "doi": "10.1007/s00340-022-07939-z"
+    }
+  },
+  "operating_point": {
+    "pump_wavelength_m": 1.9077e-06,
+    "laser_wavelength_m": 2.0903e-06,
+    "quantum_defect_fraction_simple": 0.08735588193082344,
+    "notes": "Simple quantum defect = 1 - lambda_p/lambda_l. Full heat model must also include ETU, nonradiative relaxation and radiative escape."
+  },
+  "composition": {
+    "ho_atomic_percent_on_Y_sites": 1.1,
+    "ho_number_density_m-3": 1.52e+26,
+    "ho_number_density_original_cm-3": 1.52e+20,
+    "notes": "Rupp validation value. For future inhomogeneous simulations, replace scalar density by N_Ho(x,y,z)."
+  },
+  "optical": {
+    "paper_constant_refractive_index": 1.81,
+    "preferred_dispersion_model": {
+      "name": "Zelmon two-pole Sellmeier for undoped YAG at ~21 C",
+      "valid_wavelength_range_um": [0.4, 5.0],
+      "equation": "n^2 - 1 = A*lambda_um^2/(lambda_um^2-B) + C*lambda_um^2/(lambda_um^2-D)",
+      "A": 2.282,
+      "B_um2": 0.01185,
+      "C": 3.27644,
+      "D_um2": 282.734,
+      "doi": "10.1364/AO.37.004933",
+      "n_at_pump_1907p7_nm": 1.8018686989409411,
+      "n_at_laser_2090p3_nm": 1.799104526293235
+    },
+    "thermo_optic_coefficient_dn_dT_K-1": 9.1e-06,
+    "thermo_optic_source": "Rupp Appendix A validation value"
+  },
+  "spectroscopy": {
+    "cross_sections_m2": {
+      "sigma_emission_laser": 1.2e-24,
+      "sigma_emission_pump": 7.7e-25,
+      "sigma_absorption_laser": 2.1e-25,
+      "sigma_absorption_pump": 1.2e-24
+    },
+    "cross_sections_original_cm2": {
+      "sigma_emission_laser": 1.2e-20,
+      "sigma_emission_pump": 7.7e-21,
+      "sigma_absorption_laser": 2.1e-21,
+      "sigma_absorption_pump": 1.2e-20
+    },
+    "spontaneous_lifetimes_s": {
+      "I5": 0.0044,
+      "I6": 0.0035,
+      "I7": 0.0079
+    },
+    "branching_ratios": {
+      "beta_I5_to_I6": 0.064,
+      "beta_I5_to_I7": 0.542,
+      "beta_I5_to_I8": 0.394,
+      "beta_I6_to_I7": 0.142,
+      "beta_I6_to_I8": 0.858,
+      "beta_I7_to_I8": 1.0
+    },
+    "multiphonon_relaxation_rates_s-1": {
+      "M_I5_to_I6": 760000.0,
+      "M_I6_to_I7": 22000.0,
+      "M_I7_to_I8": 20.9
+    },
+    "etu_and_cross_relaxation_m3_s": {
+      "k_I7_to_I5": 3.8e-24,
+      "k_I7_to_I6": 4e-25,
+      "C_I5_to_I7": 1.1e-23,
+      "C_I6_to_I7": 2.6e-24
+    },
+    "etu_and_cross_relaxation_original_cm3_s": {
+      "k_I7_to_I5": 3.8e-18,
+      "k_I7_to_I6": 4e-19,
+      "C_I5_to_I7": 1.1e-17,
+      "C_I6_to_I7": 2.6e-18
+    },
+    "notes": [
+      "These are the values used in the Rupp 1.1 at.% Ho:YAG validation simulation.",
+      "Do not assume the ETU/cross-relaxation coefficients are concentration-independent over large Ho concentration changes.",
+      "For the first narrowband CW implementation, only cross sections at pump and laser wavelengths are required."
+    ]
+  },
+  "thermal": {
+    "reference_temperature_K": 293.0,
+    "thermal_conductivity_W_mK": 14.0,
+    "specific_heat_J_kgK": 680.0,
+    "density_kg_m3": 4560.0,
+    "thermal_diffusivity_m2_s_derived": 4.514963880288958e-06,
+    "linear_thermal_expansion_K-1": {
+      "value": 7e-06,
+      "status": "provisional",
+      "source": "Wynne, Daneu, Fan, Applied Optics 38, 3282 (1999), YAG at ~300 K",
+      "doi": "10.1364/AO.38.003282",
+      "reason": "Rupp uses alpha in the thermo-mechanical equations but does not list alpha in Appendix A."
+    }
+  },
+  "mechanical": {
+    "youngs_modulus_Pa": 310000000000.0,
+    "poisson_ratio": 0.25,
+    "crystal_orientation": "<111>",
+    "cut_angle_rad": 3.141592653589793,
+    "paper_mechanical_boundary_conditions": {
+      "lateral_surface_fixed_DOF": [],
+      "endfaces_fixed_DOF": ["x", "y", "z"]
+    }
+  },
+  "photoelastic_stress_optic": {
+    "units": "m^2/N",
+    "p11": -3.03e-13,
+    "p12": 1.11e-13,
+    "p13": 1.72e-13,
+    "p14": -3.63e-13,
+    "p15": -1.47e-13,
+    "p33": -2.07e-13,
+    "p44_formula": "-0.085e-12*cos(3*phi_cut)",
+    "p66_formula": "-0.085e-12*sin(3*phi_cut)",
+    "p44_at_phi_pi": 8.5e-14,
+    "p66_at_phi_pi": 0.0,
+    "notes": "Values/formulas copied from Rupp Appendix A for the chosen <111> cut convention."
+  },
+  "cooling_boundary_defaults_from_validation": {
+    "status": "setup_specific_not_material_constants",
+    "lateral_effective_thermal_conductance_W_K": 0.8,
+    "endface_effective_thermal_conductance_W_K": 0.05,
+    "notes": "Keep these separate from bulk thermal conductivity. They represent the validation mount/boundary model."
+  },
+  "reference_validation_setup": {
+    "crystal_shape": "cylindrical rod",
+    "crystal_diameter_m": 0.004,
+    "crystal_length_m": 0.018,
+    "pump_source": "Tm fiber laser",
+    "pump_max_power_W": 100.0,
+    "pump_M2_upper_bound": 1.1,
+    "pump_D4sigma_waist_diameter_m": 0.001,
+    "pump_passes": 1,
+    "resonator_type": "Z-shaped linear cavity",
+    "resonator_length_m": 0.29,
+    "HR_radius_of_curvature_m": 1.0,
+    "output_coupler_reflectivity_at_laser": 0.5,
+    "crystal_endfaces": "AR coated at pump and laser wavelengths",
+    "cooling": "copper heat sink"
+  },
+  "auxiliary_concentration_dependence_data": {
+    "source": {
+      "authors": "N. P. Barnes, B. M. Walsh, E. D. Filer",
+      "title": "Ho:Ho upconversion: applications to Ho lasers",
+      "journal": "JOSA B 20, 1212-1219 (2003)",
+      "doi": "10.1364/JOSAB.20.001212"
+    },
+    "measured_HoYAG_P77": [
+      {"ho_fraction_of_Y_sites": 0.01, "P77_m3_s": 2.8e-24},
+      {"ho_fraction_of_Y_sites": 0.02, "P77_m3_s": 7.2e-24},
+      {"ho_fraction_of_Y_sites": 0.04, "P77_m3_s": 1.88e-23}
+    ],
+    "warning": "P77 is a total Ho:Ho upconversion parameter and is not automatically identical to each split k_I7_to_I5 or k_I7_to_I6 coefficient in the Rupp four-manifold model. Use as validation/concentration-dependence evidence, not a drop-in replacement."
+  },
+  "known_gaps_before_high_fidelity_model": [
+    {
+      "item": "Full wavelength-dependent Ho:YAG absorption/emission cross-section spectra",
+      "required_for": "broadband or wavelength-tunable simulation",
+      "required_for_stage_1_to_6_narrowband": false
+    },
+    {
+      "item": "Temperature-dependent Ho cross sections",
+      "required_for": "high-fidelity thermal feedback at large temperature rise",
+      "required_for_initial_model": false
+    },
+    {
+      "item": "Exact manifold-average photon energies used in the Rupp heat-loss term",
+      "required_for": "full Stage 5 heat accounting of all spontaneous branches",
+      "required_for_initial_gain_model": false
+    },
+    {
+      "item": "Validated concentration-dependent split ETU/cross-relaxation coefficients",
+      "required_for": "large Ho concentration excursions",
+      "required_for_small_inhomogeneity_about_1.1_at_percent": false
+    }
+  ],
+  "implementation_policy": {
+    "internal_units": "SI",
+    "baseline_mode": "reproduce Rupp 1.1 at.% operating point first",
+    "inhomogeneous_doping_future_representation": "N_Ho(x,y,z) in m^-3",
+    "recommended_first_pass": "Keep spectroscopic coefficients fixed at Rupp values while varying N_Ho spatially by modest amounts; add concentration-dependent ETU only after baseline validation."
+  }
+}
