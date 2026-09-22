@@ -9,25 +9,59 @@
       "title": "Iterative 3D modeling of thermal effects in end-pumped continuous-wave Ho3+:YAG lasers",
       "journal": "Applied Physics B 129, 4 (2023)",
       "doi": "10.1007/s00340-022-07939-z"
-    }
+    },
+    "revision": "0.1",
+    "updated_for": "Extended spectroscopy and temperature-dependent material-property research",
+    "additional_primary_sources": [
+      {
+        "authors": "M. Rupp",
+        "title": "Multi-Physics Simulation of High-Power Solid-State Laser Systems",
+        "type": "PhD thesis",
+        "year": 2025,
+        "doi": "10.5445/IR/1000179649",
+        "use": "300-500 K Ho:YAG absorption/emission cross-section temperature dependence; Debye thermal model"
+      },
+      {
+        "title": "Ho:YAG absorption cross sections from 1700 to 2200 nm at 83, 175, and 295 K",
+        "journal": "Applied Optics 51, 8147 (2012)",
+        "use": "Measured Ho:YAG absorption spectra and temperature-dependent pump-band peak data"
+      },
+      {
+        "authors": "H. Furuse, R. Yasuhara, K. Hiraga",
+        "title": "Thermo-optic properties of ceramic YAG at high temperatures",
+        "journal": "Optical Materials Express 4, 1794-1799 (2014)",
+        "doi": "10.1364/OME.4.001794",
+        "use": "YAG alpha(T) and dn/dT(T), 300-600 K; dn/dT fit valid 70-600 K at 632.8 nm"
+      },
+      {
+        "authors": "B. M. Walsh, G. W. Grew, N. P. Barnes",
+        "title": "Energy levels and intensity parameters of Ho3+ ions in Y3Al5O12 and Lu3Al5O12",
+        "journal": "Journal of Physics and Chemistry of Solids 67, 1567-1582 (2006)",
+        "doi": "10.1016/j.jpcs.2006.01.123",
+        "use": "Modern Ho:YAG Stark-level and Judd-Ofelt reference; notes discrepancies with earlier assignments"
+      }
+    ]
   },
   "operating_point": {
-    "pump_wavelength_m": 1.9077e-06,
-    "laser_wavelength_m": 2.0903e-06,
+    "pump_wavelength_m": 0.0000019077,
+    "laser_wavelength_m": 0.0000020903,
     "quantum_defect_fraction_simple": 0.08735588193082344,
     "notes": "Simple quantum defect = 1 - lambda_p/lambda_l. Full heat model must also include ETU, nonradiative relaxation and radiative escape."
   },
   "composition": {
     "ho_atomic_percent_on_Y_sites": 1.1,
     "ho_number_density_m-3": 1.52e+26,
-    "ho_number_density_original_cm-3": 1.52e+20,
+    "ho_number_density_original_cm-3": 152000000000000000000,
     "notes": "Rupp validation value. For future inhomogeneous simulations, replace scalar density by N_Ho(x,y,z)."
   },
   "optical": {
     "paper_constant_refractive_index": 1.81,
     "preferred_dispersion_model": {
       "name": "Zelmon two-pole Sellmeier for undoped YAG at ~21 C",
-      "valid_wavelength_range_um": [0.4, 5.0],
+      "valid_wavelength_range_um": [
+        0.4,
+        5
+      ],
       "equation": "n^2 - 1 = A*lambda_um^2/(lambda_um^2-B) + C*lambda_um^2/(lambda_um^2-D)",
       "A": 2.282,
       "B_um2": 0.01185,
@@ -37,7 +71,7 @@
       "n_at_pump_1907p7_nm": 1.8018686989409411,
       "n_at_laser_2090p3_nm": 1.799104526293235
     },
-    "thermo_optic_coefficient_dn_dT_K-1": 9.1e-06,
+    "thermo_optic_coefficient_dn_dT_K-1": 0.0000091,
     "thermo_optic_source": "Rupp Appendix A validation value"
   },
   "spectroscopy": {
@@ -64,11 +98,11 @@
       "beta_I5_to_I8": 0.394,
       "beta_I6_to_I7": 0.142,
       "beta_I6_to_I8": 0.858,
-      "beta_I7_to_I8": 1.0
+      "beta_I7_to_I8": 1
     },
     "multiphonon_relaxation_rates_s-1": {
-      "M_I5_to_I6": 760000.0,
-      "M_I6_to_I7": 22000.0,
+      "M_I5_to_I6": 760000,
+      "M_I6_to_I7": 22000,
       "M_I7_to_I8": 20.9
     },
     "etu_and_cross_relaxation_m3_s": {
@@ -87,30 +121,294 @@
       "These are the values used in the Rupp 1.1 at.% Ho:YAG validation simulation.",
       "Do not assume the ETU/cross-relaxation coefficients are concentration-independent over large Ho concentration changes.",
       "For the first narrowband CW implementation, only cross sections at pump and laser wavelengths are required."
-    ]
+    ],
+    "temperature_dependent_absorption": {
+      "source": {
+        "title": "Ho:YAG absorption cross sections from 1700 to 2200 nm at 83, 175, and 295 K",
+        "journal": "Applied Optics 51, 8147 (2012)"
+      },
+      "measured_spectral_range_nm": [
+        1700,
+        2200
+      ],
+      "temperatures_K": [
+        83,
+        175,
+        295
+      ],
+      "pump_band_peaks": [
+        {
+          "temperature_K": 295,
+          "peak_wavelength_nm": 1907.3,
+          "sigma_abs_m2": 1.259e-24,
+          "fwhm_nm": 4.5
+        },
+        {
+          "temperature_K": 175,
+          "peak_wavelength_nm": 1907.3,
+          "sigma_abs_m2": 1.523e-24,
+          "fwhm_nm": 4.6
+        },
+        {
+          "temperature_K": 83,
+          "peak_wavelength_nm": 1907.5,
+          "sigma_abs_m2": 1.364e-24,
+          "fwhm_nm": 3.5
+        },
+        {
+          "temperature_K": 295,
+          "peak_wavelength_nm": 1928.3,
+          "sigma_abs_m2": 5.77e-25,
+          "fwhm_nm": 2.5
+        },
+        {
+          "temperature_K": 175,
+          "peak_wavelength_nm": 1928.5,
+          "sigma_abs_m2": 8.49e-25,
+          "fwhm_nm": 2.2
+        },
+        {
+          "temperature_K": 83,
+          "peak_wavelength_nm": 1928.7,
+          "sigma_abs_m2": 8.08e-25,
+          "fwhm_nm": 1.7
+        },
+        {
+          "temperature_K": 295,
+          "peak_wavelength_nm": 1932.5,
+          "sigma_abs_m2": 6.88e-25,
+          "fwhm_nm": 3
+        },
+        {
+          "temperature_K": 175,
+          "peak_wavelength_nm": 1932.5,
+          "sigma_abs_m2": 9.45e-25,
+          "fwhm_nm": 2
+        },
+        {
+          "temperature_K": 83,
+          "peak_wavelength_nm": 1932.9,
+          "sigma_abs_m2": 8.11e-25,
+          "fwhm_nm": 1.8
+        },
+        {
+          "temperature_K": 295,
+          "peak_wavelength_nm": 1973.5,
+          "sigma_abs_m2": 1.99e-25,
+          "fwhm_nm": 2.4
+        },
+        {
+          "temperature_K": 175,
+          "peak_wavelength_nm": 1973.6,
+          "sigma_abs_m2": 2.32e-25,
+          "fwhm_nm": 2.1
+        },
+        {
+          "temperature_K": 83,
+          "peak_wavelength_nm": 1973.5,
+          "sigma_abs_m2": 1.43e-25,
+          "fwhm_nm": 2
+        }
+      ],
+      "implementation_note": "Use the full published spectrum when broadband pump modelling is introduced; peak table is sufficient for validation near the 1908 nm operating point."
+    },
+    "hot_cross_section_measurements": {
+      "source": {
+        "author": "M. Rupp",
+        "title": "Multi-Physics Simulation of High-Power Solid-State Laser Systems",
+        "year": 2025,
+        "doi": "10.5445/IR/1000179649",
+        "figure": "4.19"
+      },
+      "temperature_range_K": [
+        300,
+        500
+      ],
+      "absorption_wavelength_range_nm": [
+        1900,
+        1920
+      ],
+      "emission_wavelength_range_nm": [
+        2080,
+        2100
+      ],
+      "observation": "Measured pump absorption and laser emission cross sections both decrease as temperature increases.",
+      "model_method": "Linear interpolation in wavelength and temperature for sigma_a,e(lambda,T).",
+      "data_availability": "Curves are published graphically; raw numerical arrays were not located in the public indexed material.",
+      "implementation_policy": "Keep the 2023 validation constants for baseline reproduction. Add digitized/interpolated hot curves before high-fidelity Stage 5/8 thermal feedback."
+    },
+    "stark_levels": {
+      "units": "cm^-1",
+      "implementation_dataset_provenance": "Legacy Ho:YAG level set reproduced in Abdolvand thesis and earlier literature; suitable for initial manifold bookkeeping.",
+      "modern_reference_warning": "Walsh, Grew & Barnes (2006) remeasured Ho:YAG Stark levels and reported discrepancies with some earlier assignments. Do not treat the legacy list as a definitive high-resolution spectroscopy dataset.",
+      "levels": {
+        "I8": [
+          0,
+          4,
+          41,
+          51,
+          138,
+          145,
+          151,
+          160,
+          399,
+          418,
+          448,
+          457,
+          498,
+          506,
+          520,
+          531,
+          536
+        ],
+        "I7": [
+          5229,
+          5232,
+          5243,
+          5249,
+          5303,
+          5312,
+          5320,
+          5341,
+          5352,
+          5375,
+          5395,
+          5404,
+          5418,
+          5455,
+          5490
+        ],
+        "I6": [
+          8721,
+          8726,
+          8735,
+          8741,
+          8745,
+          8763,
+          8773,
+          8819,
+          8844,
+          8854,
+          8869,
+          8940,
+          8954
+        ],
+        "I5": [
+          11301,
+          11311,
+          11322,
+          11328,
+          11332,
+          11355,
+          11382,
+          11391,
+          11422,
+          11477,
+          11485
+        ]
+      },
+      "derived_unweighted_centroid_transition_wavelengths_um": {
+        "I7_to_I8": 1.9814120241,
+        "I6_to_I7": 2.8857850667,
+        "I6_to_I8": 1.1747889234,
+        "I5_to_I6": 3.8958845293,
+        "I5_to_I7": 1.6578049457,
+        "I5_to_I8": 0.9026102814
+      },
+      "centroid_warning": "The centroid wavelengths are derived fallback estimates only. Rupp's heat equation requires average photon energies; use measured/line-strength-weighted branch spectra when available rather than silently treating these centroids as exact."
+    }
   },
   "thermal": {
-    "reference_temperature_K": 293.0,
-    "thermal_conductivity_W_mK": 14.0,
-    "specific_heat_J_kgK": 680.0,
-    "density_kg_m3": 4560.0,
-    "thermal_diffusivity_m2_s_derived": 4.514963880288958e-06,
+    "reference_temperature_K": 293,
+    "thermal_conductivity_W_mK": 14,
+    "specific_heat_J_kgK": 680,
+    "density_kg_m3": 4560,
+    "thermal_diffusivity_m2_s_derived": 0.000004514963880288958,
     "linear_thermal_expansion_K-1": {
-      "value": 7e-06,
+      "value": 0.000007,
       "status": "provisional",
       "source": "Wynne, Daneu, Fan, Applied Optics 38, 3282 (1999), YAG at ~300 K",
       "doi": "10.1364/AO.38.003282",
       "reason": "Rupp uses alpha in the thermo-mechanical equations but does not list alpha in Appendix A."
+    },
+    "temperature_dependent_models": {
+      "debye_model": {
+        "source": "Rupp 2025 thesis, section 4 thermal model; YAG Debye temperature supported by Aggarwal et al.",
+        "debye_temperature_K": 760,
+        "heat_capacity_Cmax_J_kgK": 628.5,
+        "heat_capacity_equation": "Cp(T) = Cmax * fD(T), with the Debye integral fD defined in Rupp Eq. 4.72",
+        "conductivity_reference_temperature_K": 300,
+        "conductivity_equation": "k(T) = k(T0)*Cp(T)*gD(T0)/(Cp(T0)*gD(T)), with gD defined in Rupp Eq. 4.74",
+        "baseline_k_T0_W_mK": 14,
+        "policy": "Use the original constant Cp=680 J/(kg K), k=14 W/(m K) to reproduce the 2023 validation first; enable the Debye model for the extended thermal simulation."
+      },
+      "yag_thermo_optic_632p8nm": {
+        "source": "Furuse, Yasuhara, Hiraga, OME 4, 1794 (2014)",
+        "valid_temperature_range_K": [
+          70,
+          600
+        ],
+        "equation": "dn/dT = M0 + M1*T + M2*T^2 + M3*T^3, T in kelvin",
+        "coefficients": {
+          "M0": -0.00000396,
+          "M1": 6.75e-8,
+          "M2": -1.06e-10,
+          "M3": 6.39e-14
+        },
+        "wavelength_nm": 632.8,
+        "warning": "dn/dT is wavelength dependent and decreases with increasing wavelength. Do not directly claim this polynomial is exact at 2.09 um. For the first 2-um model retain the Rupp 9.1e-6 K^-1 baseline or use only the relative temperature trend until direct 2-um data are validated."
+      },
+      "yag_alpha_and_dn_dT_table": [
+        {
+          "temperature_K": 300,
+          "alpha_K-1": 0.0000064,
+          "dn_dT_K-1_at_632p8nm": 0.0000084
+        },
+        {
+          "temperature_K": 350,
+          "alpha_K-1": 0.0000069,
+          "dn_dT_K-1_at_632p8nm": 0.0000094
+        },
+        {
+          "temperature_K": 400,
+          "alpha_K-1": 0.0000074,
+          "dn_dT_K-1_at_632p8nm": 0.0000101
+        },
+        {
+          "temperature_K": 450,
+          "alpha_K-1": 0.0000078,
+          "dn_dT_K-1_at_632p8nm": 0.0000107
+        },
+        {
+          "temperature_K": 500,
+          "alpha_K-1": 0.0000081,
+          "dn_dT_K-1_at_632p8nm": 0.0000112
+        },
+        {
+          "temperature_K": 550,
+          "alpha_K-1": 0.0000083,
+          "dn_dT_K-1_at_632p8nm": 0.0000116
+        },
+        {
+          "temperature_K": 600,
+          "alpha_K-1": 0.0000085,
+          "dn_dT_K-1_at_632p8nm": 0.0000121
+        }
+      ]
     }
   },
   "mechanical": {
-    "youngs_modulus_Pa": 310000000000.0,
+    "youngs_modulus_Pa": 310000000000,
     "poisson_ratio": 0.25,
     "crystal_orientation": "<111>",
     "cut_angle_rad": 3.141592653589793,
     "paper_mechanical_boundary_conditions": {
       "lateral_surface_fixed_DOF": [],
-      "endfaces_fixed_DOF": ["x", "y", "z"]
+      "endfaces_fixed_DOF": [
+        "x",
+        "y",
+        "z"
+      ]
     }
   },
   "photoelastic_stress_optic": {
@@ -124,7 +422,7 @@
     "p44_formula": "-0.085e-12*cos(3*phi_cut)",
     "p66_formula": "-0.085e-12*sin(3*phi_cut)",
     "p44_at_phi_pi": 8.5e-14,
-    "p66_at_phi_pi": 0.0,
+    "p66_at_phi_pi": 0,
     "notes": "Values/formulas copied from Rupp Appendix A for the chosen <111> cut convention."
   },
   "cooling_boundary_defaults_from_validation": {
@@ -138,13 +436,13 @@
     "crystal_diameter_m": 0.004,
     "crystal_length_m": 0.018,
     "pump_source": "Tm fiber laser",
-    "pump_max_power_W": 100.0,
+    "pump_max_power_W": 100,
     "pump_M2_upper_bound": 1.1,
     "pump_D4sigma_waist_diameter_m": 0.001,
     "pump_passes": 1,
     "resonator_type": "Z-shaped linear cavity",
     "resonator_length_m": 0.29,
-    "HR_radius_of_curvature_m": 1.0,
+    "HR_radius_of_curvature_m": 1,
     "output_coupler_reflectivity_at_laser": 0.5,
     "crystal_endfaces": "AR coated at pump and laser wavelengths",
     "cooling": "copper heat sink"
@@ -157,38 +455,58 @@
       "doi": "10.1364/JOSAB.20.001212"
     },
     "measured_HoYAG_P77": [
-      {"ho_fraction_of_Y_sites": 0.01, "P77_m3_s": 2.8e-24},
-      {"ho_fraction_of_Y_sites": 0.02, "P77_m3_s": 7.2e-24},
-      {"ho_fraction_of_Y_sites": 0.04, "P77_m3_s": 1.88e-23}
+      {
+        "ho_fraction_of_Y_sites": 0.01,
+        "P77_m3_s": 2.8e-24
+      },
+      {
+        "ho_fraction_of_Y_sites": 0.02,
+        "P77_m3_s": 7.2e-24
+      },
+      {
+        "ho_fraction_of_Y_sites": 0.04,
+        "P77_m3_s": 1.88e-23
+      }
     ],
     "warning": "P77 is a total Ho:Ho upconversion parameter and is not automatically identical to each split k_I7_to_I5 or k_I7_to_I6 coefficient in the Rupp four-manifold model. Use as validation/concentration-dependence evidence, not a drop-in replacement."
   },
   "known_gaps_before_high_fidelity_model": [
     {
-      "item": "Full wavelength-dependent Ho:YAG absorption/emission cross-section spectra",
-      "required_for": "broadband or wavelength-tunable simulation",
-      "required_for_stage_1_to_6_narrowband": false
+      "item": "Raw numerical 300-500 K sigma_a(lambda,T) and sigma_e(lambda,T) arrays",
+      "status": "source_found_raw_array_not_found",
+      "mitigation": "Rupp 2025 Fig. 4.19 provides measured curves and the interpolation method; digitize once Stage 5 needs hot gain feedback."
     },
     {
-      "item": "Temperature-dependent Ho cross sections",
-      "required_for": "high-fidelity thermal feedback at large temperature rise",
-      "required_for_initial_model": false
+      "item": "Line-strength-weighted average photon energy for every spontaneous heat-loss branch",
+      "status": "partially_resolved",
+      "mitigation": "Stark manifolds are now stored and centroid fallbacks are provided; replace with measured/branch-weighted means for final Stage 5 validation."
     },
     {
-      "item": "Exact manifold-average photon energies used in the Rupp heat-loss term",
-      "required_for": "full Stage 5 heat accounting of all spontaneous branches",
-      "required_for_initial_gain_model": false
+      "item": "Validated concentration dependence for each split ETU/cross-relaxation coefficient",
+      "status": "still_not_uniquely_published",
+      "mitigation": "Use the Rupp 1.1 at.% coefficients for small spatial Ho variations; use measured total P77 concentration trend only as a constraint, not as a direct substitute."
     },
     {
-      "item": "Validated concentration-dependent split ETU/cross-relaxation coefficients",
-      "required_for": "large Ho concentration excursions",
-      "required_for_small_inhomogeneity_about_1.1_at_percent": false
+      "item": "Background absorption and AR coating loss",
+      "status": "sample_specific_not_missing_material_constants",
+      "mitigation": "Keep configurable and determine from the physical crystal/coating used."
     }
   ],
   "implementation_policy": {
     "internal_units": "SI",
     "baseline_mode": "reproduce Rupp 1.1 at.% operating point first",
     "inhomogeneous_doping_future_representation": "N_Ho(x,y,z) in m^-3",
-    "recommended_first_pass": "Keep spectroscopic coefficients fixed at Rupp values while varying N_Ho spatially by modest amounts; add concentration-dependent ETU only after baseline validation."
+    "recommended_first_pass": "Keep spectroscopic coefficients fixed at Rupp values while varying N_Ho spatially by modest amounts; add concentration-dependent ETU only after baseline validation.",
+    "revision_0_1": "Stage 0.1 resolves the main literature gaps. Stage 1-4 can proceed with fixed 2023 baseline spectroscopy. Stage 5 should enable Debye thermal properties; high-fidelity hot gain should use digitized Rupp 2025 sigma(lambda,T) curves."
+  },
+  "sample_specific_losses": {
+    "background_bulk_absorption_m-1": null,
+    "ar_surface_reflectivity_fraction": null,
+    "default_for_ideal_baseline": {
+      "background_bulk_absorption_m-1": 0,
+      "ar_surface_reflectivity_fraction": 0
+    },
+    "reason": "No defensible universal values exist: parasitic absorption depends on crystal quality/impurities, and AR loss depends on the deposited coating. The Rupp validation paper states AR-coated faces but does not give a coating reflectivity.",
+    "calibration": "Measure passive transmission/reflectance of the actual sample and fit these separately from Ho resonant absorption."
   }
 }

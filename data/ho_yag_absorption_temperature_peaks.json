@@ -1,0 +1,82 @@
+{
+  "metadata": {
+    "material": "Ho:YAG",
+    "source_title": "Ho:YAG absorption cross sections from 1700 to 2200 nm at 83, 175, and 295 K",
+    "journal": "Applied Optics 51, 8147 (2012)",
+    "note": "Peak table transcribed in SI units. Full paper contains the measured 1700-2200 nm spectra and pump-absorption tables."
+  },
+  "peaks": [
+    {
+      "temperature_K": 295,
+      "peak_wavelength_nm": 1907.3,
+      "sigma_abs_m2": 1.259e-24,
+      "fwhm_nm": 4.5
+    },
+    {
+      "temperature_K": 175,
+      "peak_wavelength_nm": 1907.3,
+      "sigma_abs_m2": 1.523e-24,
+      "fwhm_nm": 4.6
+    },
+    {
+      "temperature_K": 83,
+      "peak_wavelength_nm": 1907.5,
+      "sigma_abs_m2": 1.364e-24,
+      "fwhm_nm": 3.5
+    },
+    {
+      "temperature_K": 295,
+      "peak_wavelength_nm": 1928.3,
+      "sigma_abs_m2": 5.77e-25,
+      "fwhm_nm": 2.5
+    },
+    {
+      "temperature_K": 175,
+      "peak_wavelength_nm": 1928.5,
+      "sigma_abs_m2": 8.49e-25,
+      "fwhm_nm": 2.2
+    },
+    {
+      "temperature_K": 83,
+      "peak_wavelength_nm": 1928.7,
+      "sigma_abs_m2": 8.08e-25,
+      "fwhm_nm": 1.7
+    },
+    {
+      "temperature_K": 295,
+      "peak_wavelength_nm": 1932.5,
+      "sigma_abs_m2": 6.88e-25,
+      "fwhm_nm": 3
+    },
+    {
+      "temperature_K": 175,
+      "peak_wavelength_nm": 1932.5,
+      "sigma_abs_m2": 9.45e-25,
+      "fwhm_nm": 2
+    },
+    {
+      "temperature_K": 83,
+      "peak_wavelength_nm": 1932.9,
+      "sigma_abs_m2": 8.11e-25,
+      "fwhm_nm": 1.8
+    },
+    {
+      "temperature_K": 295,
+      "peak_wavelength_nm": 1973.5,
+      "sigma_abs_m2": 1.99e-25,
+      "fwhm_nm": 2.4
+    },
+    {
+      "temperature_K": 175,
+      "peak_wavelength_nm": 1973.6,
+      "sigma_abs_m2": 2.32e-25,
+      "fwhm_nm": 2.1
+    },
+    {
+      "temperature_K": 83,
+      "peak_wavelength_nm": 1973.5,
+      "sigma_abs_m2": 1.43e-25,
+      "fwhm_nm": 2
+    }
+  ]
+}

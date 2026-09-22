@@ -1,0 +1,92 @@
+{
+  "metadata": {
+    "material": "Ho:YAG",
+    "units": "cm^-1",
+    "purpose": "Initial four-manifold Stark-level bookkeeping for I8/I7/I6/I5",
+    "caution": "Legacy level assignment. Walsh et al. (2006) reported discrepancies with earlier Ho:YAG assignments; use the modern paper for high-resolution spectroscopic refinement."
+  },
+  "source_legacy": {
+    "title": "University of Southampton thesis table reproducing Ho:YAG level data",
+    "note": "Exact energies used here are the published legacy list accessible in the thesis."
+  },
+  "modern_reference": {
+    "authors": "B. M. Walsh, G. W. Grew, N. P. Barnes",
+    "title": "Energy levels and intensity parameters of Ho3+ ions in Y3Al5O12 and Lu3Al5O12",
+    "doi": "10.1016/j.jpcs.2006.01.123",
+    "nasa_document_id": "20080026295"
+  },
+  "levels_cm_1": {
+    "I8": [
+      0,
+      4,
+      41,
+      51,
+      138,
+      145,
+      151,
+      160,
+      399,
+      418,
+      448,
+      457,
+      498,
+      506,
+      520,
+      531,
+      536
+    ],
+    "I7": [
+      5229,
+      5232,
+      5243,
+      5249,
+      5303,
+      5312,
+      5320,
+      5341,
+      5352,
+      5375,
+      5395,
+      5404,
+      5418,
+      5455,
+      5490
+    ],
+    "I6": [
+      8721,
+      8726,
+      8735,
+      8741,
+      8745,
+      8763,
+      8773,
+      8819,
+      8844,
+      8854,
+      8869,
+      8940,
+      8954
+    ],
+    "I5": [
+      11301,
+      11311,
+      11322,
+      11328,
+      11332,
+      11355,
+      11382,
+      11391,
+      11422,
+      11477,
+      11485
+    ]
+  },
+  "derived_unweighted_centroid_transition_wavelengths_um": {
+    "I7_to_I8": 1.9814120241,
+    "I6_to_I7": 2.8857850667,
+    "I6_to_I8": 1.1747889234,
+    "I5_to_I6": 3.8958845293,
+    "I5_to_I7": 1.6578049457,
+    "I5_to_I8": 0.9026102814
+  }
+}

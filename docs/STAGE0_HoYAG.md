@@ -93,3 +93,8 @@ The project can therefore move directly to Stage 1 using this database.
 - Zelmon, Small, Page, Applied Optics 37, 4933 (1998), DOI 10.1364/AO.37.004933
 - Wynne, Daneu, Fan, Applied Optics 38, 3282 (1999), DOI 10.1364/AO.38.003282
 - Barnes, Walsh, Filer, JOSA B 20, 1212 (2003), DOI 10.1364/JOSAB.20.001212
+
+
+---
+
+**Stage 0.1 update:** Additional spectroscopy, Stark-level, hot-cross-section and temperature-dependent YAG host data have now been found. See `docs/STAGE0_1_remaining_parameters.md` and the updated JSON database.
