@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600">
+<style>text{font-family:sans-serif;font-size:16px}.title{font-size:22px;font-weight:600}.axis{fill:none;stroke:currentColor;stroke-width:1.5}.line{fill:none;stroke:currentColor;stroke-width:2.2}.dash{stroke-dasharray:8 6}.grid{fill:none;stroke:currentColor;stroke-opacity:.15}.legend{font-size:15px}</style>
+<text class="title" x="450" y="30" text-anchor="middle">Stage 1 Gaussian-beam radius validation</text>
+<line class="grid" x1="105.0" y1="55" x2="105.0" y2="520"/>
+<text x="105.0" y="548" text-anchor="middle">0</text>
+<line class="grid" x1="105" y1="520.0" x2="865" y2="520.0"/>
+<text x="93" y="525.0" text-anchor="end">0.3465</text>
+<line class="grid" x1="257.0" y1="55" x2="257.0" y2="520"/>
+<text x="257.0" y="548" text-anchor="middle">0.05</text>
+<line class="grid" x1="105" y1="427.0" x2="865" y2="427.0"/>
+<text x="93" y="432.0" text-anchor="end">0.3656</text>
+<line class="grid" x1="409.0" y1="55" x2="409.0" y2="520"/>
+<text x="409.0" y="548" text-anchor="middle">0.1</text>
+<line class="grid" x1="105" y1="334.0" x2="865" y2="334.0"/>
+<text x="93" y="339.0" text-anchor="end">0.3847</text>
+<line class="grid" x1="561.0" y1="55" x2="561.0" y2="520"/>
+<text x="561.0" y="548" text-anchor="middle">0.15</text>
+<line class="grid" x1="105" y1="241.0" x2="865" y2="241.0"/>
+<text x="93" y="246.0" text-anchor="end">0.4038</text>
+<line class="grid" x1="713.0" y1="55" x2="713.0" y2="520"/>
+<text x="713.0" y="548" text-anchor="middle">0.2</text>
+<line class="grid" x1="105" y1="148.0" x2="865" y2="148.0"/>
+<text x="93" y="153.0" text-anchor="end">0.4229</text>
+<line class="grid" x1="865.0" y1="55" x2="865.0" y2="520"/>
+<text x="865.0" y="548" text-anchor="middle">0.25</text>
+<line class="grid" x1="105" y1="55.0" x2="865" y2="55.0"/>
+<text x="93" y="60.0" text-anchor="end">0.442</text>
+<rect class="axis" x="105" y="55" width="760" height="465"/>
+<text x="485.0" y="578" text-anchor="middle">Propagation distance z (m)</text>
+<text x="22" y="287.5" text-anchor="middle" transform="rotate(-90 22 287.5)">Beam radius w(z) (mm)</text>
+<polyline class="line" points="105.0,502.8 135.4,502.0 165.8,499.7 196.2,495.8 226.6,490.4 257.0,483.5 287.4,475.1 317.8,465.2 348.2,453.8 378.6,441.0 409.0,426.9 439.4,411.3 469.8,394.5 500.2,376.3 530.6,356.9 561.0,336.3 591.4,314.5 621.8,291.6 652.2,267.6 682.6,242.5 713.0,216.5 743.4,189.4 773.8,161.4 804.2,132.5 834.6,102.8 865.0,72.2"/>
+<line class="line" x1="635" y1="65" x2="671" y2="65"/>
+<text class="legend" x="681" y="70">Numeric</text>
+<polyline class="line dash" points="105.0,502.8 135.4,502.0 165.8,499.7 196.2,495.8 226.6,490.4 257.0,483.5 287.4,475.1 317.8,465.2 348.2,453.8 378.6,441.0 409.0,426.9 439.4,411.3 469.8,394.5 500.2,376.3 530.6,356.9 561.0,336.3 591.4,314.5 621.8,291.6 652.2,267.6 682.6,242.5 713.0,216.5 743.4,189.4 773.8,161.4 804.2,132.5 834.6,102.8 865.0,72.2"/>
+<line class="line dash" x1="635" y1="89" x2="671" y2="89"/>
+<text class="legend" x="681" y="94">Analytical</text>
+</svg>

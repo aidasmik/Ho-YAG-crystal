@@ -1,0 +1,6 @@
+test_graph,main_result
+Gaussian radius validation,Numeric and analytical beam radius agree within the Stage 1 <1% test tolerance
+Power conservation,Max absolute relative error = 2.220e-16
+HG10 symmetry,Odd symmetry in x
+LG phase winding,l=2 phase follows 2theta
+Phase-mask intensity preservation,Before/after intensity profiles overlap
