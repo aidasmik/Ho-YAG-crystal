@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hoyag-sim"
-version = "0.1.0"
-description = "Ho:YAG structured-light simulation"
+version = "0.2.0"
+description = "Ho:YAG structured-light and picosecond pulse simulation"
 requires-python = ">=3.10"
 dependencies = ["numpy>=1.24"]
 

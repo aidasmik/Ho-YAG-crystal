@@ -10,4 +10,5 @@ The project is developed stage-by-stage, with each completed simulation stage co
 - Stage 0.1 — extended spectroscopy and temperature-dependent material database
 - Stage 0P — generic picosecond-pump parameter extension
 - Stage 1 — passive structured-light propagation
-- Stage 2 — homogeneous Ho:YAG population/gain model (next)
+- Stage 1P — picosecond passive spatiotemporal propagation
+- Stage 2P — transient Ho:YAG population/absorption model (next)

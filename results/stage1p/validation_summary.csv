@@ -1,0 +1,9 @@
+metric,value
+all_tests,13/13 passed
+requested_1ps_fwhm_ps,1.000026
+time_bandwidth_product,0.440000
+gdd_validation_expected_fwhm_ps,1.709331
+gdd_validation_measured_fwhm_ps,1.709333
+actual_10ps_input_fwhm_ps,10.000026
+actual_10ps_after_18mm_yag_fwhm_ps,10.000026
+actual_18mm_yag_gdd_fs2,-802.922721

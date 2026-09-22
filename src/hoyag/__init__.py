@@ -10,6 +10,18 @@ from .propagation import (
     optical_power,
     normalize_power,
 )
+from .temporal import (
+    TimeGrid,
+    apply_gdd,
+    apply_gvd,
+    combine_spatial_temporal,
+    gaussian_temporal_envelope,
+    normalize_temporal_energy,
+    propagate_spatiotemporal,
+    pulse_intensity_fwhm_s,
+    spatiotemporal_energy,
+    temporal_energy,
+)
 
 __all__ = [
     "Grid2D",
@@ -20,4 +32,14 @@ __all__ = [
     "apply_phase_mask",
     "optical_power",
     "normalize_power",
+    "TimeGrid",
+    "apply_gdd",
+    "apply_gvd",
+    "combine_spatial_temporal",
+    "gaussian_temporal_envelope",
+    "normalize_temporal_energy",
+    "propagate_spatiotemporal",
+    "pulse_intensity_fwhm_s",
+    "spatiotemporal_energy",
+    "temporal_energy",
 ]
