@@ -1,0 +1,11 @@
+# Python build/test artifacts; retain source and explicitly committed results.
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+.venv/
+venv/
+build/
+dist/
+.coverage
+htmlcov/
