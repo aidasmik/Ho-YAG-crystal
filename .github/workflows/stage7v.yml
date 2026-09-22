@@ -1,13 +1,8 @@
 name: Stage 7V numerical validation pilot
+# Long scientific runs are opt-in; normal tests and the independent audit still
+# run on pushes/PRs. Pilot incompleteness is a scientific status, not hidden by CI.
 on:
   workflow_dispatch:
-  push:
-    branches: [stage7v-validation]
-    paths:
-      - 'src/hoyag/validation_*.py'
-      - 'tests/test_stage7v.py'
-      - 'examples/stage7v.py'
-      - '.github/workflows/stage7v.yml'
 permissions:
   contents: read
 env:

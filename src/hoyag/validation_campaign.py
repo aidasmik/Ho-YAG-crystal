@@ -358,7 +358,6 @@ def compare_cases(folder_a, folder_b, *, kind='refinement', thresholds=None):
         if 'fields' in na and 'fields' in nb:
             comparison=compare_fields(na['fields'],na['x_m'],na['y_m'],nb['fields'],nb['x_m'],nb['y_m'])
             values['fields']=comparison
-            # Different mode counts use subspace capture; no invented mode matching.
             overlap=comparison['minimum_subspace_capture'] if kind=='mode_comparison' else comparison['minimum_matched_overlap']
             checks['field']=overlap>thresholds['field_overlap']
     if kind=='sensitivity':return {'status':'MEASURED','differences':values,'note':'physical sensitivity, not numerical convergence'}
@@ -367,6 +366,16 @@ def compare_cases(folder_a, folder_b, *, kind='refinement', thresholds=None):
 
 def compile_report(plan, output_root):
     out=Path(output_root);groups=[]
+    # A historical cache with the same directory name is not necessarily the
+    # case requested by this manifest. Check the stored input and its digest.
+    invalid_cases={}
+    for case in plan['cases']:
+        record=verify_saved(out/case['id'])
+        if record is not None and (
+            record.get('identity',{}).get('case_fingerprint') != fingerprint(case)
+            or fingerprint(record.get('case',{})) != fingerprint(case)
+        ):
+            invalid_cases[case['id']]='saved case does not match the requested manifest'
     for group in plan['groups']:
         pairs=[]
         ids=group['cases']
@@ -374,7 +383,11 @@ def compile_report(plan, output_root):
             combinations=[(ids[0], b) for b in ids[1:]]
         else:combinations=list(zip(ids[:-1],ids[1:]))
         for a,b in combinations:
-            pairs.append({'a':a,'b':b,**compare_cases(out/a,out/b,kind=group['kind'],thresholds=plan['thresholds'])})
+            if a in invalid_cases or b in invalid_cases:
+                comparison={'status':'FAIL','reason':'saved case/manifest fingerprint mismatch'}
+            else:
+                comparison=compare_cases(out/a,out/b,kind=group['kind'],thresholds=plan['thresholds'])
+            pairs.append({'a':a,'b':b,**comparison})
         statuses=[p['status'] for p in pairs]
         status=('FAIL' if 'FAIL' in statuses else 'INCOMPLETE' if 'INCOMPLETE' in statuses or len(ids)<group['minimum_levels']
                 else 'MEASURED' if group['kind']=='sensitivity' else 'PASS')
@@ -384,6 +397,9 @@ def compile_report(plan, output_root):
     issues=[];cases=[]
     for case in plan['cases']:
         summary=verify_saved(out/case['id'])
+        if case['id'] in invalid_cases:
+            cases.append({'id':case['id'],'status':'INVALID_CONFIG','reason':invalid_cases[case['id']]})
+            issues.append(case['id']+':INVALID_CONFIG');continue
         if summary is None:
             raw=out/case['id']/'summary.json'
             status=json.loads(raw.read_text()).get('status','INCOMPLETE') if raw.exists() else 'NOT_RUN'
@@ -400,7 +416,7 @@ def compile_report(plan, output_root):
     measurements=[]
     if ready.get('mount_sensitivity')!='MEASURED':measurements.append('mount_sensitivity')
     baseline=verify_saved(out/'base256')
-    if baseline is None or baseline.get('status')!='COMPLETED' or len(baseline.get('probes',[]))<7:
+    if 'base256' in invalid_cases or baseline is None or baseline.get('status')!='COMPLETED' or len(baseline.get('probes',[]))<7:
         measurements.append('seeded_probes')
     return {'schema_version':1,'profile':plan['profile'],'groups':groups,'cases':cases,
       'thresholds':plan['thresholds'],'unqualified_required_groups':missing,'case_quality_issues':issues,
