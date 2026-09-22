@@ -149,7 +149,7 @@ def solve_vector_eigenfields(operator: VectorRoundTrip, previous_fields, *,
     success = True; status = 'Arnoldi converged'
     try:
         val, vec = eigs(counted, k=candidates, which='LM', v0=v0,
-                        ncv=max(2*candidates+1, 24), maxiter=maxiter, tol=tolerance*.1)
+                        ncv=min(a.shape[0]-1, max(4*candidates+1, 64)), maxiter=maxiter, tol=tolerance*.1)
     except ArpackNoConvergence as err:
         val, vec = err.eigenvalues, err.eigenvectors
         success = False; status = 'Arnoldi iteration limit; incomplete candidate spectrum'

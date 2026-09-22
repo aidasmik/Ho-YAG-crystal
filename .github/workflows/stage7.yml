@@ -25,7 +25,7 @@ jobs:
           python-version: '3.11'
       - run: python -m pip install -e '.[dev,plots]'
       - run: python -m pytest tests/test_stage7.py -q
-      - run: python examples/stage7_hot_cavity.py --quick --output results/stage7/generated
+      - run: python examples/stage7_hot_cavity.py --quick --require-converged --output results/stage7/generated
       - run: python examples/stage7_plot.py --result results/stage7/generated
       - uses: actions/upload-artifact@v4
         if: always()

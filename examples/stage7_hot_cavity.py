@@ -50,7 +50,7 @@ def main():
         assembly_cfg['numerics']['plate_thermal_nz']=6
         options.update(max_outer_iterations=12,field_tolerance=3e-3,
                        temperature_tolerance_K=.05,displacement_tolerance_m=5e-10,
-                       optical_max_cycles=340,eigen_candidates=3)
+                       optical_max_cycles=340,eigen_candidates=2)
     if args.max_outer is not None:options['max_outer_iterations']=args.max_outer
     settings=HotCavitySettings(**options)
     grid=Grid2D.square(mesh_cfg['optical_n'],mesh_cfg['optical_window_m'])
