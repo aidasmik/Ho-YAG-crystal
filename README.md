@@ -8,7 +8,7 @@ The original Rupp rod is retained as a validation case. The active working geome
 
 Stage 4R adds a proposed two-mirror setup: the disk's plane rear HR coating (99.9% assumed reflectivity) and a concave 3%-transmission output coupler with 500 mm radius of curvature, separated by a 200 mm air gap. Pump and signal each traverse the disk twice on a return encounter. Additional signal round-trip loss is assumed to be 0.5%.
 
-The cold-cavity FFT field solver and pulse-pumped fixed-mode laser solver are separate fidelity levels. The latter includes shared Ho populations, gain depletion, cavity photon storage, spontaneous seeding, and periodic pump kicks. Stage 5 adds thermal phase and approximate selected-Gaussian thermal feedback, not a full coherent 3-D oscillator model. The reported competing-mode run favors the Gaussian mode, not automatic vortex lasing.
+The cold-cavity FFT field solver and pulse-pumped fixed-mode laser solver are separate fidelity levels. The latter includes shared Ho populations, gain depletion, cavity photon storage, spontaneous seeding, and periodic pump kicks. Stage 5 adds thermal phase and approximate selected-Gaussian thermal feedback; Stage 7 updates full vector eigenfields in an adiabatic cycle-averaged closure. Neither is a full coherent time-dependent 3-D oscillator model. The reported Stage 4R competing-mode run favors the Gaussian mode, not automatic vortex lasing.
 
 See `config/thin_disk_resonator.json`, `docs/STAGE4R_RESONATOR.md`, and `results/resonator/summary.csv`.
 
@@ -41,13 +41,31 @@ python examples/stage6_assembly.py --stage5-state results/stage5/generated/state
 python examples/stage6_plot.py --result results/stage6/generated
 ```
 
-The finite assembly recomputes temperature from a Stage 5 heat source; it does not reuse a bath-only disk temperature as the plate temperature. The hot-disk optical operator includes both surface displacements and both polarization components. Full self-consistent hot-cavity/population/assembly feedback remains Stage 7. See `docs/STAGE6.md`, `config/stage6_assembly.json` and `results/stage6/`.
+The finite assembly recomputes temperature from a Stage 5 heat source; it does not reuse a bath-only disk temperature as the plate temperature. The hot-disk optical operator includes both surface displacements and both polarization components. Stage 7 now feeds this assembly back into the optical mode and local gain/heat. See `docs/STAGE6.md`, `config/stage6_assembly.json` and `results/stage6/`.
+
+## Stage 7: self-consistent vector hot-cavity feedback
+
+Stage 7 solves complex two-polarization cavity eigenfields on an FFT grid instead of fitting a Gaussian radius. Their intensity updates the shared Ho populations and cycle-resolved heat. Both disk and cooling-plate temperatures, bonded-interface stress, surface deformation and photoelastic Jones matrices are recomputed before the next field solve.
+
+This is an **adiabatic, cycle-averaged modal closure**: the spatial fields are fixed within each fast pump-period calculation, while local populations and modal photon energies evolve. It does not resolve coherent mode beating or spatial-field dynamics at every round trip. The default retains one solved mode and therefore is not a global mode-stability or vortex-selection claim.
+
+```
+python -m pip install -e '.[dev,plots]'
+python -m pytest -q
+python examples/stage7_hot_cavity.py --quick --require-converged --output results/stage7/demo
+python examples/stage7_plot.py --result results/stage7/demo
+```
+
+The coarse 10 W pump demonstration converged in six outer iterations: about 0.753 W laser output, 0.672 W deposited heat, 302.358 K peak crystal temperature and 293.675 K peak plate temperature. Those values are fixed-point-converged on the demonstration grids, **not mesh-converged predictions**. Full output arrays and plots are saved as an Actions artifact; source revision, history and workflow IDs are in `results/stage7/`.
+
+See `docs/STAGE7.md` and `config/stage7_hot_cavity.json`. All 162 project tests passed on the checked Stage 7 source revision; a separate workflow requires actual coupled-demo convergence.
 
 ## Working geometry
 
 - Circular diameter: 10 mm; thickness: 1 mm; radius: 5 mm.
 - Single-pass FFT examples use a containing square window and zero Ho density outside the disk.
 - The Stage 4R demonstration uses radial quadrature; Stage 5 uses shared optical/thermal annular control volumes over the entire disk face.
+- Stage 7 exchanges grid-resolved vector-field intensities with the same circular material cells using explicit positive quadrature.
 
 ## Progress
 
@@ -63,7 +81,8 @@ The finite assembly recomputes temperature from a Stage 5 heat source; it does n
 - Stage 4R — HR-backed cavity, output coupling, and fixed-mode pulse-pumped oscillator
 - Stage 5 — heat accounting, circular-disk diffusion, thermo-refractive phase and reduced Gaussian thermal feedback
 - Stage 6 — finite cooling-plate assembly, thermoelastic stress, surface deformation and photoelastic Jones optics
-- Stage 7 — full coupled hot-cavity iteration (not yet implemented)
+- Stage 7 — self-consistent adiabatic vector-eigenfield/population/heat/assembly iteration
+- Stage 8 — wavefront-correction datasets and SLM/NN models (not yet implemented)
 
 ## 250 mm / 2% output-coupler reference case
 
