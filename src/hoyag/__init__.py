@@ -81,6 +81,16 @@ __all__ = [
     "pump_material_step_inhomogeneous",
     "propagate_single_pulse_inhomogeneous",
     "simulate_inhomogeneous_pulse_train",
+    "DEFAULT_SIGNAL_REFRACTIVE_INDEX",
+    "DEFAULT_SIGNAL_BETA2_S2_PER_M",
+    "small_signal_gain_coefficient_m1",
+    "laser_transparency_i7_fraction",
+    "SmallSignalResult",
+    "propagate_structured_signal_small_signal",
+    "SignalMaterialStepResult",
+    "signal_material_step",
+    "SaturatedSignalResult",
+    "propagate_structured_signal_saturated",
 ]
 
 from .pulse_train import (
@@ -98,4 +108,17 @@ from .inhomogeneity import (
     pump_material_step_inhomogeneous,
     propagate_single_pulse_inhomogeneous,
     simulate_inhomogeneous_pulse_train,
+)
+
+from .signal import (
+    DEFAULT_SIGNAL_REFRACTIVE_INDEX,
+    DEFAULT_SIGNAL_BETA2_S2_PER_M,
+    small_signal_gain_coefficient_m1,
+    laser_transparency_i7_fraction,
+    SmallSignalResult,
+    propagate_structured_signal_small_signal,
+    SignalMaterialStepResult,
+    signal_material_step,
+    SaturatedSignalResult,
+    propagate_structured_signal_saturated,
 )

@@ -1,0 +1,8 @@
+validation,expected_result
+transparency_fraction,g=0 at sigma_a/(sigma_a+sigma_e)
+uniform_small_signal,power gain equals exp(gL)
+ground_state_signal,absorption equals exp(-sigma_a*N*L)
+spatial_gain_map,amplitude follows local gain while material step preserves phase
+population_conservation,N5+N6+N7+N8 remains local N_Ho
+gain_saturation,finite signal energy gives less gain than small-signal reference
+energy_accounting,signal energy gained matches I7 excitation energy lost in isolated two-level limit

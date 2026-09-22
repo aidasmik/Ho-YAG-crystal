@@ -14,4 +14,5 @@ The project is developed stage-by-stage, with each completed simulation stage co
 - Stage 2P — single-pulse transient Ho:YAG population, pump absorption and saturation
 - Stage 2R — repetitive-pulse relaxation and periodic population accumulation
 - Stage 3 — spatially inhomogeneous Ho concentration N_Ho(z,y,x)
-- Stage 4 — structured-signal amplification/depletion (next)
+- Stage 4 — structured 2.09 um signal amplification and gain saturation
+- Stage 5 — heat deposition and temperature field (next)
