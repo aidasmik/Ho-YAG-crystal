@@ -1,0 +1,17 @@
+{
+  "stage": "7",
+  "model": "Adiabatic cycle-averaged vector eigenfields coupled to local populations and finite disk/plate assembly",
+  "cavity_configuration": "config/thin_disk_resonator_250mm_2pct.json",
+  "assembly_configuration": "config/stage6_assembly.json",
+  "pump": {"energy_J":0.001,"repetition_rate_Hz":10000.0,"duration_s":1e-11,"waist_m":0.0005},
+  "mode_count":1,
+  "mesh": {"optical_n":192,"optical_window_m":0.012,"nr":24,"nz":4,"nphi":12},
+  "feedback": {"max_outer_iterations":16,"minimum_outer_iterations":3,"heat_relaxation":0.6,"field_relaxation":0.7},
+  "limitations": [
+    "Eigenfields are not prescribed Gaussian profiles, but are frozen during each fast optical cycle",
+    "Incoherent modal photon dynamics; coherent beating, phase locking and spatial hole-burning fringes are not solved",
+    "Gain guiding uses cycle-averaged gain; within-cycle transverse-mode changes need a future time-dependent field solver",
+    "Cold optical spectra and prescribed bonded-interface properties remain unchanged",
+    "One mode is the economical default, not proof that other modes are stable or suppressed"
+  ]
+}
