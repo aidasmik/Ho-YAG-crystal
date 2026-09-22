@@ -1,0 +1,65 @@
+{
+  "status": "converged axisymmetric parabolic-mode thermal feedback",
+  "feedback_converged": true,
+  "optical_periodic_converged": true,
+  "optical_period_cycles": 1,
+  "pump_energy_J": 0.001,
+  "nr": 96,
+  "nz": 16,
+  "nphi": 1,
+  "peak_cell_temperature_K": 301.76213660998206,
+  "minimum_cell_temperature_K": 293.1523336980217,
+  "single_pass_opd_peak_to_valley_m": 6.211417177000242e-08,
+  "lens": {
+    "single_pass_power_m1": 0.1657062572340036,
+    "single_pass_focal_length_m": 6.034775129751685,
+    "piston_m": 6.15539193788903e-08,
+    "weighted_rms_residual_m": 4.774067902821025e-10,
+    "fit_radius_m": 0.0006119473033794171
+  },
+  "mode_radius_used_m": 0.0004079648689196114,
+  "mode_radius_predicted_m": 0.0004080424692261365,
+  "heat_budget": {
+    "pump_incident_W": 10.0,
+    "pump_absorbed_W": 2.220254333555591,
+    "heat_W": 0.6344925208446394,
+    "stimulated_signal_W": 1.0612898874443923,
+    "fluorescence_W": 0.5244653542599289,
+    "ion_storage_change_W": 2.506022493339224e-05,
+    "output_W": 0.833765958961626,
+    "output_W_by_mode": [
+      0.833765958961626
+    ],
+    "pump_escaped_W": 7.7357196281954135,
+    "pump_mirror_loss_W": 0.04402603824899552,
+    "local_ledger_L1_error_over_incident": 1.8996780505696688e-06,
+    "quadrature_L1_difference_over_incident": 6.056944493916484e-12,
+    "cycles_averaged": 1,
+    "interval_s": 0.0001,
+    "population_cycle_drift": 5.034164275057925e-07,
+    "heat_spectroscopy_provenance": "Stage0.1 legacy unweighted centroid surrogate; unvalidated fluorescence means",
+    "fluorescence_transport": "all photons leave ion subsystem; no radiation reabsorption",
+    "coating_heat_included": false
+  },
+  "boundary_heat_W": {
+    "front": 0.0,
+    "rear": 0.6344925208446197,
+    "rim": 0.0
+  },
+  "thermal_balance_relative_error": 3.0971125569306696e-14,
+  "configuration_file": "config/stage5_thermal.json",
+  "numerical_overrides": {
+    "nr": 96,
+    "nz": 16,
+    "warm_start": "interpolated converged 64x12 state; convergence rechecked"
+  },
+  "cold_radius_same_mesh_m": 0.00040784847387851265,
+  "cold_output_same_mesh_W": 0.8338106761542712,
+  "optical_diagnostics": {
+    "interpretation": "weak LG1 diagnostic through Gaussian-heated cavity; not vortex-laser selection",
+    "LG1_cold_vs_hot_roundtrip_overlap": 0.9999324150160184,
+    "LG1_closed_loop_winding": 0.9999999999999999,
+    "cold_roundtrip_power_retention": 0.9746124500000005,
+    "hot_roundtrip_power_retention": 0.9746124499631121
+  }
+}

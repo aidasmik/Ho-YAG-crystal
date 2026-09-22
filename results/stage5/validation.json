@@ -1,0 +1,7 @@
+{
+  "new_local_tests_passed": 33,
+  "local_command": "PYTHONPATH=src python -m pytest tests/test_stage5* -q",
+  "full_repository_CI": "must be read from the Stage 5 commit GitHub Actions run; not asserted before execution",
+  "base_commit": "a239d448bcbb15084aea306f9ccb1c24dc13ef27",
+  "note": "Local numerical smoke/validation used a condensed computational mirror of fetched Stage 4R dependencies; only new Stage 5 files are uploaded. GitHub CI runs the exact inherited repository."
+}

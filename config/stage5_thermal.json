@@ -1,0 +1,52 @@
+{
+  "metadata": {
+    "stage": "5A-5D",
+    "status": "cooling/contact and fluorescence energies are simulation assumptions",
+    "heat_spectroscopy": "Stage 0.1 unweighted centroid surrogate, not measured fluorescence means",
+    "temperature_dependent_cross_sections": false,
+    "stress_bulging_photoelasticity": false,
+    "feedback": "axisymmetric selected Gaussian with fitted parabolic thermo-refractive lens"
+  },
+  "cavity": {
+    "disk_diameter_m": 0.01,
+    "disk_thickness_m": 0.001,
+    "air_gap_m": 0.25,
+    "output_mirror_radius_m": 0.5,
+    "output_transmission": 0.02,
+    "disk_hr_reflectivity": 0.9995,
+    "other_roundtrip_loss": 0.005,
+    "wavelength_m": 2.0903e-06,
+    "host_index": 1.799104526293235,
+    "host_group_index": 1.8315976829906033,
+    "pump_hr_reflectivity": 0.995
+  },
+  "pump": {
+    "energy_J": 0.001,
+    "repetition_rate_Hz": 10000.0,
+    "waist_radius_m": 0.0005,
+    "duration_fwhm_s": 1e-11
+  },
+  "thermal": {
+    "conductivity_W_mK": 14.0,
+    "mass_density_kg_m3": 4560.0,
+    "heat_capacity_J_kgK": 680.0,
+    "dn_dT_K1": 9.1e-06,
+    "reference_temperature_K": 293.15,
+    "rear_contact_conductance_W_m2K": 100000.0,
+    "rear_bath_temperature_K": 293.15,
+    "front_conductance_W_m2K": 0.0,
+    "rim_conductance_W_m2K": 0.0,
+    "rear_contact_status": "illustrative finite contact; replace with measured mounting value",
+    "coating_absorption_heat": "not inferred from reflectivity; default zero"
+  },
+  "numerics": {
+    "nr": 48,
+    "nz": 8,
+    "radial_exponent": 1.5,
+    "max_feedback_iterations": 10,
+    "mode_tolerance": 0.001,
+    "heat_tolerance": 0.003,
+    "relaxation": 0.6,
+    "optical_max_cycles": 500
+  }
+}
