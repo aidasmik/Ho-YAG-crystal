@@ -1,0 +1,90 @@
+name: Stage 7V numerical validation pilot
+# Long scientific runs are opt-in; normal tests and the independent audit still
+# run on pushes/PRs. Pilot incompleteness is a scientific status, not hidden by CI.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+env:
+  OPENBLAS_NUM_THREADS: '1'
+  OMP_NUM_THREADS: '1'
+  MPLBACKEND: Agg
+jobs:
+  regress:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -e '.[dev,plots]'
+      - run: python -m pytest -q
+      - run: python audit/deep_check.py
+  optical-cases:
+    needs: regress
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        case: [base256, opt384, opt512, modes2]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -e '.[dev,plots]'
+      - name: Execute independent coupled case
+        run: python examples/stage7v.py run --profile pilot --cases ${{ matrix.case }} --require-completed
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage7v-data-${{ matrix.case }}
+          path: results/stage7v/generated
+  mount-cases:
+    needs: [regress, optical-cases]
+    if: always() && needs.regress.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -e '.[dev,plots]'
+      - uses: actions/download-artifact@v4
+        with:
+          name: stage7v-data-base256
+          path: results/stage7v/generated
+      - name: Re-solve finite plate, interface and mechanics at fixed archived heat
+        run: python examples/stage7v.py run --profile pilot --cases mount_base contact_low contact_high shear_soft roller coolant_low fem_mid fem_fine --require-completed
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage7v-data-mount
+          path: results/stage7v/generated
+  report:
+    needs: [regress, optical-cases, mount-cases]
+    if: always() && needs.regress.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -e '.[dev,plots]'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: stage7v-data-*
+          merge-multiple: true
+          path: results/stage7v/generated
+      - name: Report actual outcomes; incomplete pilot never qualifies full model
+        run: python examples/stage7v.py report --profile pilot
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage7v-report-and-states
+          path: results/stage7v/generated
