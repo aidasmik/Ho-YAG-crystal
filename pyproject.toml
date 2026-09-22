@@ -4,13 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hoyag-sim"
-version = "0.6.1"
-description = "Ho:YAG thin-disk structured-light and picosecond pulse simulation"
+version = "0.7.0"
+description = "Ho:YAG thin-disk structured-light and modal resonator simulation"
 requires-python = ">=3.10"
-dependencies = ["numpy>=1.24"]
+dependencies = ["numpy>=1.24", "scipy>=1.10"]
 
 [project.optional-dependencies]
 dev = ["pytest>=7"]
+plots = ["matplotlib>=3.7"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

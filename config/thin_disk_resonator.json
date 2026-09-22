@@ -1,0 +1,43 @@
+{
+  "metadata": {
+    "stage": "4R",
+    "model": "cold-cavity FFT plus fixed-mode pulse-pumped rate equations",
+    "parameter_status": "User-specified disk dimensions; all mirror and source values are configurable simulation assumptions, not a validated hardware design.",
+    "material_reference": "config/hoyag_stage0_parameters.json / HoYAGFourLevelParams defaults",
+    "thermal_model_enabled": false
+  },
+  "cavity": {
+    "disk_diameter_m": 0.01,
+    "disk_thickness_m": 0.001,
+    "air_gap_m": 0.2,
+    "output_mirror_radius_m": 0.5,
+    "output_transmission": 0.03,
+    "disk_hr_reflectivity": 0.999,
+    "other_roundtrip_loss": 0.005,
+    "wavelength_m": 2.0903e-6,
+    "host_index": 1.799104526293235,
+    "host_group_index": 1.8315976829906033,
+    "pump_hr_reflectivity": 0.999
+  },
+  "pump": {
+    "wavelength_m": 1.9077e-6,
+    "duration_fwhm_s": 1e-11,
+    "repetition_rate_Hz": 10000,
+    "waist_radius_m": 0.0005,
+    "generic_energy_J": 0.0001,
+    "energy_sweep_uJ": [100, 300, 600, 1000],
+    "effective_absorption_cross_section_m2": 1.223454786e-24,
+    "traversals": 2,
+    "return_model": "Sequential fluence approximation, not temporally resolved counterpropagating pump envelopes"
+  },
+  "numerics": {
+    "radial_quadrature_points": 36,
+    "z_slices": 4,
+    "max_cycles": 420,
+    "relative_tolerance": 2e-6,
+    "population_periodic_tolerance": 1e-5,
+    "photon_and_output_periodic_tolerance": 0.002,
+    "max_period_cycles": 4,
+    "spontaneous_fraction_per_mode": 1e-8
+  }
+}
