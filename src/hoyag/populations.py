@@ -278,6 +278,67 @@ def integrate_populations(
     return state
 
 
+def recommended_dark_relaxation_step_s(params: HoYAGFourLevelParams) -> float:
+    """Conservative explicit-RK4 step for zero-light Ho:YAG relaxation.
+
+    The estimate includes the fastest linear decay/cross-relaxation scale at
+    N_total and the largest quadratic ETU scale. It is a numerical safety
+    estimate, not an additional physical parameter.
+    """
+    N = params.N_total_m3
+    rates = (
+        params.M56_s1 + 1.0 / params.tau5_s + params.C57_m3_s * N,
+        params.M67_s1 + 1.0 / params.tau6_s + params.C67_m3_s * N,
+        params.M78_s1 + 1.0 / params.tau7_s,
+        2.0 * (params.k75_m3_s + params.k76_m3_s) * N,
+        2.0 * (params.C57_m3_s + params.C67_m3_s) * N,
+    )
+    return 0.4 / max(rates)
+
+
+def relax_populations_dark(
+    initial_populations,
+    duration_s: float,
+    params: HoYAGFourLevelParams | None = None,
+    *,
+    max_step_s: float | None = None,
+) -> np.ndarray:
+    """Evolve Ho populations with no pump or laser field.
+
+    The routine is vectorized over every trailing dimension, so a full
+    population field with shape (4, nz, ny, nx) can be relaxed at once.
+    """
+    if duration_s < 0:
+        raise ValueError("duration_s must be nonnegative")
+
+    params = params or HoYAGFourLevelParams()
+    state = np.asarray(initial_populations, dtype=float).copy()
+    if state.shape[0] != 4:
+        raise ValueError("population axis must have length 4")
+    state = _physicalize_populations(state, params)
+
+    if duration_s == 0:
+        return state
+
+    if max_step_s is None:
+        max_step_s = recommended_dark_relaxation_step_s(params)
+    if max_step_s <= 0:
+        raise ValueError("max_step_s must be positive")
+
+    n_steps = max(1, int(np.ceil(duration_s / max_step_s)))
+    dt = duration_s / n_steps
+
+    for _ in range(n_steps):
+        k1 = four_level_rhs(state, params)
+        k2 = four_level_rhs(state + 0.5 * dt * k1, params)
+        k3 = four_level_rhs(state + 0.5 * dt * k2, params)
+        k4 = four_level_rhs(state + dt * k3, params)
+        state = state + (dt / 6.0) * (k1 + 2.0 * k2 + 2.0 * k3 + k4)
+        state = _physicalize_populations(state, params)
+
+    return state
+
+
 @dataclass
 class MaterialStepResult:
     field_out: np.ndarray

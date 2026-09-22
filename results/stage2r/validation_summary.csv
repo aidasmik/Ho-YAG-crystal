@@ -1,0 +1,7 @@
+metric,expected_behavior
+dark_relaxation_limit,I7 follows exp(-t/tau7) when other channels are disabled
+population_conservation,total Ho density remains constant
+10khz_population_memory,pre-pulse I7 accumulates well above zero
+steady_state_transmission,transmission rises from first pulse as ground state depletes
+fixed_point,one additional pulse changes pre-pulse state by no more than convergence tolerance
+low_rep_rate,pre-pulse I7 memory is orders of magnitude below 10 kHz case

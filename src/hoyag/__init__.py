@@ -70,4 +70,11 @@ __all__ = [
     "integrate_populations",
     "pump_material_step",
     "propagate_single_pulse_hoyag",
+    "PulseTrainResult",
+    "simulate_pulse_train_hoyag",
 ]
+
+from .pulse_train import (
+    PulseTrainResult,
+    simulate_pulse_train_hoyag,
+)

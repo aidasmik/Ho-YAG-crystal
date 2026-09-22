@@ -12,5 +12,5 @@ The project is developed stage-by-stage, with each completed simulation stage co
 - Stage 1 — passive structured-light propagation
 - Stage 1P — picosecond passive spatiotemporal propagation
 - Stage 2P — single-pulse transient Ho:YAG population, pump absorption and saturation
-- Stage 2R — repetitive-pulse relaxation and population accumulation (next)
-- Stage 3 — inhomogeneous Ho concentration
+- Stage 2R — repetitive-pulse relaxation and periodic population accumulation
+- Stage 3 — inhomogeneous Ho concentration (next)
