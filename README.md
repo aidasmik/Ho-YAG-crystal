@@ -32,6 +32,17 @@ The thermal example uses the separate 250 mm / 2% reference cavity. At 10 W inci
 
 See `config/stage5_thermal.json`, `docs/STAGE5.md`, and `results/stage5/` for numerical validation, assumptions and refinement results.
 
+## Stage 6: finite plate, mechanical interface and vector wavefront
+
+Stage 6 adds a finite deformable cooling plate, reciprocal thermal contact, 3-D thermoelastic finite elements for both solids, a compliant normal/shear bond, surface deformation, cubic photoelasticity and an ordered double-pass Jones operator. The illustrative plate is 20 mm diameter x 3 mm C10100 copper. Plate geometry, bond stiffness, contact conductance and mounting are configurable assumptions. This is bonded-interface linear elasticity, not frictional separation or delamination.
+
+```
+python examples/stage6_assembly.py --stage5-state results/stage5/generated/state.npz
+python examples/stage6_plot.py --result results/stage6/generated
+```
+
+The finite assembly recomputes temperature from a Stage 5 heat source; it does not reuse a bath-only disk temperature as the plate temperature. The hot-disk optical operator includes both surface displacements and both polarization components. Full self-consistent hot-cavity/population/assembly feedback remains Stage 7. See `docs/STAGE6.md`, `config/stage6_assembly.json` and `results/stage6/`.
+
 ## Working geometry
 
 - Circular diameter: 10 mm; thickness: 1 mm; radius: 5 mm.
@@ -51,7 +62,8 @@ See `config/stage5_thermal.json`, `docs/STAGE5.md`, and `results/stage5/` for nu
 - Stage 4 — structured 2.09 um signal amplification and gain saturation
 - Stage 4R — HR-backed cavity, output coupling, and fixed-mode pulse-pumped oscillator
 - Stage 5 — heat accounting, circular-disk diffusion, thermo-refractive phase and reduced Gaussian thermal feedback
-- Stage 6 — stress, surface deformation and photoelasticity (not yet implemented)
+- Stage 6 — finite cooling-plate assembly, thermoelastic stress, surface deformation and photoelastic Jones optics
+- Stage 7 — full coupled hot-cavity iteration (not yet implemented)
 
 ## 250 mm / 2% output-coupler reference case
 

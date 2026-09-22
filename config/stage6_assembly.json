@@ -1,0 +1,45 @@
+{
+  "stage": "6",
+  "status": "Configurable illustrative bonded assembly; not measured mounting specifications",
+  "geometry": {"disk_radius_m": 0.005, "disk_thickness_m": 0.001, "plate_radius_m": 0.010, "plate_thickness_m": 0.003},
+  "thermal": {
+    "coolant_temperature_K": 293.15,
+    "coolant_conductance_W_m2K": 10000.0,
+    "interface_conductance_W_m2K": 100000.0,
+    "disk": {"conductivity_W_mK":14.0,"density_kg_m3":4560.0,"heat_capacity_J_kgK":680.0},
+    "plate": {"conductivity_W_mK":391.16,"density_kg_m3":8940.0,"heat_capacity_J_kgK":385.2}
+  },
+  "mechanical": {
+    "plate_support": "clamped",
+    "front_pressure_Pa": 0.0,
+    "bond": {"normal_stiffness_Pa_m":1e14,"tangential_stiffness_Pa_m":1e13},
+    "disk": {"young_Pa":310e9,"poisson":0.25,"expansion_K1":7e-6,"stress_free_temperature_K":293.15,"name":"YAG Stage 0 isotropic baseline"},
+    "plate": {"young_Pa":117.210873e9,"poisson":0.328125,"expansion_K1":16.92e-6,"stress_free_temperature_K":293.15,"name":"C10100 copper room-temperature approximation"}
+  },
+  "optics": {
+    "index":1.799104526293235,"wavelength_m":2.0903e-6,"dn_dT_K1":9.1e-6,"reference_temperature_K":293.15,
+    "dn_dT_convention":"stress-free; photoelastic term uses ELASTIC strain, not total strain",
+    "crystal_axes":"lab z=[111], x=[1,-1,0], y=[1,1,-2], all normalized",
+    "crystal_azimuth_rad":0.0,
+    "cubic_elasto_optic":{"p11":-0.029,"p12":0.0091,"p44":-0.0615},
+    "report_radius_m":0.001,"report_weight_radius_m":0.000408
+  },
+  "numerics": {
+    "thermal_nr":48,"thermal_nz":12,"thermal_nphi":1,"plate_thermal_nz":12,
+    "mechanical":{"nr":8,"outer_rings":4,"ntheta":32,"nz_disk":4,"nz_plate":4,"radial_exponent":1.6},
+    "optical_n":128,"optical_window_m":0.012
+  },
+  "sources": {
+    "yag_baseline":"Rupp et al., DOI 10.1007/s00340-022-07939-z; Stage 0 database",
+    "copper":"https://alloys.copper.org/alloy/C10100; rounded SI conversion of E=17000 ksi, G=6400 ksi, alpha=9.4e-6 /F, k=226 BTU/(h ft F), cp=0.092 BTU/(lb F)",
+    "photoelastic":"Bričkus and Dement'ev, DOI 10.3952/physics.v56i1.3272; commonly used cubic YAG host reference, not Ho-specific 2.09 um validation",
+    "contact":"h, stiffnesses, plate dimensions, mounting and coolant properties are assumptions requiring calibration"
+  },
+  "limitations": [
+    "Finite compliant bonded interface, not unilateral opening/friction/delamination",
+    "Thermal conductance is prescribed independently of mechanical pressure",
+    "No solder plasticity, creep, residual stress from bonding cure or coating multilayer stress",
+    "Isotropic linear elasticity; polygonal-rim, linear-tetrahedron FEM requires mesh refinement",
+    "Frozen input heat field; full hot-mode/population/heat iteration is Stage 7"
+  ]
+}
