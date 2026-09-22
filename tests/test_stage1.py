@@ -11,11 +11,33 @@ from hoyag.propagation import (
 )
 
 
+def test_grid_coordinates_are_centered_consistently():
+    even = Grid2D.square(128, 4e-3)
+    odd = Grid2D.square(129, 4e-3)
+    assert np.isclose(even.x[0], -even.x[-1])
+    assert np.isclose(even.y[0], -even.y[-1])
+    assert not np.any(np.isclose(even.x, 0.0, atol=even.dx * 1e-12))
+    assert np.isclose(odd.x[odd.nx // 2], 0.0)
+    assert np.isclose(odd.y[odd.ny // 2], 0.0)
+
+
 def test_zero_distance_is_identity():
     grid = Grid2D.square(128, 4e-3)
     field = laguerre_gaussian(grid, p=0, l=1, waist_radius_m=0.5e-3)
     out = angular_spectrum_propagate(field, grid, 2.0903e-6, 0.0, refractive_index=1.7991)
     assert np.allclose(out, field)
+
+
+def test_forward_then_backward_recovers_field():
+    grid = Grid2D.square(256, 8e-3)
+    field = laguerre_gaussian(grid, p=1, l=2, waist_radius_m=0.6e-3)
+    forward = angular_spectrum_propagate(
+        field, grid, 2.0903e-6, 0.04, refractive_index=1.7991
+    )
+    back = angular_spectrum_propagate(
+        forward, grid, 2.0903e-6, -0.04, refractive_index=1.7991
+    )
+    assert np.allclose(back, field, rtol=1e-10, atol=1e-10)
 
 
 def test_power_conserved_in_passive_uniform_medium():
@@ -61,8 +83,11 @@ def test_lg_vortex_has_phase_winding():
     theta = np.linspace(-np.pi, np.pi, 720, endpoint=False)
     x = radius * np.cos(theta)
     y = radius * np.sin(theta)
-    ix = np.rint(x / grid.dx + grid.nx / 2).astype(int)
-    iy = np.rint(y / grid.dy + grid.ny / 2).astype(int)
+
+    # Grid2D defines coordinate i as (i - (N-1)/2)*dx, including even grids.
+    ix = np.rint(x / grid.dx + (grid.nx - 1) / 2).astype(int)
+    iy = np.rint(y / grid.dy + (grid.ny - 1) / 2).astype(int)
+
     phase = np.unwrap(np.angle(field[iy, ix]))
     winding = phase[-1] - phase[0]
     assert abs(winding - 2 * np.pi * l) < 0.15

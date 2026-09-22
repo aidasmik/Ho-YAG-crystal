@@ -196,9 +196,12 @@ def angular_spectrum_propagate(
         H(kx, ky) = exp(i * kz * z),
         kz = sqrt((n*k0)^2 - kx^2 - ky^2).
 
-    Evanescent components are retained as decaying exponentials.  ``bandlimit``
-    additionally suppresses components outside the propagating circle; this is
-    normally appropriate for the laser-beam simulations in this project.
+    Evanescent components are retained as decaying exponentials when
+    ``bandlimit=False``. With ``bandlimit=True``, components outside the
+    propagating circle are suppressed. Despite the historical argument name,
+    this is *not* a full anti-alias angular-spectrum band-limit. FFT propagation
+    is periodic, so the transverse window must still be large enough to prevent
+    diffracted light from wrapping around the array boundaries.
     """
     if wavelength_m <= 0:
         raise ValueError("wavelength_m must be positive")

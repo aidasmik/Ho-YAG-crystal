@@ -5,7 +5,7 @@ Stage 1 implements passive scalar complex-envelope propagation in a uniform line
 ## Implemented
 
 - 2-D Cartesian transverse grid
-- exact angular-spectrum propagation
+- exact angular-spectrum propagation in a homogeneous scalar medium
 - Gaussian beams
 - Hermite-Gaussian HG_mn modes
 - Laguerre-Gaussian LG_p^l modes with vortex phase
@@ -25,25 +25,33 @@ with
 
 There is no gain, resonant absorption, dopant distribution, thermal lens, stress, or nonlinear response in Stage 1.
 
-## Why angular spectrum
+## Numerical scope
 
-It keeps the phase exactly, supports arbitrary structured beams, and avoids committing the project to Gaussian/paraxial modes. This is useful later when the field is distorted by spatial gain and refractive-index maps.
+The FFT angular-spectrum method is periodic in the transverse plane. The simulation window must therefore be chosen large enough that significant field amplitude does not reach the boundaries and wrap around.
+
+The current `bandlimit=True` option suppresses evanescent spatial frequencies outside
+
+    kx^2 + ky^2 <= (n k0)^2.
+
+It is not a full propagation-distance-dependent anti-alias band-limit. The present Stage 1 validation cases have large enough windows that this distinction is negligible.
 
 ## Validation tests
 
 The automated tests verify:
 
-1. z=0 returns the original field.
-2. Passive propagation conserves integrated |E|^2.
-3. A propagated Gaussian reproduces the analytical paraxial beam radius to <1% in a representative test.
-4. HG10 has the expected odd symmetry.
-5. LG_0^2 has the expected 4-pi phase winding.
-6. A phase-only mask leaves intensity unchanged at the mask plane.
+1. even and odd grids are geometrically centered consistently;
+2. z=0 returns the original field;
+3. forward propagation followed by the same backward propagation recovers the field;
+4. passive propagation conserves integrated |E|^2;
+5. a propagated Gaussian reproduces the analytical paraxial beam radius to <1%;
+6. HG10 has the expected odd symmetry;
+7. LG_0^2 has the expected 4-pi phase winding;
+8. a phase-only mask leaves intensity unchanged at the mask plane.
 
 ## Picosecond compatibility
 
-Stage 1 deliberately propagates a 2-D complex envelope E(x,y), not an optical carrier. Stage 1P can extend the same API to E(x,y,tau) by applying the transverse angular-spectrum operator to each temporal-frequency slice and adding GVD.
+Stage 1 propagates a 2-D carrier-envelope field E(x,y). Stage 1P extends this to E(tau,y,x) in a retarded-time frame.
 
 ## Next stage
 
-Stage 2 adds the homogeneous Ho:YAG population/gain model. The passive propagator should not be modified; gain/absorption will be applied as additional split-step operators.
+Stage 2P adds transient Ho:YAG populations and pump absorption. Gain/absorption should be applied as separate split-step operators rather than modifying the validated passive propagator.
