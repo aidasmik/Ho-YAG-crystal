@@ -72,9 +72,30 @@ __all__ = [
     "propagate_single_pulse_hoyag",
     "PulseTrainResult",
     "simulate_pulse_train_hoyag",
+    "HoDensityField",
+    "uniform_ho_density_field",
+    "axial_linear_ho_density_field",
+    "gaussian_ho_density_perturbation",
+    "smooth_random_ho_density_field",
+    "relax_inhomogeneous_populations_dark",
+    "pump_material_step_inhomogeneous",
+    "propagate_single_pulse_inhomogeneous",
+    "simulate_inhomogeneous_pulse_train",
 ]
 
 from .pulse_train import (
     PulseTrainResult,
     simulate_pulse_train_hoyag,
+)
+
+from .inhomogeneity import (
+    HoDensityField,
+    uniform_ho_density_field,
+    axial_linear_ho_density_field,
+    gaussian_ho_density_perturbation,
+    smooth_random_ho_density_field,
+    relax_inhomogeneous_populations_dark,
+    pump_material_step_inhomogeneous,
+    propagate_single_pulse_inhomogeneous,
+    simulate_inhomogeneous_pulse_train,
 )

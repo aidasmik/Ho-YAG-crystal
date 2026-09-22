@@ -1,0 +1,8 @@
+validation,expected_result
+uniform_density_field,exact requested N_Ho
+smooth_random_field,reproducible nonnegative approximately mean-preserving
+zero_doped_voxel,exactly transparent with zero Ho populations
+uniform_single_pulse,identical to Stage 2P within floating-point tolerance
+axial_gradient_low_fluence,Beer-Lambert using integrated Ho column density
+dark_relaxation,local N5+N6+N7+N8 equals N_Ho(z,y,x)
+uniform_pulse_train,identical Stage 2R transmission and I7 histories
