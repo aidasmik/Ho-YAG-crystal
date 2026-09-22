@@ -1,0 +1,135 @@
+{
+  "metadata": {
+    "stage": "0P",
+    "purpose": "Generic picosecond pump configuration for Ho:YAG when the exact pump laser is not yet known.",
+    "status": "simulation prior, not a specification of a real laser",
+    "unit_system": "SI",
+    "policy": "Keep all source-dependent laser parameters configurable. Defaults are chosen only to exercise the simulator in a moderate regime."
+  },
+  "wavelength_and_material": {
+    "pump_center_wavelength_m": 0.0000019077,
+    "yag_refractive_index_at_pump": 1.8018686989409411,
+    "yag_group_index_at_pump_derived": 1.8300394835139284,
+    "group_velocity_m_s_derived": 163817480.8252536,
+    "reference_crystal_length_m": 0.018,
+    "group_transit_time_s_derived": 1.0987838360913906e-10,
+    "group_transit_time_ps_derived": 109.87838360913906,
+    "source_for_dispersion": "Zelmon YAG Sellmeier equation already stored in Stage 0"
+  },
+  "pulse_defaults": {
+    "temporal_intensity_profile": "gaussian",
+    "pulse_duration_fwhm_s": 1e-11,
+    "pulse_duration_fwhm_ps": 10,
+    "pulse_energy_J": 0.0001,
+    "pulse_energy_uJ": 100,
+    "repetition_rate_Hz": 10000,
+    "average_power_W_derived": 1,
+    "polarization": "linear",
+    "carrier_envelope_phase_modelled": false,
+    "pump_signal_delay_s": 0,
+    "chirp_model": "none",
+    "spectral_phase_gdd_s2": 0,
+    "beam_M2": 1.1,
+    "beam_D4sigma_waist_diameter_m": 0.001,
+    "propagation_direction": "+z"
+  },
+  "recommended_initial_sweeps": {
+    "pulse_duration_fwhm_ps": [
+      1,
+      100
+    ],
+    "pulse_energy_uJ": [
+      1,
+      1000
+    ],
+    "repetition_rate_Hz": [
+      1000,
+      100000
+    ],
+    "beam_D4sigma_waist_diameter_mm": [
+      0.5,
+      1.5
+    ],
+    "note": "These are numerical exploration ranges, not guaranteed safe or representative operating limits for a specific laser/crystal. Enforce average-power, fluence, and damage constraints once the actual source is known."
+  },
+  "transform_limited_gaussian_spectrum": {
+    "time_bandwidth_product_fwhm": 0.441,
+    "formula_frequency": "Delta_nu_FWHM = 0.441 / tau_FWHM",
+    "approximate_formula_wavelength_small_bandwidth": "Delta_lambda_FWHM ~= lambda0^2 * Delta_nu_FWHM / c",
+    "nominal_10ps_bandwidth_Hz": 44100000000,
+    "nominal_10ps_bandwidth_nm": 0.5353502945327597,
+    "examples": [
+      {
+        "pulse_duration_ps": 1,
+        "bandwidth_nm": 5.353502945327596
+      },
+      {
+        "pulse_duration_ps": 5,
+        "bandwidth_nm": 1.0707005890655195
+      },
+      {
+        "pulse_duration_ps": 10,
+        "bandwidth_nm": 0.5353502945327597
+      },
+      {
+        "pulse_duration_ps": 100,
+        "bandwidth_nm": 0.05353502945327596
+      }
+    ],
+    "hoyag_295K_absorption_peak_fwhm_nm_near_1907p3": 4.5,
+    "spectral_resolution_rule": "If the actual pump bandwidth is not small compared with the Ho:YAG absorption feature, integrate sigma_a(lambda,T) over the pump spectrum instead of using a single cross section.",
+    "practical_flag": "For an unchirped Gaussian near 1908 nm, pulses around 1 ps have bandwidth comparable to the 4.5 nm absorption feature; 10 ps pulses are much narrower."
+  },
+  "linear_dispersion_derived_from_sellmeier": {
+    "beta2_s2_per_m_at_1907p7nm": -4.460681783044079e-26,
+    "beta2_fs2_per_mm_at_1907p7nm": -44.60681783044079,
+    "gdd_s2_for_18mm": -8.029227209479343e-28,
+    "gdd_fs2_for_18mm": -802.9227209479342,
+    "default_enabled": true,
+    "note": "Derived numerically from the Stage 0 Sellmeier model. For multi-ps pulses through 18 mm this is modest; it becomes more relevant as pulses shorten or broaden spectrally."
+  },
+  "saturation_estimates": {
+    "pump_photon_energy_J": 1.0412779038365198e-19,
+    "formula": "F_sat ~= h*nu / (sigma_abs_pump + sigma_em_pump)",
+    "sigma_abs_pump_m2": 1.2e-24,
+    "sigma_em_pump_m2": 7.7e-25,
+    "saturation_fluence_J_m2_derived": 52856.7463876406,
+    "saturation_fluence_J_cm2_derived": 5.28567463876406,
+    "nominal_gaussian_peak_fluence_J_cm2_derived": 0.025464790894703253,
+    "nominal_peak_fluence_over_Fsat_derived": 0.0048176992787164145,
+    "note": "The nominal placeholder is intentionally far below this rough saturation scale. If the eventual pulse fluence approaches F_sat, resolve population changes inside the pump pulse."
+  },
+  "optional_nonlinear_optics": {
+    "kerr_enabled_by_default": false,
+    "yag_n2_reference_m2_W": 6.2e-20,
+    "n2_reference_wavelength_nm": 1064,
+    "source_note": "Commonly cited YAG value at 1064 nm; not validated here at 1908 nm.",
+    "nominal_peak_intensity_W_m2_derived": 23922573860775.688,
+    "nominal_B_integral_rad_using_reference_n2": 0.0879309747259054,
+    "enable_rule": "Enable Kerr/SPM if actual pulse energy/spot size makes B-integral non-negligible. Replace n2 with a validated value at the pump wavelength if available."
+  },
+  "numerical_model_flags": {
+    "use_retarded_time_coordinate": true,
+    "solve_transient_ho_populations": true,
+    "spectrally_resolved_pump": "auto",
+    "include_gvd": true,
+    "include_kerr_spm": false,
+    "include_self_steepening": false,
+    "include_raman": false,
+    "resolve_optical_carrier": false,
+    "thermal_solver_uses_picosecond_timestep": false,
+    "thermal_coupling": "accumulate deposited energy per pulse and evolve temperature on the slow thermal timescale"
+  },
+  "parameters_to_replace_when_laser_is_known": [
+    "pulse_duration_fwhm_s",
+    "pulse_energy_J",
+    "repetition_rate_Hz",
+    "temporal_intensity_profile",
+    "measured pump spectrum / spectral width",
+    "chirp or spectral phase",
+    "beam waist / M2",
+    "polarization",
+    "pump-signal timing",
+    "average power and pulse-to-pulse stability"
+  ]
+}
