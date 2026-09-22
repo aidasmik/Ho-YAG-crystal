@@ -238,20 +238,40 @@ class ContinuousDopant:
             value += np.cos(k[0]*x+k[1]*y+k[2]*z+phase)/self.terms
         return self.mean_m3*(1+self.amplitude_bound*value)
 
-    def cell_averages(self, mesh, *, order=3):
-        if order < 2:
-            raise ValueError('quadrature order must be >=2')
-        nodes, weights = leggauss(order)
-        result = np.zeros(mesh.shape)
-        zlo, zhi = mesh.z_edges_m[:-1], mesh.z_edges_m[1:]
-        slo, shi = mesh.r_edges_m[:-1]**2, mesh.r_edges_m[1:]**2
-        plo = np.arange(mesh.nphi)*2*np.pi/mesh.nphi
-        phi = plo+2*np.pi/mesh.nphi
-        for az, wz in zip(nodes, weights):
-            z = ((zlo+zhi)/2+(zhi-zlo)/2*az)[:, None, None]
-            for ar, wr in zip(nodes, weights):
-                r = np.sqrt((slo+shi)/2+(shi-slo)/2*ar)[None, :, None]
-                for ap, wp in zip(nodes, weights):
-                    p = ((plo+phi)/2+(phi-plo)/2*ap)[None, None, :]
-                    result += wz*wr*wp/8*self.value(r*np.cos(p), r*np.sin(p), z)
-        return result
+    def cell_averages(self, mesh, *, order=3, tolerance=1e-10, max_order=96):
+        """Exact axial and adaptively checked radial/azimuthal Fourier averages.
+
+        Integrating in r with the explicit r weight avoids a square-root endpoint
+        in the r-squared variable. No per-grid density renormalization is used.
+        """
+        if not isinstance(order,int) or order < 2 or tolerance <= 0 or max_order < 2*order:
+            raise ValueError('invalid cell quadrature settings')
+        if self.amplitude_bound == 0:
+            return np.full(mesh.shape,self.mean_m3)
+        rng=np.random.default_rng(self.seed)
+        vectors=rng.normal(size=(self.terms,3))/self.correlation_length_m
+        phases=rng.uniform(0,2*np.pi,self.terms)
+        zlo,zhi=mesh.z_edges_m[:-1],mesh.z_edges_m[1:]
+        rlo,rhi=mesh.r_edges_m[:-1],mesh.r_edges_m[1:]
+        plo=np.arange(mesh.nphi)*2*np.pi/mesh.nphi
+        dphi=2*np.pi/mesh.nphi
+        def integrate(n):
+            nodes,weights=leggauss(n)
+            r=(rlo[:,None]+rhi[:,None])/2+(rhi-rlo)[:,None]/2*nodes
+            wr=weights[None,:]*r*(rhi-rlo)[:,None]/(rhi*rhi-rlo*rlo)[:,None]
+            phi=plo[:,None]+dphi/2*(nodes+1)
+            xx=r[:,None,:,None]*np.cos(phi)[None,:,None,:]
+            yy=r[:,None,:,None]*np.sin(phi)[None,:,None,:]
+            total=np.zeros(mesh.shape)
+            for k,phase in zip(vectors,phases):
+                plane=np.sum(np.exp(1j*(k[0]*xx+k[1]*yy))*wr[:,None,:,None]*weights[None,None,None,:]/2,axis=(2,3))
+                axial=np.exp(1j*(k[2]*(zlo+zhi)/2+phase))*np.sinc(k[2]*(zhi-zlo)/(2*np.pi))
+                total+=(axial[:,None,None]*plane[None]).real/self.terms
+            return total
+        n=order;previous=integrate(n)
+        while 2*n <= max_order:
+            n*=2;current=integrate(n)
+            if np.max(abs(current-previous))*self.amplitude_bound <= tolerance:
+                return self.mean_m3*(1+self.amplitude_bound*current)
+            previous=current
+        raise ValueError('continuous dopant cell quadrature did not converge; refine quadrature/mesh')
