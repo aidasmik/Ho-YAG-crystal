@@ -22,6 +22,22 @@ from .temporal import (
     spatiotemporal_energy,
     temporal_energy,
 )
+from .spectroscopy import (
+    pump_absorption_cross_section_295K,
+    effective_pump_absorption_cross_section_295K,
+)
+from .populations import (
+    HoYAGFourLevelParams,
+    ground_state_populations,
+    stimulated_rates_from_intensity,
+    four_level_rhs,
+    pump_absorption_coefficient_m1,
+    laser_gain_coefficient_m1,
+    scale_pulse_to_energy,
+    integrate_populations,
+    pump_material_step,
+    propagate_single_pulse_hoyag,
+)
 
 __all__ = [
     "Grid2D",
@@ -42,4 +58,16 @@ __all__ = [
     "pulse_intensity_fwhm_s",
     "spatiotemporal_energy",
     "temporal_energy",
+    "pump_absorption_cross_section_295K",
+    "effective_pump_absorption_cross_section_295K",
+    "HoYAGFourLevelParams",
+    "ground_state_populations",
+    "stimulated_rates_from_intensity",
+    "four_level_rhs",
+    "pump_absorption_coefficient_m1",
+    "laser_gain_coefficient_m1",
+    "scale_pulse_to_energy",
+    "integrate_populations",
+    "pump_material_step",
+    "propagate_single_pulse_hoyag",
 ]

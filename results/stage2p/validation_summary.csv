@@ -1,0 +1,12 @@
+metric,value
+new_stage2p_tests,8/8 passed
+four_level_population_derivative_sum,0
+weak_excitation_relative_error,-9.459e-05
+effective_sigma_abs_10ps_m2,1.223454786e-24
+effective_sigma_abs_1ps_m2,8.025768790e-25
+beer_lambert_1mm_numerical,0.833267966690
+beer_lambert_1mm_analytic,0.833267966559
+saturated_18mm_transmission,0.0606845833
+unsaturated_18mm_transmission,0.0375080388
+peak_I7_fraction_saturation_test,0.370218018
+low_fluence_energy_balance_relative_error,-4.492e-05
