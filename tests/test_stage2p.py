@@ -10,6 +10,7 @@ from hoyag.populations import (
     integrate_populations,
     laser_gain_coefficient_m1,
     propagate_single_pulse_hoyag,
+    pump_material_step,
     scale_pulse_to_energy,
 )
 from hoyag.propagation import Grid2D, normalize_power
@@ -174,3 +175,72 @@ def test_low_fluence_absorbed_energy_matches_stored_I7_energy():
     stored = number_I7 * (H * C0 / p.pump_wavelength_m)
     absorbed = result.input_energy_J - result.output_energy_J
     assert abs(stored - absorbed) / absorbed < 1e-3
+
+
+
+def test_peak_i7_metric_tracks_temporal_peak_not_only_final_state():
+    # Artificially short I7 lifetime makes the temporal maximum occur before
+    # the end of the time window, exercising the diagnostic definition.
+    p = HoYAGFourLevelParams(
+        tau7_s=5e-12,
+        M78_s1=0.0,
+        k75_m3_s=0.0,
+        k76_m3_s=0.0,
+        C57_m3_s=0.0,
+        C67_m3_s=0.0,
+    )
+    grid = Grid2D.square(4, 1e-3)
+    time = TimeGrid.centered(512, 80e-12)
+    field = _uniform_pulse(grid, time, 10e-12)
+    physical = scale_pulse_to_energy(field, grid, time, 5e-3)
+    step = pump_material_step(
+        physical, grid, time, 0.1e-3, p,
+        sigma_abs_m2=p.sigma_abs_pump_m2,
+        sigma_em_m2=p.sigma_em_pump_m2,
+    )
+    final_fraction = np.max(step.final_populations[I7]) / p.N_total_m3
+    assert step.peak_I7_fraction > final_fraction
+    assert step.peak_I7_fraction > 0
+
+
+def test_stage2p_z_discretization_converges_for_saturating_pulse():
+    p = HoYAGFourLevelParams()
+    grid = Grid2D.square(4, 1e-3)
+    time = TimeGrid.centered(192, 60e-12)
+    field = _uniform_pulse(grid, time, 10e-12)
+
+    coarse = propagate_single_pulse_hoyag(
+        field, grid, time,
+        pulse_energy_J=5e-3,
+        length_m=18e-3,
+        nz=30,
+        params=p,
+        spectral_absorption=False,
+        include_passive_propagation=False,
+    )
+    fine = propagate_single_pulse_hoyag(
+        field, grid, time,
+        pulse_energy_J=5e-3,
+        length_m=18e-3,
+        nz=60,
+        params=p,
+        spectral_absorption=False,
+        include_passive_propagation=False,
+    )
+    assert abs(coarse.transmission - fine.transmission) / fine.transmission < 0.015
+
+
+def test_population_time_discretization_converges_at_high_fluence():
+    p = HoYAGFourLevelParams()
+    fluence = 3.0e4  # 3 J/cm^2
+
+    def solve(nt):
+        time = TimeGrid.centered(nt, 80e-12)
+        temporal = gaussian_temporal_envelope(time, 10e-12, normalize=False)
+        intensity = np.abs(temporal) ** 2
+        intensity *= fluence / (np.sum(intensity) * time.dt)
+        return integrate_populations(intensity, time, p)[I7] / p.N_total_m3
+
+    coarse = solve(256)
+    fine = solve(512)
+    assert abs(coarse - fine) / fine < 2e-3

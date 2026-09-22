@@ -18,11 +18,11 @@ Stage 2P couples the Stage 1P picosecond pump envelope to the published four-man
 
 ## Broadband pump treatment
 
-The measured 295 K Ho:YAG absorption peak table is represented as Gaussian peaks using the published peak positions, peak cross sections and FWHM.
+The measured 295 K Ho:YAG absorption peak table is represented locally around the pump as Gaussian peaks using the published peak positions, peak cross sections and FWHM.
 
-For the transient saturated solver, this is reduced to a spectrum-weighted effective absorption cross section. This captures that a 1 ps pump overlaps the 1908 nm line less efficiently than a 10 ps pump.
+For the transient saturated solver, this is reduced to an energy-spectrum-weighted effective absorption cross section. This correctly approximates total pump-energy attenuation. Reusing that scalar in the rate equations with the carrier photon energy introduces a negligible photon-energy weighting error for the present 1–10 ps range (below about 2e-4 relative at 1 ps).
 
-It does not yet model frequency-by-frequency spectral reshaping or spectral hole burning. That remains a later high-fidelity extension.
+This treatment captures that a 1 ps pump overlaps the 1908 nm absorption line less efficiently than a 10 ps pump. It does not model frequency-by-frequency spectral reshaping, spectral hole burning, or wavelength-dependent stimulated-emission cross sections.
 
 ## Numerical method
 
@@ -33,40 +33,38 @@ At every z slice:
 3. apply the population-dependent material attenuation over dz;
 4. second half-step passive propagation.
 
-The material step uses the local midpoint intensity through the slice.
+The material step uses local midpoint intensity through the slice. The diagnostic named peak_I7_fraction now explicitly tracks the maximum over the complete pulse, not merely the end-of-window population.
 
 ## Validation
 
-Eight Stage 2P tests pass locally.
+The complete project CI passes on GitHub. Stage 2P validates:
 
-Key numerical checks:
+- total Ho population conservation
+- ground-state stationarity
+- physical pulse-energy normalization
+- weak-pulse excitation against sigma*fluence/(h nu)
+- picosecond bandwidth dependence of effective sigma_a
+- Beer-Lambert recovery in the weak-pump limit
+- saturation-induced transmission increase and positive small-signal gain
+- absorbed-energy versus stored-excitation accounting
+- true temporal peak-I7 tracking
+- convergence with z discretization for a saturating pulse
+- convergence with temporal discretization at high fluence
 
-- total Ho population derivative sums to zero
-- ground state is stationary with no light
-- physical pulse normalization returns the requested energy
-- weak-pulse excitation agrees with sigma*fluence/(h nu)
-- effective sigma_a:
-  - 10 ps: 1.22345e-24 m^2
-  - 1 ps: 8.02577e-25 m^2
-- 1 mm low-fluence transmission:
-  - numerical: 0.83326796669
-  - Beer-Lambert: 0.83326796656
-- saturation test at approximately the saturation fluence:
-  - nonlinear 18 mm transmission: 0.06068
-  - unsaturated Beer-Lambert value: 0.03751
-  - peak I7 fraction: approximately 0.37
-- low-fluence absorbed-energy versus stored-I7-energy mismatch: about 4.5e-5 relative
+The published Brown et al. Gaussian-pump absorption tables provide an independent scale check: a roughly 5 nm-wide pump near 1908 nm implies an effective absorption cross section of order 8e-25 m^2 at low optical depth, consistent with the Stage 2P ~1 ps value.
 
-## Scope
+## Scope and important repetition-rate limitation
 
-This stage models a single pump pulse through homogeneous Ho:YAG.
+This stage is a **single-pulse primitive** through homogeneous Ho:YAG.
 
 It does not yet include:
-- spatially varying Ho concentration
 - pulse-to-pulse population accumulation
+- spatially varying Ho concentration
 - exact frequency-resolved saturated absorption
 - structured-signal amplification/depletion
 - heat generation
 - thermal feedback
 
-The next stage is Stage 3: inhomogeneous Ho concentration N_Ho(x,y,z).
+The generic Stage 0P source is 10 kHz, giving 100 us between pulses. The baseline I7 spontaneous lifetime is 7.9 ms, so spontaneous decay alone would leave exp(-100 us / 7.9 ms) ~= 98.74% of an I7 population between pulses. ETU and other relaxation modify that number, but the conclusion is unchanged: the repetitive pump cannot be represented by independently resetting every pulse to the ground state.
+
+Therefore the next required step before using the generic 10 kHz source as a physical operating point is **Stage 2R: interpulse relaxation and pulse-train accumulation**. Stage 3 (spatial Ho inhomogeneity) should build on that stateful pump model.

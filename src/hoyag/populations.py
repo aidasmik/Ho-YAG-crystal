@@ -318,6 +318,7 @@ def pump_material_step(
 
     photon_energy = H * C0 / params.pump_wavelength_m
     out = np.empty_like(arr)
+    peak_i7_fraction = float(np.max(state[I7]) / params.N_total_m3)
 
     def derivative_and_alpha(s, input_intensity):
         alpha = pump_absorption_coefficient_m1(s, sigma_abs_m2, sigma_em_m2)
@@ -345,6 +346,10 @@ def pump_material_step(
 
         state = state + (dt / 6.0) * (k1 + 2 * k2 + 2 * k3 + k4)
         state = _physicalize_populations(state, params)
+        peak_i7_fraction = max(
+            peak_i7_fraction,
+            float(np.max(state[I7]) / params.N_total_m3),
+        )
 
     input_energy = spatiotemporal_energy(arr, grid, time)
     output_energy = spatiotemporal_energy(out, grid, time)
@@ -353,7 +358,7 @@ def pump_material_step(
         field_out=out,
         final_populations=state,
         absorbed_energy_J=float(input_energy - output_energy),
-        peak_I7_fraction=float(np.max(state[I7]) / params.N_total_m3),
+        peak_I7_fraction=peak_i7_fraction,
     )
 
 

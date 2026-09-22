@@ -52,8 +52,12 @@ def effective_pump_absorption_cross_section_295K(
 ) -> float:
     """Spectrum-weighted effective sigma_a for a coherent pulse envelope.
 
-    This captures finite pump bandwidth in the rate-equation model but does not
-    reproduce frequency-dependent spectral reshaping inside a saturated crystal.
+    This is an energy-spectrum-weighted cross section, so it is the correct
+    first-order scalar surrogate for total pump-energy attenuation. The Stage 2P
+    rate equations reuse it with the carrier photon energy; for the current
+    1--10 ps bandwidths near 1907.7 nm the photon-energy correction is below
+    about 2e-4 relative. It does not reproduce frequency-dependent spectral
+    reshaping inside a saturated crystal.
     """
     if center_wavelength_m <= 0:
         raise ValueError("center_wavelength_m must be positive")
