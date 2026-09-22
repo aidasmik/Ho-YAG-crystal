@@ -26,8 +26,10 @@ four-manifold dynamics remain active:
 - ETU
 - cross-relaxation
 
-A conservative RK4 time step is selected from the fastest baseline Ho:YAG rate
-unless an explicit max_dark_step_s is provided.
+A conservative RK4 time step is selected from the fastest baseline Ho:YAG rate.
+An explicit max_dark_step_s may request a smaller step for accuracy, but it is
+automatically capped at the conservative stability estimate so an unsafe large
+step cannot silently destabilize the dark-relaxation solve.
 
 ## Periodic steady state
 

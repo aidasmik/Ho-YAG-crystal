@@ -320,10 +320,15 @@ def relax_populations_dark(
     if duration_s == 0:
         return state
 
+    recommended_step = recommended_dark_relaxation_step_s(params)
     if max_step_s is None:
-        max_step_s = recommended_dark_relaxation_step_s(params)
+        max_step_s = recommended_step
     if max_step_s <= 0:
         raise ValueError("max_step_s must be positive")
+
+    # A caller may request a smaller step for accuracy, but never a larger
+    # step than the conservative baseline stability estimate.
+    max_step_s = min(max_step_s, recommended_step)
 
     n_steps = max(1, int(np.ceil(duration_s / max_step_s)))
     dt = duration_s / n_steps

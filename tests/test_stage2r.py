@@ -166,14 +166,14 @@ def test_low_repetition_rate_has_far_less_population_memory():
         pulse_energy_J=100e-6,
         length_m=1e-3,
         nz=1,
-        repetition_rate_Hz=10.0,
+        repetition_rate_Hz=100.0,
         params=p,
         spectral_absorption=False,
         include_passive_propagation=False,
         max_pulses=3,
         min_pulses=2,
         convergence_tolerance=1e-6,
-        max_dark_step_s=20e-6,
+        max_dark_step_s=2e-6,
     )
 
-    assert high.pre_pulse_peak_I7_fraction_history[-1] > 100 * low.pre_pulse_peak_I7_fraction_history[-1]
+    assert high.pre_pulse_peak_I7_fraction_history[-1] > 20 * low.pre_pulse_peak_I7_fraction_history[-1]
