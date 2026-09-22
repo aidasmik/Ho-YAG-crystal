@@ -1,0 +1,23 @@
+{
+  "metadata": {
+    "purpose": "Working Ho:YAG thin-disk geometry for simulations after the Rupp rod validation baseline",
+    "unit_system": "SI",
+    "status": "active working geometry",
+    "note": "The original 4 mm diameter x 18 mm Rupp rod remains preserved in config/hoyag_stage0_parameters.json for validation."
+  },
+  "crystal": {
+    "shape": "circular thin disk",
+    "diameter_m": 0.01,
+    "radius_m": 0.005,
+    "thickness_m": 0.001,
+    "face_area_m2": 7.853981633974483e-05,
+    "volume_m3": 7.853981633974483e-08
+  },
+  "numerical_defaults": {
+    "transverse_window_m": 0.01,
+    "transverse_window_shape": "square containing the circular disk",
+    "crystal_aperture": "N_Ho = 0 outside radius 5 mm",
+    "recommended_nz": 8,
+    "note": "The current optical propagator uses a uniform host refractive index across the FFT window. This is accurate for centrally confined beams far from the 5 mm disk edge; the physical air/YAG edge is not yet a vector boundary-condition model."
+  }
+}

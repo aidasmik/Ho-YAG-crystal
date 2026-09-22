@@ -1,5 +1,9 @@
 """Ho:YAG structured-light simulation tools."""
 
+from .geometry import (
+    ThinDiskGeometry,
+    DEFAULT_THIN_DISK_GEOMETRY,
+)
 from .propagation import (
     Grid2D,
     angular_spectrum_propagate,
@@ -40,6 +44,8 @@ from .populations import (
 )
 
 __all__ = [
+    "ThinDiskGeometry",
+    "DEFAULT_THIN_DISK_GEOMETRY",
     "Grid2D",
     "angular_spectrum_propagate",
     "gaussian_beam",
@@ -74,6 +80,7 @@ __all__ = [
     "simulate_pulse_train_hoyag",
     "HoDensityField",
     "uniform_ho_density_field",
+    "thin_disk_ho_density_field",
     "axial_linear_ho_density_field",
     "gaussian_ho_density_perturbation",
     "smooth_random_ho_density_field",
@@ -101,6 +108,7 @@ from .pulse_train import (
 from .inhomogeneity import (
     HoDensityField,
     uniform_ho_density_field,
+    thin_disk_ho_density_field,
     axial_linear_ho_density_field,
     gaussian_ho_density_perturbation,
     smooth_random_ho_density_field,

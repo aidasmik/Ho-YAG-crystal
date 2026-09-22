@@ -1,10 +1,9 @@
-"""Stage 3 example: 10 kHz pump through a smooth Ho-density map."""
-
-import numpy as np
+"""Stage 3 example: 10 kHz pump through the 10 mm x 1 mm Ho:YAG thin disk."""
 
 from hoyag import Grid2D, TimeGrid, gaussian_beam, gaussian_temporal_envelope
+from hoyag.geometry import DEFAULT_THIN_DISK_GEOMETRY
 from hoyag.inhomogeneity import (
-    smooth_random_ho_density_field,
+    thin_disk_ho_density_field,
     simulate_inhomogeneous_pulse_train,
 )
 from hoyag.populations import HoYAGFourLevelParams
@@ -13,17 +12,17 @@ from hoyag.temporal import combine_spatial_temporal
 
 def main() -> None:
     p = HoYAGFourLevelParams()
-    grid = Grid2D.square(8, 2e-3)
+    geometry = DEFAULT_THIN_DISK_GEOMETRY
+
+    # 10 mm x 10 mm numerical window containing the circular 10 mm disk.
+    grid = Grid2D.square(64, geometry.diameter_m)
     time = TimeGrid.centered(96, 80e-12)
 
-    density = smooth_random_ho_density_field(
+    density = thin_disk_ho_density_field(
         grid,
         nz=8,
-        length_m=18e-3,
-        mean_density_m3=p.N_total_m3,
-        relative_rms=0.05,
-        seed=7,
-        minimum_fraction=0.7,
+        density_m3=p.N_total_m3,
+        geometry=geometry,
     )
 
     field = combine_spatial_temporal(
@@ -45,13 +44,15 @@ def main() -> None:
         convergence_tolerance=1e-5,
     )
 
-    print(f"density min/mean/max : {density.min_density_m3:.3e} / "
-          f"{density.mean_density_m3:.3e} / {density.max_density_m3:.3e} m^-3")
-    print(f"converged            : {result.converged}")
-    print(f"pulses simulated     : {result.pulses_simulated}")
-    print(f"final transmission   : {result.transmission_history[-1]:.6f}")
-    print(f"final pre-pulse I7   : "
-          f"{result.pre_pulse_peak_I7_fraction_history[-1]:.6f}")
+    print(f"disk diameter         : {geometry.diameter_m * 1e3:.3f} mm")
+    print(f"disk thickness        : {geometry.thickness_m * 1e3:.3f} mm")
+    print(f"converged             : {result.converged}")
+    print(f"pulses simulated      : {result.pulses_simulated}")
+    print(f"final transmission    : {result.transmission_history[-1]:.6f}")
+    print(
+        "final pre-pulse I7    : "
+        f"{result.pre_pulse_peak_I7_fraction_history[-1]:.6f}"
+    )
 
 
 if __name__ == "__main__":

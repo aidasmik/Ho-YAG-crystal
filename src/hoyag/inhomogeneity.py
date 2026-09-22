@@ -22,6 +22,7 @@ from .populations import (
     scale_pulse_to_energy,
 )
 from .propagation import Grid2D
+from .geometry import ThinDiskGeometry, DEFAULT_THIN_DISK_GEOMETRY
 from .pulse_train import PulseTrainResult
 from .spectroscopy import effective_pump_absorption_cross_section_295K
 from .temporal import TimeGrid, propagate_spatiotemporal, spatiotemporal_energy
@@ -88,6 +89,31 @@ def uniform_ho_density_field(
         raise ValueError("density_m3 must be nonnegative")
     values = np.full((nz, grid.ny, grid.nx), density_m3, dtype=float)
     return HoDensityField(values, length_m)
+
+
+
+def thin_disk_ho_density_field(
+    grid: Grid2D,
+    nz: int,
+    density_m3: float,
+    geometry: ThinDiskGeometry = DEFAULT_THIN_DISK_GEOMETRY,
+) -> HoDensityField:
+    """Uniform Ho density inside a circular thin disk, zero outside.
+
+    The returned field has shape (nz, ny, nx) and length equal to the physical
+    disk thickness. The transverse numerical domain may be larger than the disk.
+    """
+    if nz < 1:
+        raise ValueError("nz must be >= 1")
+    if density_m3 < 0:
+        raise ValueError("density_m3 must be nonnegative")
+
+    mask = geometry.aperture_mask(grid)
+    values_2d = np.where(mask, density_m3, 0.0)
+    values = np.broadcast_to(
+        values_2d[None, :, :], (nz, grid.ny, grid.nx)
+    ).copy()
+    return HoDensityField(values, geometry.thickness_m)
 
 
 def axial_linear_ho_density_field(
