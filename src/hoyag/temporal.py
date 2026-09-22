@@ -11,7 +11,8 @@ from dataclasses import dataclass
 import math
 import numpy as np
 
-from .propagation import Grid2D
+from .propagation import Grid2D, angular_spectrum_transfer
+from .pump_source import optical_frequencies_hz
 
 
 @dataclass(frozen=True)
@@ -22,14 +23,16 @@ class TimeGrid:
     dt: float
 
     def __post_init__(self) -> None:
-        if self.nt < 4:
-            raise ValueError("nt must be >= 4")
-        if self.dt <= 0:
-            raise ValueError("dt must be positive")
+        if isinstance(self.nt,(bool,np.bool_)) or not isinstance(self.nt,(int,np.integer)) or self.nt<4:
+            raise ValueError('nt must be an integer >=4')
+        if not np.isfinite(self.dt) or self.dt<=0:
+            raise ValueError('dt must be finite and positive')
 
     @classmethod
     def centered(cls, nt: int, window_s: float) -> "TimeGrid":
-        if window_s <= 0:
+        if isinstance(nt,(bool,np.bool_)) or not isinstance(nt,(int,np.integer)) or nt<4:
+            raise ValueError("nt must be an integer >=4")
+        if not np.isfinite(window_s) or window_s <= 0:
             raise ValueError("window_s must be positive")
         return cls(nt=nt, dt=window_s / nt)
 
@@ -48,6 +51,8 @@ class TimeGrid:
 
 def _temporal(envelope: np.ndarray, time: TimeGrid) -> np.ndarray:
     arr = np.asarray(envelope, dtype=np.complex128)
+    if np.any(~np.isfinite(arr)):
+        raise ValueError("field must be finite")
     if arr.shape != (time.nt,):
         raise ValueError(f"temporal envelope shape {arr.shape} != {(time.nt,)}")
     return arr
@@ -56,6 +61,8 @@ def _temporal(envelope: np.ndarray, time: TimeGrid) -> np.ndarray:
 def _spatiotemporal(field: np.ndarray, grid: Grid2D, time: TimeGrid) -> np.ndarray:
     arr = np.asarray(field, dtype=np.complex128)
     expected = (time.nt, grid.ny, grid.nx)
+    if np.any(~np.isfinite(arr)):
+        raise ValueError("field must be finite")
     if arr.shape != expected:
         raise ValueError(f"field shape {arr.shape} != {expected}")
     return arr
@@ -177,15 +184,8 @@ def propagate_spatiotemporal(
     if distance_m == 0:
         return arr.copy()
 
-    fx, fy = np.meshgrid(grid.fx, grid.fy, indexing="xy")
-    kx = 2 * np.pi * fx
-    ky = 2 * np.pi * fy
-    k = 2 * np.pi * refractive_index / wavelength_m
-    kt2 = kx**2 + ky**2
-    kz = np.sqrt((k**2 - kt2).astype(np.complex128))
-    hxy = np.exp(1j * kz * distance_m)
-    if bandlimit:
-        hxy = np.where(kt2 <= k**2, hxy, 0.0)
+    hxy = angular_spectrum_transfer(grid, wavelength_m, distance_m,
+                                    refractive_index=refractive_index, bandlimit=bandlimit)
 
     spectrum_xy = np.fft.fft2(arr, axes=(-2, -1))
     out = np.fft.ifft2(spectrum_xy * hxy[None, :, :], axes=(-2, -1))

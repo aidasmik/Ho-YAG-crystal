@@ -13,6 +13,8 @@ import math
 import numpy as np
 from scipy.integrate import solve_ivp
 from numpy.polynomial.legendre import leggauss
+from .pump_source import resolve_pump_source
+from .numerical_quality import cavity_sampling_diagnostic
 from .populations import HoYAGFourLevelParams
 from .resonator import ModalThinDiskLaser, lg0_field
 from .thermal_resonator import sample_cycle_heat, area_averaged_lg0
@@ -208,7 +210,7 @@ def run_coupled_hot_cavity(grid,mesh,cavity,pump_energy_J,assembly_configuration
                            repetition_rate_Hz=1e4,pump_duration_s=10e-12,
                            pump_waist_m=.5e-3,params=None,density_m3=None,
                            initial_fields=None,mode_count=1,settings=None,
-                           spectroscopy=None,progress=None):
+                           spectroscopy=None,progress=None,pump_source=None,pump_absorption_m2=None):
     """Close all slow feedback channels with undamped residual checks.
 
     Retains asymmetric 3-D heat, arbitrary complex vector modes, a finite cooler,
@@ -218,6 +220,8 @@ def run_coupled_hot_cavity(grid,mesh,cavity,pump_energy_J,assembly_configuration
     within a pump cycle; competition beyond mode_count is not resolved.
     """
     settings=settings or HotCavitySettings();p=params or HoYAGFourLevelParams()
+    source=resolve_pump_source(p.pump_wavelength_m,pump_duration_s,
+                              source=pump_source,absorption_override_m2=pump_absorption_m2)
     if mode_count<1 or mode_count>settings.eigen_candidates:
         raise ValueError('invalid mode count')
     if not np.allclose(np.diff(mesh.z_edges_m),cavity.disk_thickness_m/mesh.nz,rtol=1e-12,atol=0):
@@ -256,7 +260,7 @@ def run_coupled_hot_cavity(grid,mesh,cavity,pump_energy_J,assembly_configuration
                 raise ValueError('field/material projection needs refinement')
             profiles.append(a);errors.append(e)
         model=FieldCoupledLaser(cavity,exchange.area,density.reshape(mesh.nz,-1),
-                      np.asarray(profiles),pump,params=p,pump_absorption_m2=1.223454786e-24,
+                      np.asarray(profiles),pump,params=p,pump_source=source,
                       mode_labels=tuple(f'vector eigenbranch {i}' for i in range(mode_count)))
         model.set_roundtrip_losses(used_losses)
         optical=model.run(pump_energy_J,repetition_rate_Hz,
@@ -345,6 +349,8 @@ def run_coupled_hot_cavity(grid,mesh,cavity,pump_energy_J,assembly_configuration
     metadata={'model':'adiabatic cycle-averaged vector-eigenfield/modal-photon closure',
           'base_revision':'a4db1b616d75d208dc5d9963d727164f2b680438',
           'mode_count':mode_count,'pump_energy_J':pump_energy_J,'repetition_rate_Hz':repetition_rate_Hz,
+          'pump_source':source.summary(),'optical_sampling':cavity_sampling_diagnostic(grid,cavity),
+          'mesh_convergence_verified':False,'validated_for_dataset':False,
           'pump_duration_s':pump_duration_s,'pump_waist_m':pump_waist_m,'cavity':cavity.summary(),
           'settings':vars(settings),'limits':['incoherent modal competition, not coherent mode beating',
           'spatial mode frozen during each fast pump cycle','gain screen uses cycle-averaged populations',

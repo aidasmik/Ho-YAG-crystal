@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import numpy as np
 
+from .population_state import validate_populations
 from .propagation import Grid2D
 from .temporal import TimeGrid, propagate_spatiotemporal, spatiotemporal_energy
 from .spectroscopy import effective_pump_absorption_cross_section_295K
@@ -50,12 +51,25 @@ class HoYAGFourLevelParams:
     sigma_em_laser_m2: float = 1.2e-24
 
     def __post_init__(self) -> None:
-        if self.N_total_m3 <= 0:
-            raise ValueError("N_total_m3 must be positive")
-        if not np.isclose(self.beta56 + self.beta57 + self.beta58, 1.0):
-            raise ValueError("I5 spontaneous branching ratios must sum to 1")
-        if not np.isclose(self.beta67 + self.beta68, 1.0):
-            raise ValueError("I6 spontaneous branching ratios must sum to 1")
+        for name in ('N_total_m3','tau5_s','tau6_s','tau7_s','pump_wavelength_m','laser_wavelength_m'):
+            value=getattr(self,name)
+            if not np.isscalar(value) or not np.isfinite(value) or value<=0:
+                raise ValueError(f'{name} must be finite and positive')
+        for name in ('M56_s1','M67_s1','M78_s1','k75_m3_s','k76_m3_s','C57_m3_s','C67_m3_s',
+                     'sigma_abs_pump_m2','sigma_em_pump_m2','sigma_abs_laser_m2','sigma_em_laser_m2'):
+            value=getattr(self,name)
+            if not np.isscalar(value) or not np.isfinite(value) or value<0:
+                raise ValueError(f'{name} must be finite and nonnegative')
+        for name in ('beta56','beta57','beta58','beta67','beta68','beta78'):
+            value=getattr(self,name)
+            if not np.isscalar(value) or not np.isfinite(value) or not 0<=value<=1:
+                raise ValueError(f'{name} must be finite and in [0,1]')
+        if not np.isclose(self.beta56+self.beta57+self.beta58,1.,rtol=0,atol=1e-12):
+            raise ValueError('I5 branching ratios must sum to one')
+        if not np.isclose(self.beta67+self.beta68,1.,rtol=0,atol=1e-12):
+            raise ValueError('I6 branching ratios must sum to one')
+        if not np.isclose(self.beta78,1.,rtol=0,atol=1e-12):
+            raise ValueError('this four-manifold RHS requires beta78=1')
 
     @classmethod
     def from_stage0_dict(cls, data: dict) -> "HoYAGFourLevelParams":
@@ -93,21 +107,18 @@ def ground_state_populations(params: HoYAGFourLevelParams, shape=()) -> np.ndarr
     return populations
 
 
-def stimulated_rates_from_intensity(
-    intensity_W_m2,
-    wavelength_m: float,
-    sigma_abs_m2: float,
-    sigma_em_m2: float,
-):
-    """Return W_abs and W_em in s^-1 for local optical intensity."""
-    if wavelength_m <= 0:
-        raise ValueError("wavelength_m must be positive")
-    intensity = np.asarray(intensity_W_m2, dtype=float)
-    if np.any(intensity < 0):
-        raise ValueError("intensity must be nonnegative")
-    photon_energy = H * C0 / wavelength_m
-    photon_flux = intensity / photon_energy
-    return sigma_abs_m2 * photon_flux, sigma_em_m2 * photon_flux
+def stimulated_rates_from_intensity(intensity_W_m2, wavelength_m, sigma_abs_m2, sigma_em_m2):
+    """Local nonnegative stimulated rates in s^-1 from physical intensity."""
+    if not np.isfinite(wavelength_m) or wavelength_m<=0:
+        raise ValueError('wavelength must be finite and positive')
+    for sigma in (sigma_abs_m2,sigma_em_m2):
+        if not np.isfinite(sigma) or sigma<0:
+            raise ValueError('cross sections must be finite and nonnegative')
+    intensity=np.asarray(intensity_W_m2,float)
+    if np.any(~np.isfinite(intensity)) or np.any(intensity<0):
+        raise ValueError('intensity must be finite and nonnegative')
+    flux=intensity/(H*C0/wavelength_m)
+    return sigma_abs_m2*flux,sigma_em_m2*flux
 
 
 def four_level_rhs(
@@ -186,7 +197,7 @@ def scale_pulse_to_energy(
     pulse_energy_J: float,
 ) -> np.ndarray:
     """Scale E(tau,y,x) so |E|^2 is W/m^2 and integrates to pulse energy."""
-    if pulse_energy_J <= 0:
+    if not np.isfinite(pulse_energy_J) or pulse_energy_J <= 0:
         raise ValueError("pulse_energy_J must be positive")
     arr = np.asarray(field, dtype=np.complex128)
     current = spatiotemporal_energy(arr, grid, time)
@@ -196,16 +207,11 @@ def scale_pulse_to_energy(
 
 
 def _physicalize_populations(state, params):
-    tolerance = 1e-9 * params.N_total_m3
-    if np.min(state) < -tolerance:
-        raise FloatingPointError(
-            "negative population: time step too large or rate model outside valid regime"
-        )
-    state = np.maximum(state, 0.0)
-    total = np.sum(state, axis=0)
-    if np.any(total <= 0):
-        raise FloatingPointError("invalid zero total population")
-    return state * (params.N_total_m3 / total)[None, ...]
+    n=np.asarray(state,float)
+    if n.ndim<1:
+        raise FloatingPointError('population axis is missing')
+    density=np.full(n.shape[1:],params.N_total_m3)
+    return validate_populations(n,density,error_type=FloatingPointError)
 
 
 def _rk4_population_step(
@@ -249,7 +255,7 @@ def integrate_populations(
     intensity = np.asarray(intensity_W_m2, dtype=float)
     if intensity.shape[0] != time.nt:
         raise ValueError("first intensity axis must match time.nt")
-    if np.any(intensity < 0):
+    if np.any(~np.isfinite(intensity)) or np.any(intensity < 0):
         raise ValueError("intensity must be nonnegative")
 
     spatial_shape = intensity.shape[1:]
@@ -260,9 +266,11 @@ def integrate_populations(
         if state.shape != (4, *spatial_shape):
             raise ValueError("initial population shape mismatch")
 
-    wavelength_m = wavelength_m or params.pump_wavelength_m
+    wavelength_m = params.pump_wavelength_m if wavelength_m is None else wavelength_m
     sigma_abs_m2 = params.sigma_abs_pump_m2 if sigma_abs_m2 is None else sigma_abs_m2
     sigma_em_m2 = params.sigma_em_pump_m2 if sigma_em_m2 is None else sigma_em_m2
+
+    state = _physicalize_populations(state, params)
 
     for i in range(time.nt - 1):
         state = _rk4_population_step(
@@ -382,6 +390,8 @@ def pump_material_step(
         if state.shape != (4, grid.ny, grid.nx):
             raise ValueError("initial population shape mismatch")
 
+    state = _physicalize_populations(state, params)
+
     photon_energy = H * C0 / params.pump_wavelength_m
     out = np.empty_like(arr)
     peak_i7_fraction = float(np.max(state[I7]) / params.N_total_m3)
@@ -430,6 +440,8 @@ def pump_material_step(
 
 @dataclass
 class PumpPropagationResult:
+    """Population output order is (manifold,z,y,x), not the legacy z-major order."""
+    population_axes = ("manifold", "z", "y", "x")
     field_out: np.ndarray
     input_energy_J: float
     output_energy_J: float
@@ -481,7 +493,7 @@ def propagate_single_pulse_hoyag(
     absorbed = np.zeros(nz)
     peak_i7 = np.zeros(nz)
     full = (
-        np.empty((nz, 4, grid.ny, grid.nx), dtype=float)
+        np.empty((4, nz, grid.ny, grid.nx), dtype=float)
         if store_full_populations
         else None
     )
@@ -511,7 +523,7 @@ def propagate_single_pulse_hoyag(
         absorbed[iz] = step.absorbed_energy_J
         peak_i7[iz] = step.peak_I7_fraction
         if full is not None:
-            full[iz] = step.final_populations
+            full[:, iz] = step.final_populations
 
         if include_passive_propagation:
             pulse = propagate_spatiotemporal(

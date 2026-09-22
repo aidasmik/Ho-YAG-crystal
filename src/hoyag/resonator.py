@@ -22,6 +22,8 @@ from scipy.integrate import solve_ivp
 from scipy.special import roots_legendre
 from scipy.sparse import coo_matrix
 
+from .pump_source import PumpSource, resolve_pump_source
+from .numerical_quality import check_spectral_scalar_limit
 from .populations import C0, H, I5, I6, I7, I8, HoYAGFourLevelParams, four_level_rhs
 
 
@@ -220,7 +222,8 @@ class ModalThinDiskLaser:
                  pump_absorption_m2: float | None = None,
                  pump_passes: int = 2, pump_relay_efficiency: float = 1.0,
                  spontaneous_fraction_per_mode: float = 1e-8,
-                 mode_labels: tuple[str, ...] | None = None):
+                 mode_labels: tuple[str, ...] | None = None,
+                 pump_source: PumpSource | None = None):
         self.cavity = cavity
         if not cavity.stable:
             raise ValueError("modal model requires a stable cold cavity")
@@ -255,8 +258,14 @@ class ModalThinDiskLaser:
         self.nc = self.ns*self.nz
         self.dz = cavity.disk_thickness_m / self.nz
         self.volume = np.broadcast_to(self.dz*self.area, self.density.shape)
-        self.sa = self.params.sigma_abs_pump_m2 if pump_absorption_m2 is None else float(pump_absorption_m2)
-        _positive(self.sa, "pump_absorption_m2")
+        if pump_source is not None and pump_absorption_m2 is not None:
+            raise ValueError('specify a pump source or a scalar override, not both')
+        self.pump_source = None if pump_source is None else resolve_pump_source(
+            self.params.pump_wavelength_m, pump_source.duration_fwhm_s, source=pump_source)
+        self.sa = (self.pump_source.effective_absorption_m2() if self.pump_source is not None
+                   else (self.params.sigma_abs_pump_m2 if pump_absorption_m2 is None else float(pump_absorption_m2)))
+        if not np.isfinite(self.sa) or self.sa < 0:
+            raise ValueError("pump absorption must be finite and nonnegative")
         if not isinstance(pump_passes, (int, np.integer)) or pump_passes < 1:
             raise ValueError("pump_passes must be a positive integer")
         if not 0 < pump_relay_efficiency <= 1:
@@ -398,6 +407,10 @@ class ModalThinDiskLaser:
         _positive(pump_energy_J, "pump_energy_J")
         _positive(repetition_rate_Hz, "repetition_rate_Hz")
         _positive(pump_fwhm_s, "pump_fwhm_s")
+        if self.pump_source is not None:
+            resolve_pump_source(self.params.pump_wavelength_m,pump_fwhm_s,source=self.pump_source)
+            check_spectral_scalar_limit(self.pump_source.attenuation_diagnostic(
+                float(np.max(np.sum(self.density,axis=0)))*self.dz*self.pump_passes))
         for v, name in ((periodic_tolerance,"periodic_tolerance"),(energy_tolerance,"energy_tolerance"),
                         (rtol,"rtol"),(atol_fraction,"atol_fraction")):
             _positive(v,name)
@@ -479,6 +492,7 @@ class ModalThinDiskLaser:
                 {"cavity":self.cavity.summary(),"pump_energy_J":pump_energy_J,
                  "repetition_rate_Hz":repetition_rate_Hz,"pump_fwhm_s":pump_fwhm_s,
                  "pump_passes":self.pump_passes,"peak_incident_fluence_over_Fsat":ratio,
+                 "pump_source":self.pump_source.summary() if self.pump_source is not None else {"effective_absorption_m2":self.sa,"source":"explicit low-level cross section; no inferred spectrum"},
                  "quadrature_sites":self.ns,"z_slices":self.nz,"rtol":rtol,
                  "spontaneous_fraction_per_mode":self.beta_sp,
                  "waveform_cycles":len(waveforms),"periodic_residuals":periodic_residuals,
@@ -490,7 +504,8 @@ def radial_laser(cavity: ThinDiskResonator | None = None, *,
                  charges: tuple[int,...] = (0,), pump_waist_m: float = 0.5e-3,
                  params: HoYAGFourLevelParams | None = None,
                  radial_density_modulation: float = 0.0,
-                 pump_absorption_m2: float = 1.223454786e-24,
+                 pump_absorption_m2: float | None = None,
+                 pump_duration_fwhm_s: float = 10e-12, pump_source: PumpSource | None = None,
                  spontaneous_fraction_per_mode: float = 1e-8) -> tuple[ModalThinDiskLaser,np.ndarray]:
     """Gauss-Legendre area quadrature over the entire 10 mm disk face.
 
@@ -519,8 +534,10 @@ def radial_laser(cavity: ThinDiskResonator | None = None, *,
     pump=2/(np.pi*pump_waist_m**2)*np.exp(-2*r*r/pump_waist_m**2)
     N=params.N_total_m3*(1+radial_density_modulation*np.exp(-r*r/(2*(0.5e-3)**2)))
     density=np.broadcast_to(N,(z_slices,radial_points)).copy()
+    source=resolve_pump_source(params.pump_wavelength_m,pump_duration_fwhm_s,
+                              source=pump_source,absorption_override_m2=pump_absorption_m2)
     model=ModalThinDiskLaser(cavity,area,density,u,pump,params=params,
-                  pump_absorption_m2=pump_absorption_m2,
+                  pump_source=source,
                   spontaneous_fraction_per_mode=spontaneous_fraction_per_mode,
                   mode_labels=tuple(f"LG(0,{l})" for l in charges))
     return model,r

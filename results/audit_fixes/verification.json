@@ -1,0 +1,352 @@
+{
+  "original_base": "b55a1faf462f6433d4e9401a000682426de46467",
+  "verification_run_id": 35780402281,
+  "migration_revision": "ee35a6dcbe2bf0dd79bb5f2bb20a8842a07c5911",
+  "regression": {
+    "tests": 219,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "independent_probes_executed": 19,
+  "independent_probes_failed": [],
+  "independent_probe_results": [
+    {
+      "check": "plane_wave_exactness",
+      "passed": true,
+      "data": {
+        "relative_error": 4.225592075106589e-15
+      },
+      "seconds": 0.00138739499999474
+    },
+    {
+      "check": "evanescent_backward_mask",
+      "passed": true,
+      "data": {
+        "finite": true
+      },
+      "seconds": 0.0003278929999908087
+    },
+    {
+      "check": "gdd_analytic_complex_envelope",
+      "passed": true,
+      "data": {
+        "complex_field_relative_error": 3.9811235917532663e-16,
+        "energy_error": 2.220446049250313e-16
+      },
+      "seconds": 0.000541604000005691
+    },
+    {
+      "check": "parameter_validation",
+      "passed": true,
+      "data": {
+        "unphysical_inputs_accepted": []
+      },
+      "seconds": 0.00019065699999032404
+    },
+    {
+      "check": "independent_rate_stoichiometry_and_heat",
+      "passed": true,
+      "data": {
+        "reaction_stoichiometry_relative_error": 1.6577982587336483e-16,
+        "independent_event_heat_relative_error": 1.6314295711481353e-16
+      },
+      "seconds": 0.0003987990000098307
+    },
+    {
+      "check": "population_layout_handoff",
+      "passed": true,
+      "data": {
+        "maximum_population_fraction_error": 1.1302545515789474e-16,
+        "actual_I7_mean_fraction": 0.001052516605651886,
+        "interpreted_I7_mean_fraction": 0.001052516605651886,
+        "ambiguous_shape": [
+          4,
+          4,
+          3,
+          3
+        ]
+      },
+      "seconds": 0.06953409899998064
+    },
+    {
+      "check": "vortex_reference_phase",
+      "passed": true,
+      "data": {
+        "true_complex_weak_gain": 1.0640083481522025,
+        "weak_energy_gain": 1.0640083481518925,
+        "reported_reference_gain": 1.0640083481522022,
+        "reference_relative_error": 2.220446049250313e-16,
+        "actual_signal_solver_weak_limit_relative_error": 2.913225216616411e-13,
+        "wavelength_m": 2.0903e-06,
+        "waist_m": 6.5e-05,
+        "length_m": 0.018
+      },
+      "seconds": 0.37086677400000667
+    },
+    {
+      "check": "frantz_nodvik_convergence",
+      "passed": true,
+      "data": {
+        "exact_gain": 3.2212037971397183,
+        "resolution_sweep": [
+          {
+            "nz": 1,
+            "gain": 3.309792197279222,
+            "gain_error": 0.02750164401835309,
+            "energy_mismatch": 0.0710698254353178
+          },
+          {
+            "nz": 4,
+            "gain": 3.2265467752977712,
+            "gain_error": 0.0016586898856871812,
+            "energy_mismatch": 0.004176330947430589
+          },
+          {
+            "nz": 16,
+            "gain": 3.221523967840578,
+            "gain_error": 9.939473595044213e-05,
+            "energy_mismatch": 0.00025508377573356346
+          },
+          {
+            "nz": 64,
+            "gain": 3.2212115457589348,
+            "gain_error": 2.4055041856207993e-06,
+            "energy_mismatch": 1.1300223606039392e-05
+          }
+        ]
+      },
+      "seconds": 7.380400646999988
+    },
+    {
+      "check": "random_density_mean_contract",
+      "passed": true,
+      "data": {
+        "requested_relative_rms": 1.2,
+        "minimum_fraction": 0.6,
+        "mean_over_requested": 1.0000000000000002,
+        "realized_relative_rms": 1.2000000000000002
+      },
+      "seconds": 0.002777755000010984
+    },
+    {
+      "check": "narrowband_absorption_approximation",
+      "passed": true,
+      "data": {
+        "classification": "quantified approximation, not exact spectral propagation",
+        "cases": [
+          {
+            "duration_ps": 1.0,
+            "length_m": 0.001,
+            "sigma_eff_m2": 8.025768789837071e-25,
+            "spectral_T": 0.8867723346299332,
+            "scalar_T": 0.8851557280059279,
+            "relative_transmission_bias": -0.001823023295691732
+          },
+          {
+            "duration_ps": 1.0,
+            "length_m": 0.002,
+            "sigma_eff_m2": 8.025768789837071e-25,
+            "spectral_T": 0.7892955387858638,
+            "scalar_T": 0.7835006628217043,
+            "relative_transmission_bias": -0.007341832912261853
+          },
+          {
+            "duration_ps": 1.0,
+            "length_m": 0.018,
+            "sigma_eff_m2": 8.025768789837071e-25,
+            "spectral_T": 0.20615121551234772,
+            "scalar_T": 0.11126390901470938,
+            "relative_transmission_bias": -0.4602801213750541
+          },
+          {
+            "duration_ps": 10.0,
+            "length_m": 0.001,
+            "sigma_eff_m2": 1.2234547864285335e-24,
+            "spectral_T": 0.830312528537479,
+            "scalar_T": 0.8303025491718887,
+            "relative_transmission_bias": -1.2018806470265886e-05
+          },
+          {
+            "duration_ps": 10.0,
+            "length_m": 0.002,
+            "sigma_eff_m2": 1.2234547864285335e-24,
+            "spectral_T": 0.6894355434755428,
+            "scalar_T": 0.6894023231613368,
+            "relative_transmission_bias": -4.818480062484479e-05
+          },
+          {
+            "duration_ps": 10.0,
+            "length_m": 0.018,
+            "sigma_eff_m2": 1.2234547864285335e-24,
+            "spectral_T": 0.035319481768934236,
+            "scalar_T": 0.035176666642000115,
+            "relative_transmission_bias": -0.004043522718380755
+          }
+        ]
+      },
+      "seconds": 0.0013069040000175391
+    },
+    {
+      "check": "carrier_detuning_convention",
+      "passed": true,
+      "data": {
+        "convention": "physical exp(ikz-iwt); positive detuning multiplies envelope by exp(-i deltaomega t)",
+        "carrier_relative_detuning_Hz": 200000000000.0,
+        "calculated_sigma_m2": 7.187758395220563e-25,
+        "expected_sigma_m2": 7.187758395220562e-25,
+        "relative_error": 2.220446049250313e-16
+      },
+      "seconds": 0.0016488880000053996
+    },
+    {
+      "check": "mechanical_affine_patch",
+      "passed": true,
+      "data": {
+        "max_engineering_strain_error": 3.7608262858090935e-19
+      },
+      "seconds": 0.0028532380000001467
+    },
+    {
+      "check": "unheated_pressure_compliance",
+      "passed": true,
+      "data": {
+        "force_balance_relative_error": 7.815970093361103e-15,
+        "max_interface_jump_m": 2.4236803827563764e-09
+      },
+      "seconds": 0.013560749999982136
+    },
+    {
+      "check": "isotropic_photoelastic_rotation_covariance",
+      "passed": true,
+      "data": {
+        "relative_error": 1.3744031213716245e-16,
+        "interpretation": "checks p44 tensor-shear convention independently"
+      },
+      "seconds": 0.0006740630000194869
+    },
+    {
+      "check": "body_translation_optical_path",
+      "passed": true,
+      "data": {
+        "rigid_translation_opd_m": 1.9999999999999996e-07,
+        "fixed_rear_expansion_opd_m": 1.5981999999999998e-07
+      },
+      "seconds": 5.445200000053774e-05
+    },
+    {
+      "check": "thermal_network_energy",
+      "passed": true,
+      "data": {
+        "steady_error": 7.617624792640434e-14,
+        "transient_error": 1.6024105678499338e-11,
+        "insulated_patch_flux": 0.0,
+        "plate_nonisothermal_range_K": 0.004413573994895614
+      },
+      "seconds": 0.013226356999979316
+    },
+    {
+      "check": "strong_contact_is_not_unilateral_contact",
+      "passed": true,
+      "data": {
+        "classification": "documented bilateral bonded-interface limit",
+        "normal_traction_min_Pa": -884993.305691063,
+        "normal_traction_max_Pa": 1260674.649750619,
+        "has_both_traction_signs": true
+      },
+      "seconds": 0.012367126000015105
+    },
+    {
+      "check": "optics_grid_aliasing",
+      "passed": true,
+      "data": {
+        "classification": "sampling risk; central low-order mode can still be resolved",
+        "cases": [
+          {
+            "n": 128,
+            "spacing_m": 9.375e-05,
+            "mirror_phase_step_rad_at_disk_radius": 5.636019925829653,
+            "nyquist_over_entire_disk": false
+          },
+          {
+            "n": 192,
+            "spacing_m": 6.25e-05,
+            "mirror_phase_step_rad_at_disk_radius": 3.757346617219769,
+            "nyquist_over_entire_disk": false
+          },
+          {
+            "n": 256,
+            "spacing_m": 4.6875e-05,
+            "mirror_phase_step_rad_at_disk_radius": 2.8180099629148265,
+            "nyquist_over_entire_disk": true
+          },
+          {
+            "n": 384,
+            "spacing_m": 3.125e-05,
+            "mirror_phase_step_rad_at_disk_radius": 1.8786733086098846,
+            "nyquist_over_entire_disk": true
+          }
+        ]
+      },
+      "seconds": 2.7191000015136524e-05
+    },
+    {
+      "check": "optical_roundtrip_is_compatible_with_moving_reference",
+      "passed": true,
+      "data": {
+        "field_error": 5.71214736967358e-16,
+        "power_difference": 7.771561172376096e-16
+      },
+      "seconds": 0.009615099999990662
+    }
+  ],
+  "stage7_converged": true,
+  "stage7_last_iteration": {
+    "iteration": 6,
+    "output_W": 0.753012799716634,
+    "heat_W": 0.6719956086959558,
+    "assembly_heat_W": 0.6715876905339355,
+    "field_residual": 0.0001343047692920092,
+    "subspace_residual": 0.0001343047854115765,
+    "heat_residual": 0.00165230158746093,
+    "temperature_change_K": 0.006680373943595441,
+    "displacement_change_m": 5.67356627756898e-11,
+    "output_relative_change": 0.0002613375031682761,
+    "loss_residual": 7.717680661212256e-13,
+    "eigen_residual": 4.391428871708251e-14,
+    "eigen_converged": true,
+    "eigen_operator_calls": 248,
+    "field_rate_log_gain_mismatch": 0.0003746344619074576,
+    "projection_error": 7.739657866123739e-05,
+    "optical_cycles": 29,
+    "optical_period_cycles": 1,
+    "disk_peak_temperature_K": 302.3580209840307,
+    "plate_peak_temperature_K": 293.67487329382976,
+    "thermal_balance_error_W": 6.0285110237146e-14,
+    "mechanical_residual": 4.2404678436643485e-15,
+    "local_energy_error": 7.541183944787762e-06
+  },
+  "stage7_budget": {
+    "pump_incident_W": 10.0,
+    "pump_absorbed_W": 2.2057198209615145,
+    "heat_W": 0.6719956086959558,
+    "stimulated_signal_W": 0.9584250746560646,
+    "fluorescence_W": 0.5748833449211376,
+    "ion_storage_change_W": 0.0003460707298241666,
+    "output_W": 0.753012799716634,
+    "output_W_by_mode": [
+      0.753012799716634
+    ],
+    "pump_escaped_W": 7.750210223767594,
+    "pump_mirror_loss_W": 0.04406995527089218,
+    "local_ledger_L1_error_over_incident": 7.541183944787762e-06,
+    "quadrature_L1_difference_over_incident": 3.465306607151248e-12,
+    "cycles_averaged": 1,
+    "interval_s": 0.0001,
+    "population_cycle_drift": 2.0680103127933947e-06,
+    "heat_spectroscopy_provenance": "Stage0.1 legacy unweighted centroid surrogate; unvalidated fluorescence means",
+    "fluorescence_transport": "all photons leave ion subsystem; no radiation reabsorption",
+    "coating_heat_included": false
+  },
+  "limitations": "Coarse-grid hot-cavity regression, not a mesh/mode-count or experimental validation."
+}
