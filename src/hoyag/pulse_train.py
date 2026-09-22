@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from .population_state import validate_populations
 import numpy as np
 
 from .populations import (
@@ -20,6 +21,7 @@ from .temporal import TimeGrid, propagate_spatiotemporal, spatiotemporal_energy
 
 @dataclass
 class PulseTrainResult:
+    population_axes = ("manifold", "z", "y", "x")
     converged: bool
     pulses_simulated: int
     repetition_rate_Hz: float
@@ -51,10 +53,7 @@ def _initial_slice_populations(
             raise ValueError(
                 f"initial_populations_by_slice shape {state.shape} != {expected}"
             )
-        total = np.sum(state, axis=0)
-        if np.any(total <= 0):
-            raise ValueError("initial populations contain zero total density")
-        state *= (params.N_total_m3 / total)[None, ...]
+        state = validate_populations(state, np.full(expected[1:], params.N_total_m3))
     return state
 
 

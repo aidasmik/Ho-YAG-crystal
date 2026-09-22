@@ -12,6 +12,7 @@ import numpy as np
 from scipy.integrate import solve_ivp
 from scipy.special import gammainc
 from numpy.polynomial.legendre import leggauss
+from .pump_source import resolve_pump_source
 from .populations import HoYAGFourLevelParams, I7
 from .resonator import ThinDiskResonator, ModalThinDiskLaser, OscillatorResult
 from .heat import HeatSpectroscopy, heat_budget, ion_energy_density, pump_kick_budget
@@ -31,7 +32,8 @@ def area_averaged_lg0(mesh: DiskThermalMesh, waist_m: float, charge=0):
 
 def modal_laser_on_thermal_mesh(mesh: DiskThermalMesh, cavity: ThinDiskResonator, *,
                                 waist_m=None, charges=(0,), pump_waist_m=.5e-3,
-                                params=None, density_m3=None, pump_absorption_m2=1.223454786e-24,
+                                params=None, density_m3=None, pump_absorption_m2=None,
+                                pump_duration_fwhm_s=10e-12, pump_source=None,
                                 spontaneous_fraction_per_mode=1e-8):
     """Use identical optical and thermal control volumes: no resampling of Q."""
     if not np.isclose(mesh.r_edges_m[-1],cavity.disk_diameter_m/2,rtol=1e-12,atol=0) or not np.isclose(mesh.z_edges_m[-1],cavity.disk_thickness_m,rtol=1e-12,atol=0):
@@ -43,8 +45,10 @@ def modal_laser_on_thermal_mesh(mesh: DiskThermalMesh, cavity: ThinDiskResonator
     modes=np.array([area_averaged_lg0(mesh,w,l) for l in charges])
     pump=area_averaged_lg0(mesh,pump_waist_m)
     density=mesh.field(p.N_total_m3 if density_m3 is None else density_m3,'Ho density')
+    source=resolve_pump_source(p.pump_wavelength_m,pump_duration_fwhm_s,
+                              source=pump_source,absorption_override_m2=pump_absorption_m2)
     return ModalThinDiskLaser(cavity,mesh.face_areas_m2.ravel(),density.reshape(mesh.nz,-1),
-        modes,pump,params=p,pump_absorption_m2=pump_absorption_m2,
+        modes,pump,params=p,pump_source=source,
         spontaneous_fraction_per_mode=spontaneous_fraction_per_mode,
         mode_labels=tuple(f'LG(0,{l})' for l in charges))
 
@@ -172,7 +176,8 @@ def run_thermal_resonator(mesh: DiskThermalMesh, cavity: ThinDiskResonator, pump
                           reference_temperature_K=293.15, pump_waist_m=.5e-3, pump_duration_fwhm_s=10e-12,
                           max_feedback_iterations=1, mode_tolerance=1e-3,
                           heat_tolerance=3e-3, relaxation=.6, optical_max_cycles=420,
-                          initial_fractions=None, initial_log_photons=None, progress=None):
+                          initial_fractions=None, initial_log_photons=None, progress=None,
+                          pump_source=None, pump_absorption_m2=None):
     """Optical-period / thermal-steady-state iteration for the selected Gaussian.
 
     max_feedback_iterations=1 is one-way heating of the cold-mode solution.
@@ -192,7 +197,9 @@ def run_thermal_resonator(mesh: DiskThermalMesh, cavity: ThinDiskResonator, pump
                           density_kg_m3=mass_density_kg_m3,heat_capacity_J_kgK=heat_capacity_J_kgK)
     history=[];previous_heat=None;converged=False;predicted=None;status='one-way cold-mode heating'
     for iteration in range(max_feedback_iterations):
-        model=modal_laser_on_thermal_mesh(mesh,cavity,waist_m=w,params=params,pump_waist_m=pump_waist_m)
+        model=modal_laser_on_thermal_mesh(mesh,cavity,waist_m=w,params=params,pump_waist_m=pump_waist_m,
+                 pump_duration_fwhm_s=pump_duration_fwhm_s,pump_source=pump_source,
+                 pump_absorption_m2=pump_absorption_m2)
         optical=model.run(pump_energy_J,repetition_rate_Hz,max_cycles=optical_max_cycles,
             min_cycles=20,rtol=5e-7,max_period_cycles=8,periodic_tolerance=1e-7,energy_tolerance=1e-4,
             pump_fwhm_s=pump_duration_fwhm_s,initial_fractions=state,initial_log_photons=logph)

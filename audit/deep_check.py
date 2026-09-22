@@ -104,7 +104,11 @@ def population_layout_handoff():
     density=uniform_ho_density_field(grid,4,.001,p.N_total_m3)
     result=propagate_single_pulse_inhomogeneous(pulse,grid,t,1e-4,density,p,
                   spectral_absorption=False,include_passive_propagation=False,store_full_populations=True)
-    raw=result.final_populations_by_slice;reference=np.moveaxis(raw,1,0)
+    raw=result.final_populations_by_slice
+    if getattr(result,'population_axes',None)==('manifold','z','y','x'):
+        reference=raw.copy()
+    else:
+        reference=np.moveaxis(raw,1,0)
     try:interpreted=validate_population_field(raw,density,grid)
     except ValueError as exc:return False,{'handoff_rejected':str(exc),'pump_axis_order':'z,manifold,y,x','signal_axis_order':'manifold,z,y,x'}
     error=float(np.max(abs(interpreted-reference))/p.N_total_m3)
@@ -250,10 +254,12 @@ def main():
       isotropic_photoelastic_rotation_covariance,body_translation_optical_path,thermal_network_energy,
       strong_contact_is_not_unilateral_contact,optics_grid_aliasing,optical_roundtrip_is_compatible_with_moving_reference]
     for fn in checks:check(fn.__name__,fn)
-    report={'audited_base':'b55a1faf462f6433d4e9401a000682426de46467',
+    report={'original_audited_base':'b55a1faf462f6433d4e9401a000682426de46467',
       'run_revision':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),
       'checks':RESULTS,'failed_checks':[v['check'] for v in RESULTS if not v['passed']]}
     out=ROOT/'results/deep_audit';out.mkdir(parents=True,exist_ok=True)
     (out/'report.json').write_text(json.dumps(report,indent=2,allow_nan=False)+'\n')
     print('AUDIT_FINAL '+json.dumps({k:v for k,v in report.items() if k!='checks'}),flush=True)
+    if report['failed_checks']:
+        raise SystemExit('Independent audit failures: '+', '.join(report['failed_checks']))
 if __name__=='__main__':main()

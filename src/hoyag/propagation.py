@@ -22,14 +22,18 @@ class Grid2D:
     dy: float
 
     def __post_init__(self) -> None:
-        if self.nx < 2 or self.ny < 2:
-            raise ValueError("nx and ny must be >= 2")
-        if self.dx <= 0 or self.dy <= 0:
-            raise ValueError("dx and dy must be positive")
+        for name in ('nx','ny'):
+            n=getattr(self,name)
+            if isinstance(n,(bool,np.bool_)) or not isinstance(n,(int,np.integer)) or n<2:
+                raise ValueError(f'{name} must be an integer >=2')
+        if not np.isfinite(self.dx) or not np.isfinite(self.dy) or self.dx<=0 or self.dy<=0:
+            raise ValueError('grid spacings must be finite and positive')
 
     @classmethod
     def square(cls, n: int, size_m: float) -> "Grid2D":
-        if size_m <= 0:
+        if isinstance(n,(bool,np.bool_)) or not isinstance(n,(int,np.integer)) or n<2:
+            raise ValueError("n must be an integer >=2")
+        if not np.isfinite(size_m) or size_m <= 0:
             raise ValueError("size_m must be positive")
         return cls(nx=n, ny=n, dx=size_m / n, dy=size_m / n)
 
@@ -60,6 +64,8 @@ class Grid2D:
 
 def _check_field(field: np.ndarray, grid: Grid2D) -> np.ndarray:
     arr = np.asarray(field, dtype=np.complex128)
+    if np.any(~np.isfinite(arr)):
+        raise ValueError("field must be finite")
     if arr.shape != grid.shape:
         raise ValueError(f"field shape {arr.shape} does not match grid {grid.shape}")
     return arr
@@ -180,48 +186,37 @@ def apply_phase_mask(field: np.ndarray, phase_rad: np.ndarray, grid: Grid2D) -> 
     return arr * np.exp(1j * phase)
 
 
-def angular_spectrum_propagate(
-    field: np.ndarray,
-    grid: Grid2D,
-    wavelength_m: float,
-    distance_m: float,
-    *,
-    refractive_index: float = 1.0,
-    bandlimit: bool = True,
-) -> np.ndarray:
-    """Propagate a scalar complex envelope through a uniform medium.
+def angular_spectrum_propagate(field, grid, wavelength_m, distance_m, *, refractive_index=1., bandlimit=True):
+    """Scalar angular-spectrum propagation; bandlimit removes evanescent bins.
 
-    Uses the exact angular-spectrum transfer function
-
-        H(kx, ky) = exp(i * kz * z),
-        kz = sqrt((n*k0)^2 - kx^2 - ky^2).
-
-    Evanescent components are retained as decaying exponentials when
-    ``bandlimit=False``. With ``bandlimit=True``, components outside the
-    propagating circle are suppressed. Despite the historical argument name,
-    this is *not* a full anti-alias angular-spectrum band-limit. FFT propagation
-    is periodic, so the transverse window must still be large enough to prevent
-    diffracted light from wrapping around the array boundaries.
+    This is not a distance-dependent anti-alias filter. The FFT window is periodic.
+    Backward propagation of evanescent components is ill-conditioned and rejected.
     """
-    if wavelength_m <= 0:
-        raise ValueError("wavelength_m must be positive")
-    if refractive_index <= 0:
-        raise ValueError("refractive_index must be positive")
-
-    arr = _check_field(field, grid)
-    if distance_m == 0:
+    arr=_check_field(field,grid)
+    transfer=angular_spectrum_transfer(grid,wavelength_m,distance_m,
+                                      refractive_index=refractive_index,bandlimit=bandlimit)
+    if distance_m==0:
         return arr.copy()
+    return np.fft.ifft2(np.fft.fft2(arr)*transfer)
 
-    fx, fy = np.meshgrid(grid.fx, grid.fy, indexing="xy")
-    kx = 2 * np.pi * fx
-    ky = 2 * np.pi * fy
-    k = 2 * np.pi * refractive_index / wavelength_m
-    kt2 = kx**2 + ky**2
 
-    kz = np.sqrt((k**2 - kt2).astype(np.complex128))
-    transfer = np.exp(1j * kz * distance_m)
-    if bandlimit:
-        transfer = np.where(kt2 <= k**2, transfer, 0.0)
-
-    spectrum = np.fft.fft2(arr)
-    return np.fft.ifft2(spectrum * transfer)
+def angular_spectrum_transfer(grid, wavelength_m, distance_m, *, refractive_index=1., bandlimit=True):
+    """Build masked factors without evaluating any exponentially growing bin."""
+    if not np.isfinite(wavelength_m) or wavelength_m<=0 or not np.isfinite(refractive_index) or refractive_index<=0:
+        raise ValueError('wavelength and refractive index must be finite and positive')
+    if not np.isfinite(distance_m):
+        raise ValueError('distance must be finite')
+    if distance_m==0:
+        return np.ones(grid.shape,complex)
+    fx,fy=np.meshgrid(grid.fx,grid.fy,indexing='xy')
+    k=2*np.pi*refractive_index/wavelength_m
+    transverse=(2*np.pi)**2*(fx*fx+fy*fy)
+    propagating=transverse<=k*k
+    transfer=np.zeros(grid.shape,complex)
+    transfer[propagating]=np.exp(1j*np.sqrt(k*k-transverse[propagating])*distance_m)
+    if not bandlimit:
+        if distance_m<0 and np.any(~propagating):
+            raise ValueError('backward evanescent continuation is unsupported; use bandlimit=True')
+        with np.errstate(under='ignore'):
+            transfer[~propagating]=np.exp(-np.sqrt(transverse[~propagating]-k*k)*distance_m)
+    return transfer

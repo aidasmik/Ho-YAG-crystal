@@ -158,7 +158,7 @@ def test_finite_energy_signal_saturates_gain_and_depletes_i7():
 
     assert result.energy_gain > 1.0
     assert result.energy_gain < result.small_signal_power_gain_reference
-    assert np.mean(result.final_populations_by_slice[:, I7] if False else result.final_populations_by_slice[I7]) < np.mean(populations[I7])
+    assert np.mean(result.final_populations_by_slice[I7]) < np.mean(populations[I7])
 
 
 def test_signal_energy_gain_matches_i7_depletion_in_isolated_two_level_limit():

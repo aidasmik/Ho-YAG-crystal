@@ -142,7 +142,7 @@ def test_saturation_increases_transmission_and_creates_gain():
 
     gains = [
         np.max(laser_gain_coefficient_m1(s, p))
-        for s in result.final_populations_by_slice
+        for s in np.moveaxis(result.final_populations_by_slice, 0, 1)
     ]
     assert max(gains) > 0
 
@@ -169,7 +169,7 @@ def test_low_fluence_absorbed_energy_matches_stored_I7_energy():
 
     dz = length / nz
     number_I7 = 0.0
-    for populations in result.final_populations_by_slice:
+    for populations in np.moveaxis(result.final_populations_by_slice, 0, 1):
         number_I7 += np.sum(populations[I7]) * grid.dx * grid.dy * dz
 
     stored = number_I7 * (H * C0 / p.pump_wavelength_m)

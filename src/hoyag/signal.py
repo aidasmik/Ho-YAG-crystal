@@ -9,6 +9,7 @@ population map. It supports:
 from __future__ import annotations
 
 from dataclasses import dataclass
+from .population_state import PopulationField, validate_populations
 import numpy as np
 
 from .inhomogeneity import HoDensityField
@@ -29,33 +30,14 @@ DEFAULT_SIGNAL_REFRACTIVE_INDEX = 1.799104526293235
 DEFAULT_SIGNAL_BETA2_S2_PER_M = -7.78456823900342e-26
 
 
-def validate_population_field(
-    populations_by_slice,
-    density: HoDensityField,
-    grid: Grid2D,
-) -> np.ndarray:
+def validate_population_field(populations_by_slice, density, grid):
+    """Canonical manifold-first field; reject wrong local totals, never guess axes."""
     density.validate_grid(grid)
-    state = np.asarray(populations_by_slice, dtype=float).copy()
-    expected = (4, density.nz, grid.ny, grid.nx)
-    if state.shape != expected:
-        raise ValueError(f"population field shape {state.shape} != {expected}")
-    if np.any(~np.isfinite(state)):
-        raise ValueError("population field contains non-finite values")
-
-    scale_ref = max(float(np.max(density.values_m3)), 1.0)
-    if np.min(state) < -1e-9 * scale_ref:
-        raise ValueError("population field contains negative populations")
-    state = np.maximum(state, 0.0)
-
-    total = np.sum(state, axis=0)
-    active = density.values_m3 > 0
-    if np.any(active & (total <= 0)):
-        raise ValueError("active doped voxel has zero total population")
-
-    scale = np.zeros_like(density.values_m3)
-    scale[active] = density.values_m3[active] / total[active]
-    state *= scale[None, ...]
-    return state
+    if isinstance(populations_by_slice, PopulationField):
+        if not np.array_equal(populations_by_slice.density_m3,density.values_m3):
+            raise ValueError('PopulationField and geometry densities disagree')
+        populations_by_slice=populations_by_slice.values_m3
+    return validate_populations(populations_by_slice,density.values_m3)
 
 
 def small_signal_gain_coefficient_m1(
@@ -155,28 +137,8 @@ def propagate_structured_signal_small_signal(
     )
 
 
-def _physicalize_signal_populations(state, density_m3) -> np.ndarray:
-    state = np.asarray(state, dtype=float)
-    density = np.asarray(density_m3, dtype=float)
-    if state.shape != (4, *density.shape):
-        raise ValueError("population and density shapes do not match")
-
-    scale_ref = max(float(np.max(density)), 1.0)
-    if np.min(state) < -1e-9 * scale_ref:
-        raise FloatingPointError(
-            "negative signal-coupled population: reduce temporal step"
-        )
-
-    state = np.maximum(state, 0.0)
-    total = np.sum(state, axis=0)
-    active = density > 0
-    if np.any(active & (total <= 0)):
-        raise FloatingPointError("active voxel has zero total population")
-
-    scale = np.zeros_like(density)
-    scale[active] = density[active] / total[active]
-    state *= scale[None, ...]
-    return state
+def _physicalize_signal_populations(state,density_m3):
+    return validate_populations(state,density_m3,error_type=FloatingPointError)
 
 
 @dataclass
@@ -301,17 +263,11 @@ def propagate_structured_signal_saturated(
     signal = scale_pulse_to_energy(field, grid, time, pulse_energy_J)
     input_energy = spatiotemporal_energy(signal, grid, time)
 
-    # Reference gain from the same initial populations, without depletion.
-    spatial_reference = np.sqrt(
-        np.sum(np.abs(signal) ** 2, axis=0) * time.dt
-    ).astype(np.complex128)
-    small_ref = propagate_structured_signal_small_signal(
-        spatial_reference,
-        grid,
-        state,
-        density,
-        params,
-        refractive_index=refractive_index,
+    # Use the SAME complex pulse, phase and GVD, freezing populations only.
+    # Taking sqrt(fluence) would erase vortex phase and space-time correlations.
+    small_ref = propagate_structured_signal_frozen(
+        signal, grid, time, pulse_energy_J, state, density, params,
+        refractive_index=refractive_index, beta2_s2_per_m=beta2_s2_per_m,
         include_passive_propagation=include_passive_propagation,
     )
 
@@ -362,5 +318,40 @@ def propagate_structured_signal_saturated(
         energy_gain=float(output_energy / input_energy),
         signal_energy_change_by_slice_J=energy_changes,
         final_populations_by_slice=final,
-        small_signal_power_gain_reference=float(small_ref.power_gain),
+        small_signal_power_gain_reference=float(small_ref.energy_gain),
     )
+
+
+@dataclass
+class FrozenSignalResult:
+    field_out: np.ndarray
+    input_energy_J: float
+    output_energy_J: float
+    energy_gain: float
+
+
+def propagate_structured_signal_frozen(field, grid, time, pulse_energy_J,
+        populations_by_slice, density, params=None, *,
+        refractive_index=DEFAULT_SIGNAL_REFRACTIVE_INDEX,
+        beta2_s2_per_m=DEFAULT_SIGNAL_BETA2_S2_PER_M, include_passive_propagation=True):
+    """Full complex E(t,y,x) weak-signal reference with frozen populations.
+
+    Preserves arbitrary spatial phase, temporal phase and space-time correlations.
+    Identical diffraction, GVD, slice geometry and normalization to the saturated
+    path. Only the stimulated population update is disabled.
+    """
+    params=params or HoYAGFourLevelParams()
+    state=validate_population_field(populations_by_slice,density,grid)
+    signal=scale_pulse_to_energy(field,grid,time,pulse_energy_J)
+    ein=spatiotemporal_energy(signal,grid,time)
+    for iz in range(density.nz):
+        if include_passive_propagation:
+            signal=propagate_spatiotemporal(signal,grid,time,params.laser_wavelength_m,density.dz_m/2,
+                         refractive_index=refractive_index,beta2_s2_per_m=beta2_s2_per_m)
+        gain=small_signal_gain_coefficient_m1(state[:,iz],params)
+        signal*=np.exp(.5*gain[None]*density.dz_m)
+        if include_passive_propagation:
+            signal=propagate_spatiotemporal(signal,grid,time,params.laser_wavelength_m,density.dz_m/2,
+                         refractive_index=refractive_index,beta2_s2_per_m=beta2_s2_per_m)
+    eout=spatiotemporal_energy(signal,grid,time)
+    return FrozenSignalResult(signal,float(ein),float(eout),float(eout/ein))

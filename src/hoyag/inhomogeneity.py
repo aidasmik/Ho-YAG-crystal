@@ -8,6 +8,8 @@ sections and the split ETU/cross-relaxation coefficients remain at the Rupp
 from __future__ import annotations
 
 from dataclasses import dataclass
+from .population_state import validate_populations
+from .density_statistics import bounded_mean_rms, density_statistics
 import numpy as np
 
 from .populations import (
@@ -77,6 +79,11 @@ class HoDensityField:
             )
 
 
+def ho_density_statistics(density: HoDensityField):
+    """Achieved density statistics, not merely generator input settings."""
+    return density_statistics(density.values_m3)
+
+
 def uniform_ho_density_field(
     grid: Grid2D,
     nz: int,
@@ -130,7 +137,7 @@ def axial_linear_ho_density_field(
     """
     if nz < 1:
         raise ValueError("nz must be >= 1")
-    if mean_density_m3 < 0:
+    if not np.isfinite(mean_density_m3) or mean_density_m3 < 0:
         raise ValueError("mean_density_m3 must be nonnegative")
     z = (np.arange(nz) + 0.5) / nz - 0.5
     multiplier = 1.0 + relative_end_to_end * z
@@ -196,13 +203,13 @@ def smooth_random_ho_density_field(
     """
     if nz < 2:
         raise ValueError("nz must be >= 2 for a smooth random 3-D field")
-    if mean_density_m3 < 0:
+    if not np.isfinite(mean_density_m3) or mean_density_m3 < 0:
         raise ValueError("mean_density_m3 must be nonnegative")
-    if relative_rms < 0:
+    if not np.isfinite(relative_rms) or relative_rms < 0:
         raise ValueError("relative_rms must be nonnegative")
     if not (0 < correlation_fraction <= 1):
         raise ValueError("correlation_fraction must be in (0, 1]")
-    if minimum_fraction < 0:
+    if not np.isfinite(minimum_fraction) or not 0 <= minimum_fraction <= 1:
         raise ValueError("minimum_fraction must be nonnegative")
 
     rng = np.random.default_rng(seed)
@@ -223,13 +230,7 @@ def smooth_random_ho_density_field(
         raise FloatingPointError("random-field RMS unexpectedly vanished")
     smooth /= rms
 
-    values = mean_density_m3 * (1.0 + relative_rms * smooth)
-    values = np.maximum(values, minimum_fraction * mean_density_m3)
-
-    if mean_density_m3 > 0:
-        values *= mean_density_m3 / np.mean(values)
-        values = np.maximum(values, minimum_fraction * mean_density_m3)
-
+    values = bounded_mean_rms(smooth, mean_density_m3, relative_rms, minimum_fraction)
     return HoDensityField(values, length_m)
 
 
@@ -249,29 +250,8 @@ def _ground_state_from_density(density_m3) -> np.ndarray:
     return state
 
 
-def _physicalize_to_density(state, density_m3) -> np.ndarray:
-    state = np.asarray(state, dtype=float)
-    density = np.asarray(density_m3, dtype=float)
-    if state.shape[1:] != density.shape:
-        raise ValueError("population and density shapes do not match")
-
-    scale_ref = max(float(np.max(density)) if density.size else 0.0, 1.0)
-    if np.min(state) < -1e-9 * scale_ref:
-        raise FloatingPointError(
-            "negative population: time step too large or model outside valid regime"
-        )
-
-    state = np.maximum(state, 0.0)
-    total = np.sum(state, axis=0)
-    active = density > 0
-
-    if np.any(active & (total <= 0)):
-        raise FloatingPointError("active doped voxel has zero total population")
-
-    scale = np.zeros_like(density, dtype=float)
-    scale[active] = density[active] / total[active]
-    state *= scale[None, ...]
-    return state
+def _physicalize_to_density(state,density_m3):
+    return validate_populations(state,density_m3,error_type=FloatingPointError)
 
 
 def _max_level_fraction(state, density_m3, level: int) -> float:
@@ -429,6 +409,8 @@ def pump_material_step_inhomogeneous(
 
 @dataclass
 class InhomogeneousPumpResult:
+    """Population output order is (manifold,z,y,x)."""
+    population_axes = ("manifold", "z", "y", "x")
     field_out: np.ndarray
     input_energy_J: float
     output_energy_J: float
@@ -470,7 +452,7 @@ def propagate_single_pulse_inhomogeneous(
     absorbed = np.zeros(density.nz)
     peak_i7 = np.zeros(density.nz)
     full = (
-        np.empty((density.nz, 4, grid.ny, grid.nx), dtype=float)
+        np.empty((4, density.nz, grid.ny, grid.nx), dtype=float)
         if store_full_populations
         else None
     )
@@ -492,7 +474,7 @@ def propagate_single_pulse_inhomogeneous(
         absorbed[iz] = step.absorbed_energy_J
         peak_i7[iz] = step.peak_I7_fraction
         if full is not None:
-            full[iz] = step.final_populations
+            full[:, iz] = step.final_populations
 
         if include_passive_propagation:
             pulse = propagate_spatiotemporal(

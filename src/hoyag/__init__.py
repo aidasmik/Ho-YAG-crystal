@@ -130,3 +130,8 @@ from .signal import (
     SaturatedSignalResult,
     propagate_structured_signal_saturated,
 )
+
+from .population_state import PopulationField, convert_population_layout, POPULATION_AXES
+from .pump_source import PumpSource
+from .signal import propagate_structured_signal_frozen
+__all__ += ["PopulationField", "convert_population_layout", "POPULATION_AXES", "PumpSource", "propagate_structured_signal_frozen"]

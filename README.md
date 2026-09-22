@@ -1,5 +1,15 @@
 # Ho:YAG crystal simulation
 
+## Audit corrections — API 0.8
+
+The Stage 0–7 audit defects are corrected. All spatial population results now use
+**(manifold,z,y,x)**; legacy single-pulse archives require explicit axis conversion.
+The weak reference preserves the original complex pulse, and Stage 5/7 absorption
+is bound to a shared, documented pump spectrum. See `docs/AUDIT_FIXES_STAGE0_7.md`
+and `results/audit_fixes/verification.json` for migration and executed checks.
+Fixed-point convergence is still not a claim of mesh or experimental validation.
+
+
 Reconstruction and extension of the Ho:YAG laser/thermal model of Rupp, Eichhorn and Kieleck.
 
 The original Rupp rod is retained as a validation case. The active working geometry is a **Ho:YAG thin disk: 10 mm diameter x 1 mm thickness**.
