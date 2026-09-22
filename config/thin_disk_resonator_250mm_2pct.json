@@ -1,0 +1,37 @@
+{
+  "metadata": {
+    "stage": "4R",
+    "case": "250mm_2pct_reference",
+    "status": "reference configuration matching the selected-mode resonator simulation",
+    "note": "Mirror/loss values are simulation assumptions, not measured coating specifications."
+  },
+  "cavity": {
+    "disk_diameter_m": 0.01,
+    "disk_thickness_m": 0.001,
+    "air_gap_m": 0.25,
+    "output_mirror_radius_m": 0.5,
+    "output_transmission": 0.02,
+    "disk_hr_reflectivity": 0.9995,
+    "other_roundtrip_loss": 0.005,
+    "wavelength_m": 2.0903e-6,
+    "host_index": 1.799104526293235,
+    "host_group_index": 1.8315976829906033,
+    "pump_hr_reflectivity": 0.995
+  },
+  "pump": {
+    "wavelength_m": 1.9077e-6,
+    "duration_fwhm_s": 1e-11,
+    "repetition_rate_Hz": 10000,
+    "waist_radius_m": 0.0005,
+    "energy_sweep_uJ": [100, 300, 600, 1000],
+    "effective_absorption_cross_section_m2": 1.223454786e-24,
+    "traversals": 2,
+    "return_model": "Sequential forward/rear-reflection/backward fluence approximation"
+  },
+  "numerics": {
+    "reference_radial_points": 32,
+    "reference_z_slices": 4,
+    "refined_radial_points": 48,
+    "refined_z_slices": 8
+  }
+}

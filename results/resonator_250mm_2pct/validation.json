@@ -1,0 +1,8 @@
+{
+  "new_local_tests_passed": 10,
+  "base_revision_for_reference_run": "7bd59b60705657e15478b54374243ad977602dbf",
+  "output_W_base": 0.8075993737145433,
+  "output_W_refined": 0.8077596502642429,
+  "relative_output_change": 0.0001984604680442814,
+  "model": "selected-transverse-mode pulsed resonator reference"
+}

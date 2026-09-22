@@ -1,0 +1,14 @@
+{
+  "bracket_pulse_energy_J": [0.00030937499999999997, 0.0003140625],
+  "bracket_average_power_W": [3.0937499999999996, 3.140625],
+  "evaluations": [
+    {"energy_J": 0.0003, "average_pump_W": 2.9999999999999996, "mean_log_gain_minus_loss": -0.0019757036694539078, "converged": true},
+    {"energy_J": 0.0006, "average_pump_W": 5.999999999999999, "mean_log_gain_minus_loss": 0.030755179977876867, "converged": true},
+    {"energy_J": 0.00045, "average_pump_W": 4.5, "mean_log_gain_minus_loss": 0.016763033043739575, "converged": true},
+    {"energy_J": 0.000375, "average_pump_W": 3.75, "mean_log_gain_minus_loss": 0.008175308008678463, "converged": true},
+    {"energy_J": 0.0003375, "average_pump_W": 3.375, "mean_log_gain_minus_loss": 0.0033457609866176, "converged": true},
+    {"energy_J": 0.00031875, "average_pump_W": 3.1875000000000004, "mean_log_gain_minus_loss": 0.0007702745245230444, "converged": true},
+    {"energy_J": 0.00030937499999999997, "average_pump_W": 3.0937499999999996, "mean_log_gain_minus_loss": -0.0005592614066839106, "converged": true},
+    {"energy_J": 0.0003140625, "average_pump_W": 3.140625, "mean_log_gain_minus_loss": 0.00007206166714300577, "converged": true}
+  ]
+}

@@ -37,3 +37,22 @@ python examples/thin_disk_resonator.py --sweep 100 300 600 1000
 - Stage 4 — structured 2.09 um signal amplification and gain saturation
 - Stage 4R — HR-backed cavity, output coupling, and fixed-mode pulse-pumped oscillator
 - Stage 5 — heat deposition and temperature field (not yet implemented)
+
+
+## 250 mm / 2% output-coupler reference case
+
+The resonator configuration simulated in the September 22 reference run is preserved separately in
+`config/thin_disk_resonator_250mm_2pct.json`:
+
+- 10 mm diameter × 1 mm Ho:YAG disk
+- 250 mm disk-front-to-output-coupler air gap
+- 500 mm output-coupler radius of curvature
+- 2% output-coupler transmission
+- 99.95% rear signal reflectivity
+- 99.5% rear pump reflectivity
+- 0.5% additional round-trip signal loss
+- 10 ps, 10 kHz, 1907.7 nm pump
+
+The corresponding reference results and threshold bracket are under
+`results/resonator_250mm_2pct/`. See
+`docs/RESONATOR_250MM_2PCT_REFERENCE.md` for model scope and interpretation.
