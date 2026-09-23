@@ -385,8 +385,14 @@ dataset statuses are reported separately in `docs/STAGE7W_RESULTS.md`.
 An additional weak seeded-probe gallery plots absolute input/output irradiance
 and masked relative phase for Gaussian, LG(0,+1), LG(0,+2), and HG(1,1)
 fields. It uses the saved Stage 7W population fractions and an explicit
-nonuniform Ho concentration with an axial gradient and off-axis rich region.
+seeded random Ho concentration with rich and poor clusters of mixed sizes.
 The output plane is one 1-mm disk traversal plus 0.25 m free space. It does
 not re-solve the pump, heat, or mechanics after changing the dopant map.
 Run `.venv/bin/python examples/structured_beam_gallery.py` to regenerate
 `results/structured_beams/input_output_beams.png` and `ho_density.png`.
+`--phase-mask` selects `none`, `vortex+1`, `vortex-1`, `vortex+2`,
+`defocus`, `astigmatic`, or `axicon`; the ideal applied phase and unchanged
+immediate SLM irradiance are saved in `phase_mask.png`.
+The precomputed choices can also be browsed in
+`results/structured_beams/index.html`; regenerate an arbitrary random seed
+with the CLI.

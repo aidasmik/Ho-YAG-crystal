@@ -6,7 +6,7 @@
   "reference_state_id": "9e38859accf318d4",
   "reference_state_sha256": "33a8fdecbc732ca68053e37dfbf86734405f703d8813b211cb042f31ca06b40c",
   "reference_case": "results/local_stage7w/reference",
-  "fields_sha256": "6e3a6626e0a56a88c2bd44ea8dd2ef327febee0d8c5518abfd019c2b9c12aa14",
+  "fields_sha256": "72c0228bc164f41dfa3bd394fe9d171381a3aa268a984289e6c007dabc5d6625",
   "fields_archived": true,
   "wavelength_m": 2.0903e-06,
   "settings": {
@@ -19,42 +19,42 @@
     "waist_m": 0.000408,
     "input_power_W": 1.0,
     "post_disk_distance_m": 0.25,
-    "phase_mask_name": "none",
+    "phase_mask_name": "vortex+1",
     "phase_strength_rad": 3.141592653589793
   },
   "density_mean_active_m3": 1.5200000000000002e+26,
   "density_min_active_m3": 8.654596163440315e+25,
   "density_max_active_m3": 2.5999843745184547e+26,
   "phase_mask": {
-    "name": "none",
+    "name": "vortex+1",
     "strength_rad": 3.141592653589793,
     "response": "ideal phase-only; no measured hardware latency or loss",
-    "maximum_local_irradiance_relative_change": 0.0
+    "maximum_local_irradiance_relative_change": 8.280186973337302e-16
   },
   "modes": {
     "Gaussian TEM00": {
-      "input_power_W": 0.9999999999999998,
-      "output_power_W": 1.0157032808836228,
-      "disk_exit_power_W": 1.0157032808836224,
-      "disk_power_gain": 1.0157032808836226
+      "input_power_W": 1.0,
+      "output_power_W": 1.0157033829536068,
+      "disk_exit_power_W": 1.0157033829536066,
+      "disk_power_gain": 1.0157033829536066
     },
     "Helical LG(0,+1)": {
       "input_power_W": 1.0,
-      "output_power_W": 1.012007357340871,
-      "disk_exit_power_W": 1.012007357340871,
-      "disk_power_gain": 1.012007357340871
+      "output_power_W": 1.0120073695465952,
+      "disk_exit_power_W": 1.012007369546595,
+      "disk_power_gain": 1.012007369546595
     },
     "Double helix LG(0,+2)": {
-      "input_power_W": 1.0,
-      "output_power_W": 1.0048731924960532,
-      "disk_exit_power_W": 1.0048731924960528,
-      "disk_power_gain": 1.0048731924960528
+      "input_power_W": 0.9999999999999998,
+      "output_power_W": 1.0048731786211904,
+      "disk_exit_power_W": 1.0048731786211902,
+      "disk_power_gain": 1.0048731786211904
     },
     "Hermite-Gaussian HG(1,1)": {
       "input_power_W": 1.0,
-      "output_power_W": 1.004824072297387,
-      "disk_exit_power_W": 1.004824072297387,
-      "disk_power_gain": 1.004824072297387
+      "output_power_W": 1.0048240702853057,
+      "disk_exit_power_W": 1.0048240702853055,
+      "disk_power_gain": 1.0048240702853055
     }
   },
   "time_kind": "steady_state",

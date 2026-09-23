@@ -88,16 +88,31 @@ not relax the existing numerical acceptance thresholds.
 
 ```bash
 .venv/bin/python examples/structured_beam_gallery.py
+.venv/bin/python examples/structured_beam_gallery.py \
+  --density-seed 23 --cluster-count 30 --cluster-contrast 0.20 \
+  --phase-mask vortex+1 \
+  --output-directory results/structured_beams/seed23_vortex
 ```
 
 This generates `results/structured_beams/input_output_beams.png`,
-`ho_density.png`, `fields.npz`, and `summary.json`. Gaussian, LG(0,+1),
+`ho_density.png`, `phase_mask.png`, `fields.npz`, and `summary.json`.
+Gaussian, LG(0,+1),
 LG(0,+2), and HG(1,1) complex inputs each have 1 W integrated power. The
-default Ho distribution combines an 18% axial end-to-end gradient and a 30%
-off-axis localized enrichment, normalized to a 1.52e26 ions/m³ active-disk
-mean. The archived Stage 7W population fractions are interpolated to this
-declared density and frozen during one weak signal traversal. The output is
+default Ho map contains 24 reproducible, randomly placed rich and poor
+Gaussian clusters, with transverse radii from 0.20 to 1.25 mm, normalized to
+a 1.52e26 ions/m³ active-disk mean. Change `--density-seed`, cluster count,
+contrast, and radius bounds to select another declared map. `--phase-mask`
+accepts `none`, `vortex+1`, `vortex-1`, `vortex+2`, `defocus`, `astigmatic`,
+and `axicon`; `--phase-strength-rad` sets the non-vortex mask scale. The
+requested and applied ideal phase arrays are saved separately. Phase-only
+application preserves local irradiance at the SLM plane; beam reshaping occurs
+after propagation. The archived Stage 7W population fractions are interpolated
+to this declared density and frozen during one weak signal traversal. Output is
 shown after 0.25 m of free-space propagation; phase excludes the arbitrary
 global offset and masks low-intensity pixels. The plots are numerical probes,
 not a new self-consistent pumped operating point or complete multipass device.
-Use `--help` for density and output-plane parameters.
+Use `--help` for all density, phase-mask, and output-plane parameters.
+Open `results/structured_beams/index.html` in a browser to switch among the
+seven precomputed ideal-mask results for density seed 17. This selector changes
+archived plots; it does not launch or imply a live solver run.
+Use `--plots-only` for a compact plot/summary output without `fields.npz`.

@@ -16,7 +16,7 @@ import numpy as np
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'src'))
 from hoyag.snapshots import snapshot_from_case
-from hoyag.structured_beam_gallery import GallerySettings,simulate_gallery
+from hoyag.structured_beam_gallery import GallerySettings,PHASE_MASKS,simulate_gallery
 from hoyag.validation_backend import sha256_file,source_manifest
 
 
@@ -50,7 +50,8 @@ def draw_beams(result, path):
         axes[i,0].set_ylabel(f'{name}\ny (mm)\nDisk gain {case["disk_power_gain"]:.4f}×')
         for ax in axes[i]:
             ax.set_xlabel('x (mm)');ax.set_xlim(-2,2);ax.set_ylim(-2,2)
-    fig.suptitle('Structured seed → one Ho:YAG traversal → '
+    fig.suptitle(f'Ideal phase mask: {result["settings"].phase_mask_name} | '
+                 'structured seed → one Ho:YAG traversal → '
                  f'{result["settings"].post_disk_distance_m:g} m free space\n'
                  'Frozen Stage 7W inversion; imposed nonuniform Ho concentration; weak-signal model',fontsize=14)
     path.parent.mkdir(parents=True,exist_ok=True)
@@ -71,16 +72,39 @@ def draw_density(result,path):
         image=ax.imshow(data[iz],origin='lower',extent=extent,cmap=cmap,vmin=low,vmax=high)
         ax.set_title(title);ax.set_xlabel('x (mm)');ax.set_ylabel('y (mm)')
         ax.set_aspect('equal')
-    y_index=int(np.argmin(abs(grid.y-result['settings'].bump_y_m)))
+    y_index=int(np.argmin(abs(grid.y)))
     image=axes[2].imshow(data[:,y_index,:],origin='lower',aspect='auto',
         extent=[grid.x[0]*1e3,grid.x[-1]*1e3,z_edges[0]*1e3,z_edges[-1]*1e3],
         cmap=cmap,vmin=low,vmax=high)
     axes[2].set_title(f'x–z cut at y={grid.y[y_index]*1e3:.2f} mm')
     axes[2].set_xlabel('x (mm)');axes[2].set_ylabel('depth z (mm)')
     fig.colorbar(image,ax=axes,label='Ho density (10²⁶ ions/m³)',shrink=.82)
-    fig.suptitle('Declared, nonuniform Ho concentration; zero outside the 10-mm disk')
+    fig.suptitle(f'Seed {result["settings"].density_seed}: random Ho-rich and Ho-poor clusters; '
+                 'zero outside the 10-mm disk')
     path.parent.mkdir(parents=True,exist_ok=True)
     fig.savefig(path,dpi=160)
+    plt.close(fig)
+
+
+def draw_phase_mask(result,path):
+    grid=result['grid'];extent=[grid.x[0]*1e3,grid.x[-1]*1e3,
+                                 grid.y[0]*1e3,grid.y[-1]*1e3]
+    gaussian=result['outcomes']['Gaussian TEM00']
+    before=abs(gaussian['seed_before_slm'])**2
+    after=abs(gaussian['input_field'])**2
+    fig,axes=plt.subplots(1,3,figsize=(12,4),constrained_layout=True)
+    for ax,data,title in ((axes[0],result['phase_applied_rad'],'Applied phase (rad)'),
+                          (axes[1],before,'Gaussian before SLM (W/m²)'),
+                          (axes[2],after,'Gaussian after SLM (W/m²)')):
+        image=ax.imshow(data,origin='lower',extent=extent,
+            cmap='twilight' if ax is axes[0] else 'inferno',
+            vmin=0,vmax=2*np.pi if ax is axes[0] else float(before.max()))
+        ax.set_title(title);ax.set_xlabel('x (mm)');ax.set_ylabel('y (mm)')
+        ax.set_xlim(-1.5,1.5);ax.set_ylim(-1.5,1.5)
+        fig.colorbar(image,ax=ax,shrink=.78)
+    fig.suptitle(f'{result["settings"].phase_mask_name}: ideal phase-only mask; '
+                 'irradiance is unchanged immediately across the SLM')
+    fig.savefig(path,dpi=150)
     plt.close(fig)
 
 
@@ -90,18 +114,24 @@ def main():
                    default=ROOT/'results/local_stage7w/reference')
     p.add_argument('--output-directory',type=Path,
                    default=ROOT/'results/structured_beams')
-    p.add_argument('--axial-end-to-end-fraction',type=float,default=.18)
-    p.add_argument('--off-axis-peak-fraction',type=float,default=.30)
-    p.add_argument('--bump-x-mm',type=float,default=.25)
-    p.add_argument('--bump-y-mm',type=float,default=-.18)
-    p.add_argument('--bump-width-mm',type=float,default=.65)
+    p.add_argument('--density-seed',type=int,default=17)
+    p.add_argument('--cluster-count',type=int,default=24)
+    p.add_argument('--cluster-contrast',type=float,default=.27)
+    p.add_argument('--cluster-min-radius-mm',type=float,default=.20)
+    p.add_argument('--cluster-max-radius-mm',type=float,default=1.25)
+    p.add_argument('--phase-mask',choices=PHASE_MASKS,default='none')
+    p.add_argument('--phase-strength-rad',type=float,default=float(np.pi),
+                   help='radial phase scale for defocus, astigmatic, and axicon masks')
     p.add_argument('--post-disk-distance-m',type=float,default=.25)
+    p.add_argument('--plots-only',action='store_true',
+                   help='save plots and summary without archiving complex field arrays')
     args=p.parse_args()
     snapshot=snapshot_from_case(args.case_directory)
-    settings=GallerySettings(axial_end_to_end_fraction=args.axial_end_to_end_fraction,
-        off_axis_peak_fraction=args.off_axis_peak_fraction,
-        bump_x_m=args.bump_x_mm*1e-3,bump_y_m=args.bump_y_mm*1e-3,
-        bump_width_m=args.bump_width_mm*1e-3,
+    settings=GallerySettings(density_seed=args.density_seed,
+        cluster_count=args.cluster_count,cluster_contrast=args.cluster_contrast,
+        cluster_radius_min_m=args.cluster_min_radius_mm*1e-3,
+        cluster_radius_max_m=args.cluster_max_radius_mm*1e-3,
+        phase_mask_name=args.phase_mask,phase_strength_rad=args.phase_strength_rad,
         post_disk_distance_m=args.post_disk_distance_m)
     result=simulate_gallery(snapshot,settings)
     result['z_edges_m']=snapshot.arrays['z_edges_m']
@@ -109,13 +139,25 @@ def main():
     output.mkdir(parents=True,exist_ok=True)
     draw_beams(result,output/'input_output_beams.png')
     draw_density(result,output/'ho_density.png')
-    arrays={'x_m':result['grid'].x,'y_m':result['grid'].y,
-            'z_edges_m':result['z_edges_m'],
-            'ho_density_m3':result['density'].values_m3}
-    for index,(name,case) in enumerate(result['outcomes'].items()):
-        arrays[f'mode_{index}_input_field']=case['input_field']
-        arrays[f'mode_{index}_output_field']=case['output_field']
-    np.savez_compressed(output/'fields.npz',**arrays)
+    draw_phase_mask(result,output/'phase_mask.png')
+    archive=output/'fields.npz'
+    if args.plots_only:
+        archive.unlink(missing_ok=True)
+        fields_sha=None
+    else:
+        arrays={'x_m':result['grid'].x,'y_m':result['grid'].y,
+                'z_edges_m':result['z_edges_m'],
+                'ho_density_m3':result['density'].values_m3,
+                'phi_pattern_rad':result['phase_pattern_rad'],
+                'phi_correction_rad':result['phase_correction_rad'],
+                'phi_requested_rad':result['phase_requested_rad'],
+                'phi_applied_rad':result['phase_applied_rad']}
+        for index,(name,case) in enumerate(result['outcomes'].items()):
+            arrays[f'mode_{index}_seed_before_slm']=case['seed_before_slm']
+            arrays[f'mode_{index}_input_field']=case['input_field']
+            arrays[f'mode_{index}_output_field']=case['output_field']
+        np.savez_compressed(archive,**arrays)
+        fields_sha=sha256_file(archive)
     reference_summary=json.loads((args.case_directory/'summary.json').read_text())
     reference_path=args.case_directory.resolve()
     try:
@@ -129,13 +171,21 @@ def main():
              'reference_state_id':result['reference_state_id'],
              'reference_state_sha256':reference_summary['state_sha256'],
              'reference_case':reference_label,
-             'fields_sha256':sha256_file(output/'fields.npz'),
+             'fields_sha256':fields_sha,'fields_archived':not args.plots_only,
              'wavelength_m':result['wavelength_m'],
              'settings':asdict(result['settings']),
              'density_mean_active_m3':float(result['density'].values_m3[result['density'].values_m3>0].mean()),
              'density_min_active_m3':float(result['density'].values_m3[result['density'].values_m3>0].min()),
              'density_max_active_m3':float(result['density'].values_m3.max()),
-             'modes':{name:{key:value for key,value in case.items() if key not in ('input_field','output_field')}
+             'phase_mask':{'name':settings.phase_mask_name,
+                           'strength_rad':settings.phase_strength_rad,
+                           'response':'ideal phase-only; no measured hardware latency or loss',
+                           'maximum_local_irradiance_relative_change':max(
+                               float(np.max(abs(abs(case['input_field'])**2-abs(case['seed_before_slm'])**2)) /
+                                     max(np.max(abs(case['seed_before_slm'])**2),1e-30))
+                               for case in result['outcomes'].values())},
+             'modes':{name:{key:value for key,value in case.items() if key not in
+                           ('seed_before_slm','input_field','output_field')}
                       for name,case in result['outcomes'].items()},
              'time_kind':'steady_state',
              'limitations':['imposed density is not pump/heat/mechanics self-consistent',
