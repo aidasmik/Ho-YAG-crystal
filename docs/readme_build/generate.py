@@ -50,7 +50,11 @@ def main():
     x=A["x_m"]; y=A["y_m"]; dx=float(np.mean(np.diff(x))); dy=float(np.mean(np.diff(y)))
     grid=Grid2D(nx=len(x),ny=len(y),dx=dx,dy=dy)
     xx,yy=grid.mesh; rr=np.hypot(xx,yy)
-    c=ThinDiskResonator(**S["metadata"]["cavity"])
+    cavity_meta=S["metadata"]["cavity"]
+    cavity_keys=("disk_diameter_m","disk_thickness_m","air_gap_m","output_mirror_radius_m",
+                 "output_transmission","disk_hr_reflectivity","other_roundtrip_loss","wavelength_m",
+                 "host_index","host_group_index","pump_hr_reflectivity")
+    c=ThinDiskResonator(**{k:cavity_meta[k] for k in cavity_keys})
     mesh=DiskThermalMesh(A["r_edges_m"],A["z_edges_m"],A["raw_heat_W_m3"].shape[-1])
     assembly=PlateAssembly(mesh,grid,S["assembly_configuration"])
     temp,disp,screens=assembly.solve(A["assembly_heat_W_m3"])
