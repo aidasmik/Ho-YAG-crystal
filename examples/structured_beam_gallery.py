@@ -59,6 +59,32 @@ def draw_beams(result, path):
     plt.close(fig)
 
 
+def draw_side_profiles(result, path):
+    """Plot centerline irradiance cuts for every input and propagated output."""
+    grid=result['grid']
+    y_index=int(np.argmin(abs(grid.y)))
+    x_mm=grid.x*1e3
+    rows=list(result['outcomes'].items())
+    fig,axes=plt.subplots(3,2,figsize=(12,12),sharex=True,constrained_layout=True)
+    axes=np.asarray(axes).ravel()
+    for ax,(name,case) in zip(axes,rows):
+        input_profile=abs(case['seed_before_slm'][y_index])**2
+        output_profile=abs(case['output_field'][y_index])**2
+        ax.plot(x_mm,input_profile,label='Input',linewidth=1.8)
+        ax.plot(x_mm,output_profile,label='Output',linewidth=1.8)
+        ax.set_title(name)
+        ax.set_xlabel('x at y≈0 (mm)')
+        ax.set_ylabel('Irradiance (W/m²)')
+        ax.grid(alpha=.25)
+        ax.legend(frameon=False)
+        ax.set_xlim(-2,2)
+    fig.suptitle(f'Centerline side profiles after {result["settings"].post_disk_distance_m:g} m free space\n'
+                 'Input and output irradiance at y≈0',fontsize=14)
+    path.parent.mkdir(parents=True,exist_ok=True)
+    fig.savefig(path,dpi=160)
+    plt.close(fig)
+
+
 def draw_density(result,path):
     grid=result['grid']; density=result['density'].values_m3/1e26
     z_edges=np.asarray(result['z_edges_m'])
@@ -138,6 +164,7 @@ def main():
     output=args.output_directory
     output.mkdir(parents=True,exist_ok=True)
     draw_beams(result,output/'input_output_beams.png')
+    draw_side_profiles(result,output/'beam_side_profiles.png')
     draw_density(result,output/'ho_density.png')
     draw_phase_mask(result,output/'phase_mask.png')
     archive=output/'fields.npz'

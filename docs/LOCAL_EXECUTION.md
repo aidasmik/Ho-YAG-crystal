@@ -95,9 +95,10 @@ not relax the existing numerical acceptance thresholds.
 ```
 
 This generates `results/structured_beams/input_output_beams.png`,
-`ho_density.png`, `phase_mask.png`, `fields.npz`, and `summary.json`.
-Gaussian, LG(0,+1),
-LG(0,+2), and HG(1,1) complex inputs each have 1 W integrated power. The
+`beam_side_profiles.png`, `ho_density.png`, `phase_mask.png`, `fields.npz`, and
+`summary.json`. Gaussian, LG(0,+1), LG(0,+2), HG(1,1), Bessel-Gaussian needle,
+and order-8 super-Gaussian flattop complex inputs each have 1 W integrated
+power. The
 default Ho map contains 24 reproducible, randomly placed rich and poor
 Gaussian clusters, with transverse radii from 0.20 to 1.25 mm, normalized to
 a 1.52e26 ions/m³ active-disk mean. Change `--density-seed`, cluster count,

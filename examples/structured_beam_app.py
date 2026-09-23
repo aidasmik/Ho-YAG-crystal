@@ -108,6 +108,7 @@ def run_calculation(values):
             key: f'/{relative}/{filename}'
             for key, filename in {
                 'beams': 'input_output_beams.png',
+                'profiles': 'beam_side_profiles.png',
                 'density': 'ho_density.png',
                 'phase': 'phase_mask.png',
             }.items()

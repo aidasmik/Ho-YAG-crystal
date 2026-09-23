@@ -38,10 +38,14 @@ def test_frozen_fractions_follow_local_density_and_structured_inputs_are_power_n
     np.testing.assert_allclose(populations.sum(axis=0),density.values_m3,rtol=1e-14)
     np.testing.assert_allclose(populations[2],.4*density.values_m3,rtol=1e-14)
     modes=input_modes(grid)
-    assert len(modes)==4
+    assert len(modes)==6
     for field in modes.values():
         assert np.isclose(optical_power(field,grid),1.,rtol=1e-13)
     assert not np.allclose(modes['Helical LG(0,+1)'],modes['Double helix LG(0,+2)'])
+    assert not np.allclose(modes['Needle Bessel-Gaussian'],modes['Flattop super-Gaussian'])
+    needle_center=abs(modes['Needle Bessel-Gaussian'][grid.ny//2,grid.nx//2])
+    flattop_center=abs(modes['Flattop super-Gaussian'][grid.ny//2,grid.nx//2])
+    assert needle_center > 0 and flattop_center > 0
 
 
 @pytest.mark.parametrize('name',('none','vortex+1','vortex-1','vortex+2',

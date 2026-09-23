@@ -24,7 +24,7 @@
 </head>
 <body>
   <h1>Ho:YAG structured-beam calculator</h1>
-  <p>Choose a beam mask and a seeded random Ho distribution, then press Calculate. The button runs the numerical weak-probe propagation against the archived Stage 7W population state and returns new plots. It does not fabricate frames or reuse a precomputed image.</p>
+  <p>Choose a phase mask and a seeded random Ho distribution, then press Calculate. Each run evaluates six 1 W input shapes—Gaussian, two helical LG modes, HG(1,1), a Bessel-Gaussian needle, and a flattop super-Gaussian—and returns irradiance, phase, and centerline side profiles. The numerical weak-probe propagation uses the archived Stage 7W population state.</p>
   <div class="layout">
     <form class="controls" id="calculator">
       <label for="phase_mask">Phase mask</label>
@@ -56,6 +56,7 @@
       <div id="resultSummary"><span class="pill">Saved example</span> Select parameters and calculate to replace these plots.</div>
       <img id="phaseImage" src="phase_mask.png" alt="Applied phase mask and immediate irradiance check">
       <img id="beamsImage" src="input_output_beams.png" alt="Calculated input and output beam irradiance and phase">
+      <img id="profilesImage" src="beam_side_profiles.png" alt="Centerline side profiles of input and output beam irradiance">
       <img id="densityImage" src="ho_density.png" alt="Calculated random clustered Ho distribution">
       <h2>Calculated modal powers</h2>
       <table class="metrics" id="metrics"><tbody><tr><th>Mode</th><th>Output power</th><th>Disk gain</th></tr></tbody></table>
@@ -71,6 +72,7 @@
       const s=result.summary;
       document.getElementById('phaseImage').src=image(result.images.phase);
       document.getElementById('beamsImage').src=image(result.images.beams);
+      document.getElementById('profilesImage').src=image(result.images.profiles);
       document.getElementById('densityImage').src=image(result.images.density);
       const phase=s.phase_mask;
       document.getElementById('resultSummary').innerHTML=`<span class="pill">Calculated ${result.run_id}</span> Mask: <strong>${phase.name}</strong>; Ho range: ${(s.density_min_active_m3/1e26).toFixed(3)}–${(s.density_max_active_m3/1e26).toFixed(3)} ×10²⁶ ions/m³; immediate SLM irradiance relative change: ${phase.maximum_local_irradiance_relative_change.toExponential(2)}`;

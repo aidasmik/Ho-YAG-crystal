@@ -2,11 +2,11 @@
   "model": "weak one-traversal seeded probe; frozen archived population fractions",
   "application_mode": "seeded_multipass_amplifier",
   "fidelity_mode": "weak_diagnostic_probe",
-  "source_hash": "a0faf31f7548a06f5d076a717aa1139b16521247a9b8687e8115fb466419a12f",
+  "source_hash": "f498b6ca77225b99e92b139e6954d3afad868a13ad33028219643d4f65001975",
   "reference_state_id": "9e38859accf318d4",
   "reference_state_sha256": "33a8fdecbc732ca68053e37dfbf86734405f703d8813b211cb042f31ca06b40c",
   "reference_case": "results/local_stage7w/reference",
-  "fields_sha256": "6e3a6626e0a56a88c2bd44ea8dd2ef327febee0d8c5518abfd019c2b9c12aa14",
+  "fields_sha256": "5c28b25867c1529419fd580576e3011446e4c524a026b49474b666a8cf3e0ac0",
   "fields_archived": true,
   "wavelength_m": 2.0903e-06,
   "settings": {
@@ -55,6 +55,18 @@
       "output_power_W": 1.004824072297387,
       "disk_exit_power_W": 1.004824072297387,
       "disk_power_gain": 1.004824072297387
+    },
+    "Needle Bessel-Gaussian": {
+      "input_power_W": 1.0000000000000002,
+      "output_power_W": 1.0045089965242364,
+      "disk_exit_power_W": 1.004508996524236,
+      "disk_power_gain": 1.0045089965242358
+    },
+    "Flattop super-Gaussian": {
+      "input_power_W": 1.0,
+      "output_power_W": 1.0176434165654757,
+      "disk_exit_power_W": 1.0176434165654757,
+      "disk_power_gain": 1.0176434165654757
     }
   },
   "time_kind": "steady_state",

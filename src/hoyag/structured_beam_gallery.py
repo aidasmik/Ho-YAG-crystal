@@ -9,6 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import numpy as np
+from scipy.special import j0
 
 from .inhomogeneity import HoDensityField
 from .population_state import validate_populations
@@ -147,12 +148,24 @@ def frozen_populations_on_grid(snapshot: ScientificSnapshot, grid: Grid2D,
 
 
 def input_modes(grid: Grid2D, settings: GallerySettings = GallerySettings()) -> dict[str,np.ndarray]:
-    """One Gaussian control, two helical LG charges, and a four-lobe HG mode."""
+    """Return Gaussian, helical, needle, and flattop structured inputs."""
     w=settings.waist_m
+    x,y=grid.mesh
+    radius=np.hypot(x,y)
+    # A finite-aperture Bessel-Gaussian gives a narrow central needle while
+    # retaining a finite power integral on the computational grid.
+    needle_zero_radius=0.32*w
+    needle_kr=2.4048255577/needle_zero_radius
+    needle=j0(needle_kr*radius)*np.exp(-(radius/(2.4*w))**2)
+    # The eighth-order super-Gaussian has a broad, nearly uniform central
+    # plateau and a smooth numerical edge.
+    flattop=np.exp(-(radius/w)**8)
     modes = {'Gaussian TEM00':gaussian_beam(grid,w),
              'Helical LG(0,+1)':laguerre_gaussian(grid,0,1,w),
              'Double helix LG(0,+2)':laguerre_gaussian(grid,0,2,w),
-             'Hermite-Gaussian HG(1,1)':hermite_gaussian(grid,1,1,w)}
+             'Hermite-Gaussian HG(1,1)':hermite_gaussian(grid,1,1,w),
+             'Needle Bessel-Gaussian':needle.astype(np.complex128),
+             'Flattop super-Gaussian':flattop.astype(np.complex128)}
     return {name:field*np.sqrt(settings.input_power_W/optical_power(field,grid))
             for name,field in modes.items()}
 
