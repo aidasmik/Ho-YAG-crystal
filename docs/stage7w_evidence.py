@@ -20,6 +20,7 @@ def main():
     ap.add_argument('--output',type=Path,default=Path('results/stage7w'))
     args=ap.parse_args();args.output.mkdir(parents=True,exist_ok=True)
     run=api(f'repos/{args.repo}/actions/runs/{args.run_id}')
+    if run['status']!='completed':raise ValueError('Representative jobs are still running; final evidence is not available')
     artifacts=[];page=1
     while True:
         batch=api(f'repos/{args.repo}/actions/runs/{args.run_id}/artifacts?per_page=100&page={page}')['artifacts']
@@ -56,10 +57,12 @@ def main():
                  'source_revision':run['head_sha']}
             cases.append(row)
             print('CASE_EVIDENCE '+json.dumps(row,allow_nan=False),flush=True)
+    expected={'reference','modes_4','modes_8','sensitivity_support_free'}
+    missing=sorted(expected-{r['id'] for r in cases})
+    if missing:raise ValueError('Completed job artifacts missing: '+', '.join(missing))
     out={'source_revision':run['head_sha'],'run_id':args.run_id,'run_status':run['status'],
          'workflow_conclusion':run['conclusion'],'testing':testing,'cases':cases,
-         'expected_case_ids':['reference','modes_4','modes_8','sensitivity_support_free'],
-         'missing_case_ids':sorted({'reference','modes_4','modes_8','sensitivity_support_free'}-{r['id'] for r in cases}),
+         'expected_case_ids':sorted(expected),'missing_case_ids':missing,
          'full_stage7v_qualification':False,'dataset_ready':False,
          'note':'A representative result does not establish grid, mode-count, hardware or dataset qualification.'}
     (args.output/'evidence_summary.json').write_text(json.dumps(out,indent=2,allow_nan=False)+'\n')
