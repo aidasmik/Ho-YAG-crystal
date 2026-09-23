@@ -112,6 +112,12 @@ to this declared density and frozen during one weak signal traversal. Output is
 shown after 0.25 m of free-space propagation; phase excludes the arbitrary
 global offset and masks low-intensity pixels. The plots are numerical probes,
 not a new self-consistent pumped operating point or complete multipass device.
+The `--solver-mode weak_probe` default uses the archived fractions. Set
+`--solver-mode full_seeded_modal` to rerun the periodic four-manifold modal
+pump/saturation cycle, cycle heat, bonded cooling-plate/thermoelastic solve,
+and photoelastic Jones screen for the selected Ho map before propagating the
+six fixed external seed fields. This mode has no cavity eigenfield update and
+is subject to the bounded local supervisor budget.
 Use `--help` for all density, phase-mask, and output-plane parameters.
 Open `results/structured_beams/index.html` in a browser to switch among the
 seven precomputed ideal-mask results for density seed 17. This selector changes

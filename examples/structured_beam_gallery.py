@@ -16,7 +16,7 @@ import numpy as np
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'src'))
 from hoyag.snapshots import snapshot_from_case
-from hoyag.structured_beam_gallery import GallerySettings,PHASE_MASKS,simulate_gallery
+from hoyag.structured_beam_gallery import GallerySettings,PHASE_MASKS,SOLVER_MODES,simulate_gallery
 from hoyag.validation_backend import sha256_file,source_manifest
 
 
@@ -37,7 +37,8 @@ def draw_beams(result, path):
     phase_cmap=plt.get_cmap('twilight').copy();phase_cmap.set_bad('#262935')
     for i,(name,case) in enumerate(rows):
         inp,out=case['input_field'],case['output_field']
-        ii,oi=abs(inp)**2,abs(out)**2
+        ii=case.get('input_intensity',abs(inp)**2)
+        oi=case.get('output_intensity',abs(out)**2)
         vmax=max(float(ii.max()),float(oi.max()))
         image=axes[i,0].imshow(ii,origin='lower',extent=extent,cmap='inferno',
             norm=PowerNorm(gamma=.55,vmin=0,vmax=vmax),interpolation='nearest')
@@ -66,10 +67,13 @@ def draw_beams(result, path):
             axes[i,col].set_ylim(-2,2)
         for col in (1,3):
             axes[i,col].set_ylim(bottom=0)
+    mode=result['settings'].solver_mode
+    description=('fixed seeded modes with periodic pump/population, heat, bonded thermoelastic, '
+                 'and photoelastic closure' if mode=='full_seeded_modal' else
+                 'frozen Stage 7W inversion; weak-signal probe')
     fig.suptitle(f'Ideal phase mask: {result["settings"].phase_mask_name} | '
                  'structured seed → one Ho:YAG traversal → '
-                 f'{result["settings"].post_disk_distance_m:g} m free space\n'
-                 'Frozen Stage 7W inversion; imposed nonuniform Ho concentration; weak-signal model',fontsize=14)
+                 f'{result["settings"].post_disk_distance_m:g} m free space\n{description}',fontsize=14)
     path.parent.mkdir(parents=True,exist_ok=True)
     fig.savefig(path,dpi=150)
     plt.close(fig)
@@ -84,8 +88,8 @@ def draw_side_profiles(result, path):
     fig,axes=plt.subplots(3,2,figsize=(12,12),sharex=True,constrained_layout=True)
     axes=np.asarray(axes).ravel()
     for ax,(name,case) in zip(axes,rows):
-        input_profile=abs(case['seed_before_slm'][y_index])**2
-        output_profile=abs(case['output_field'][y_index])**2
+        input_profile=case.get('input_intensity',abs(case['input_field'])**2)[y_index]
+        output_profile=case.get('output_intensity',abs(case['output_field'])**2)[y_index]
         ax.plot(x_mm,input_profile,label='Input',linewidth=1.8)
         ax.plot(x_mm,output_profile,label='Output',linewidth=1.8)
         ax.set_title(name)
@@ -115,7 +119,7 @@ def draw_beam_on_density(result, path):
     for ax,(name,case) in zip(axes,rows):
         background=ax.imshow(entrance,origin='lower',extent=extent,cmap=cmap,
                             vmin=low,vmax=high,interpolation='nearest')
-        irradiance=abs(case['input_field'])**2
+        irradiance=case.get('input_intensity',abs(case['input_field'])**2)
         normalized=irradiance/max(float(irradiance.max()),1e-30)
         levels=(.1,.3,.6,.9)
         ax.contour(grid.x*1e3,grid.y*1e3,normalized,levels=levels,
@@ -200,6 +204,8 @@ def main():
     p.add_argument('--phase-strength-rad',type=float,default=float(np.pi),
                    help='radial phase scale for defocus, astigmatic, and axicon masks')
     p.add_argument('--post-disk-distance-m',type=float,default=.25)
+    p.add_argument('--solver-mode',choices=SOLVER_MODES,default='weak_probe',
+                   help='weak_probe is fast; full_seeded_modal recomputes pump, saturation, heat, mechanics, and photoelasticity for the selected Ho map')
     p.add_argument('--plots-only',action='store_true',
                    help='save plots and summary without archiving complex field arrays')
     args=p.parse_args()
@@ -209,7 +215,7 @@ def main():
         cluster_radius_min_m=args.cluster_min_radius_mm*1e-3,
         cluster_radius_max_m=args.cluster_max_radius_mm*1e-3,
         phase_mask_name=args.phase_mask,phase_strength_rad=args.phase_strength_rad,
-        post_disk_distance_m=args.post_disk_distance_m)
+        post_disk_distance_m=args.post_disk_distance_m,solver_mode=args.solver_mode)
     result=simulate_gallery(snapshot,settings)
     result['z_edges_m']=snapshot.arrays['z_edges_m']
     output=args.output_directory
@@ -243,9 +249,21 @@ def main():
         reference_label=str(reference_path.relative_to(ROOT))
     except ValueError:
         reference_label=str(reference_path)
+    excluded=('seed_before_slm','input_field','output_field','output_vector',
+              'input_intensity','output_intensity')
+    if settings.solver_mode=='full_seeded_modal':
+        limitations=['fixed externally seeded transverse basis; cavity eigenfield is not updated',
+                     'photoelastic coefficients use the audited host-YAG reference',
+                     'single disk traversal plus the requested free-space output plane']
+    else:
+        limitations=['imposed density is not pump/heat/mechanics self-consistent',
+                     'weak-signal probe; no population depletion by these inputs',
+                     'single disk traversal; no specified multipass hardware topology']
     summary={'model':result['model'],
              'application_mode':'seeded_multipass_amplifier',
-             'fidelity_mode':'weak_diagnostic_probe',
+             'fidelity_mode':settings.solver_mode,
+             'solver_mode':settings.solver_mode,
+             'solver_diagnostics':result['solver_diagnostics'],
              'source_hash':source_manifest(ROOT)['source_hash'],
              'reference_state_id':result['reference_state_id'],
              'reference_state_sha256':reference_summary['state_sha256'],
@@ -263,13 +281,10 @@ def main():
                                float(np.max(abs(abs(case['input_field'])**2-abs(case['seed_before_slm'])**2)) /
                                      max(np.max(abs(case['seed_before_slm'])**2),1e-30))
                                for case in result['outcomes'].values())},
-             'modes':{name:{key:value for key,value in case.items() if key not in
-                           ('seed_before_slm','input_field','output_field')}
+             'modes':{name:{key:value for key,value in case.items() if key not in excluded}
                       for name,case in result['outcomes'].items()},
              'time_kind':'steady_state',
-             'limitations':['imposed density is not pump/heat/mechanics self-consistent',
-                            'weak-signal probe; no population depletion by these inputs',
-                            'single disk traversal; no specified multipass hardware topology']}
+             'limitations':limitations}
     (output/'summary.json').write_text(json.dumps(summary,indent=2)+'\n')
     print(json.dumps({'output_directory':str(output.resolve()),
                       'density_range_m3':[summary['density_min_active_m3'],summary['density_max_active_m3']],

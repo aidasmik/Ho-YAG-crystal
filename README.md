@@ -416,3 +416,10 @@ output distance, then press **Calculate**. Each run writes plots and metrics
 under `results/structured_beams/runs/<run-id>/`. The calculator performs a
 bounded weak-probe traversal using archived Stage 7W population fractions; it
 does not claim a new self-consistent pump, thermal, or mechanical solution.
+Select **Full seeded modal closure** in the calculator (or pass
+`--solver-mode full_seeded_modal` to the gallery CLI) to recompute the periodic
+four-manifold pump/population saturation cycle, heat, cooling plate,
+thermoelastic displacement, and photoelastic Jones screens for the selected Ho
+map. The six structured inputs are a fixed external seed basis; the solver does
+not update a cavity eigenfield. Full mode is bounded by the local supervisor
+and can take substantially longer.

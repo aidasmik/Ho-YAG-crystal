@@ -1,24 +1,34 @@
-"""Weak structured-light probes through a declared nonuniform Ho:YAG disk.
+"""Structured-light probes and a full seeded modal Ho:YAG closure.
 
-The saved Stage 7W population *fractions* are frozen. A new Ho concentration
-map scales those fractions locally; pump, heat, and mechanics are not re-solved.
-This is an externally seeded one-traversal probe, not an oscillator prediction.
+``weak_probe`` reuses archived Stage 7W population fractions. The
+``full_seeded_modal`` path recomputes the periodic four-manifold pump and
+saturation cycle, heat, bonded thermoelastic assembly, and photoelastic Jones
+screen for the generated Ho map while keeping the six input fields as a fixed
+external seed basis.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
+from pathlib import Path
 
 import numpy as np
 from scipy.special import j0
+from scipy.interpolate import RegularGridInterpolator
 
 from .inhomogeneity import HoDensityField
 from .population_state import validate_populations
 from .propagation import (Grid2D, angular_spectrum_propagate, gaussian_beam,
                           hermite_gaussian, laguerre_gaussian, optical_power)
 from .signal import propagate_structured_signal_small_signal
+from .resonator import ModalThinDiskLaser, ThinDiskResonator
+from .thermal_resonator import sample_cycle_heat
+from .coupled_resonator import PlateAssembly
+from .stress_optics import apply_jones
+from .thermal import DiskThermalMesh
+from .populations import HoYAGFourLevelParams
 from .seeded_amplifier import apply_phase_modulator
 from .snapshots import ScientificSnapshot
-from .thermal import DiskThermalMesh
 from .thermal_optics import polar_to_cartesian
 
 
@@ -35,6 +45,7 @@ class GallerySettings:
     post_disk_distance_m: float = 0.25
     phase_mask_name: str = 'none'
     phase_strength_rad: float = np.pi
+    solver_mode: str = 'weak_probe'
 
     def __post_init__(self):
         values=(self.mean_ho_density_m3,self.cluster_contrast,
@@ -53,10 +64,13 @@ class GallerySettings:
             raise ValueError('density seed must be an integer and cluster count >=2')
         if self.phase_mask_name not in PHASE_MASKS:
             raise ValueError(f'phase mask must be one of {PHASE_MASKS}')
+        if self.solver_mode not in SOLVER_MODES:
+            raise ValueError(f'solver mode must be one of {SOLVER_MODES}')
 
 
 PHASE_MASKS=('none','vortex+1','vortex-1','vortex+2',
              'defocus','astigmatic','axicon')
+SOLVER_MODES=('weak_probe','full_seeded_modal')
 
 
 def nonuniform_density(grid: Grid2D, z_edges_m, disk_radius_m: float,
@@ -170,9 +184,110 @@ def input_modes(grid: Grid2D, settings: GallerySettings = GallerySettings()) -> 
             for name,field in modes.items()}
 
 
+def _cartesian_to_polar(values, grid: Grid2D, mesh: DiskThermalMesh) -> np.ndarray:
+    """Interpolate a Cartesian z-stack onto the thermal solver's (z,r,phi) mesh."""
+    stack=np.asarray(values,float)
+    if stack.shape!=(mesh.nz,*grid.shape):
+        raise ValueError('Cartesian stack and thermal depth mesh disagree')
+    z=.5*(mesh.z_edges_m[:-1]+mesh.z_edges_m[1:])
+    zz,rr,pp=np.meshgrid(mesh.z_m,mesh.r_m,mesh.phi_rad,indexing='ij')
+    points=np.column_stack((zz.ravel(),(rr*np.sin(pp)).ravel(),(rr*np.cos(pp)).ravel()))
+    interp=RegularGridInterpolator((z,grid.y,grid.x),stack,bounds_error=False,fill_value=0.)
+    return interp(points).reshape(mesh.shape)
+
+
+def _hot_solver_context(snapshot: ScientificSnapshot):
+    """Load the audited Stage 7 assembly and cavity configuration beside a snapshot."""
+    case_dir=Path(str(snapshot.metadata['run_id']))
+    summary=json.loads((case_dir/'summary.json').read_text())
+    case=summary['case']; physics=case['physics']; numerics=case['numerics']
+    geometry=physics['assembly']['geometry']
+    mesh=DiskThermalMesh(np.asarray(snapshot.arrays['r_edges_m'],float),
+                         np.asarray(snapshot.arrays['z_edges_m'],float),
+                         int(np.asarray(snapshot.arrays['raw_heat_W_m3']).shape[-1]))
+    cavity=ThinDiskResonator(**{key:physics['cavity'][key] for key in (
+        'disk_diameter_m','disk_thickness_m','air_gap_m','output_mirror_radius_m',
+        'output_transmission','disk_hr_reflectivity','other_roundtrip_loss',
+        'wavelength_m','host_index','host_group_index','pump_hr_reflectivity')})
+    assembly=json.loads(json.dumps(physics['assembly']))
+    assembly['numerics']={'plate_thermal_nz':numerics['plate_thermal_nz'],
+                          'mechanical':json.loads(json.dumps(numerics['mechanical']))}
+    return case,mesh,cavity,assembly,geometry
+
+
+def _run_full_seeded_modal(snapshot: ScientificSnapshot, grid: Grid2D,
+                           density: HoDensityField, seeds_before_slm: dict[str,np.ndarray],
+                           seeds: dict[str,np.ndarray], settings: GallerySettings) -> tuple[dict,dict]:
+    """Run the existing pump/population/heat/assembly solvers for fixed seed modes.
+
+    This is the seeded-amplifier closure: the six declared input shapes are the
+    fixed transverse modal basis, while the audited four-manifold pump cycle,
+    saturation, heat solver, bonded thermoelastic assembly, and photoelastic
+    Jones screen are recomputed for the generated Ho map. It does not perform a
+    cavity eigenfield solve for the externally imposed seed.
+    """
+    case,thermal_mesh,cavity,assembly_cfg,geometry=_hot_solver_context(snapshot)
+    x,y=grid.mesh; active=np.hypot(x,y)<=geometry['disk_radius_m']
+    indices=np.flatnonzero(active.ravel())
+    areas=np.full(indices.size,grid.dx*grid.dy)
+    mode_values=np.asarray([np.abs(field.ravel()[indices])**2 for field in seeds.values()])
+    mode_values/=mode_values@areas[:,None]
+    pump=np.exp(-2*(x.ravel()[indices]**2+y.ravel()[indices]**2)/case['physics']['pump']['waist_m']**2)
+    pump/=float(pump@areas)
+    density_active=density.values_m3.reshape(density.nz,-1)[:,indices]
+    params=HoYAGFourLevelParams()
+    model=ModalThinDiskLaser(cavity,areas,density_active,mode_values,pump,params=params,
+                             mode_labels=tuple(seeds),spontaneous_fraction_per_mode=1e-8)
+    pump_energy=case['physics']['pump']['energy_J']; repetition=case['physics']['pump']['repetition_rate_Hz']
+    optical=model.run(pump_energy,repetition_rate_Hz=repetition,max_cycles=320,min_cycles=16,
+                      max_period_cycles=4,pump_fwhm_s=case['physics']['pump']['duration_s'])
+    if not optical.periodic_converged:
+        raise RuntimeError('full seeded modal solver did not reach a periodic pump state')
+    heat,mean_fractions=sample_cycle_heat(model,optical,pump_energy,repetition,
+                                          return_mean_fractions=True)
+    heat_cart=np.zeros((density.nz,*grid.shape),float)
+    heat_cart.reshape(density.nz,-1)[:,indices]=heat.heat_W_m3
+    assembly_heat=_cartesian_to_polar(heat_cart,grid,thermal_mesh)
+    thermal_assembly=PlateAssembly(thermal_mesh,grid,assembly_cfg)
+    temperature,displacement,screens=thermal_assembly.solve(assembly_heat)
+    populations=np.zeros((4,density.nz,*grid.shape),float)
+    populations.reshape(4,density.nz,-1)[:,:,indices]=mean_fractions
+    outcomes={}
+    for name,field in seeds.items():
+        material=propagate_structured_signal_small_signal(field,grid,populations,density,params=params)
+        vector=np.stack((material.field_out,np.zeros_like(material.field_out)),axis=-1)
+        vector=apply_jones(vector,screens.inward_jones)
+        output_vector=np.asarray([angular_spectrum_propagate(vector[...,pol],grid,
+            float(snapshot.metadata['wavelength_m']),settings.post_disk_distance_m)
+            for pol in range(2)])
+        output_intensity=np.sum(np.abs(output_vector)**2,axis=0)
+        output_power=float(np.sum(output_intensity)*grid.dx*grid.dy)
+        input_power=float(np.sum(np.abs(field)**2)*grid.dx*grid.dy)
+        outcomes[name]={'seed_before_slm':seeds_before_slm[name],'input_field':field,
+                        'output_field':output_vector[0],'output_vector':output_vector,
+                        'input_intensity':np.abs(field)**2,'output_intensity':output_intensity,
+                        'input_power_W':input_power,'output_power_W':output_power,
+                        'disk_exit_power_W':float(np.sum(np.sum(np.abs(vector)**2,axis=-1))*grid.dx*grid.dy),
+                        'disk_power_gain':output_power/input_power,
+                        'cross_polarized_fraction':float(np.sum(np.abs(output_vector[1])**2)*grid.dx*grid.dy/
+                                                          max(output_power,1e-30))}
+    diagnostics={'solver_mode':'full_seeded_modal','status':'completed_periodic_modal_state',
+                 'periodic_cycles':optical.period_cycles,'pump_cycles':optical.cycles_simulated,
+                 'pump_output_W':float(heat.budget['output_W']),
+                 'pump_heat_W':float(heat.budget['heat_W']),
+                 'thermal_peak_disk_K':float(temperature.disk_temperature_K.max()),
+                 'thermal_peak_plate_K':float(temperature.plate_temperature_K.max()),
+                 'thermal_balance_error_W':float(temperature.balance_error_W),
+                 'mechanical_residual':float(displacement.free_residual_relative),
+                 'photoelastic_screen':'audited Stage 6 Jones screen',
+                 'population_model':'cycle-averaged four-manifold saturated modal solver',
+                 'cavity_eigenfield_update':False}
+    return outcomes,diagnostics
+
+
 def simulate_gallery(snapshot: ScientificSnapshot,
                      settings: GallerySettings = GallerySettings()) -> dict:
-    """Propagate each weak input through one disk and the same free-space leg."""
+    """Propagate each input through one disk and the same free-space leg."""
     a=snapshot.arrays
     grid=Grid2D(len(a['x_m']),len(a['y_m']),
                 float(a['x_m'][1]-a['x_m'][0]),float(a['y_m'][1]-a['y_m'][0]))
@@ -181,10 +296,24 @@ def simulate_gallery(snapshot: ScientificSnapshot,
     populations=frozen_populations_on_grid(snapshot,grid,density)
     wavelength=float(snapshot.metadata['wavelength_m'])
     pattern=phase_pattern(grid,settings)
-    outcomes={}
-    for name,seed in input_modes(grid,settings).items():
+    seeds_before_slm=input_modes(grid,settings)
+    modulated_seeds={}
+    phase_meta=None
+    for name,seed in seeds_before_slm.items():
         slm=apply_phase_modulator(seed[None],pattern)
         field=slm['field_after'][0]
+        modulated_seeds[name]=field
+        if phase_meta is None: phase_meta=slm
+    if settings.solver_mode=='full_seeded_modal':
+        outcomes,solver_diagnostics=_run_full_seeded_modal(snapshot,grid,density,
+                                                           seeds_before_slm,modulated_seeds,settings)
+    else:
+        outcomes={}
+        solver_diagnostics={'solver_mode':'weak_probe','status':'completed_frozen_population_probe',
+                            'population_model':'archived cycle-averaged fractions',
+                            'cavity_eigenfield_update':False}
+    for name,seed in (() if settings.solver_mode=='full_seeded_modal' else seeds_before_slm.items()):
+        field=modulated_seeds[name]
         result=propagate_structured_signal_small_signal(field,grid,populations,density)
         output=angular_spectrum_propagate(result.field_out,grid,wavelength,
                                            settings.post_disk_distance_m)
@@ -194,10 +323,13 @@ def simulate_gallery(snapshot: ScientificSnapshot,
                         'disk_exit_power_W':result.output_power,
                         'disk_power_gain':result.power_gain}
     return {'grid':grid,'density':density,'outcomes':outcomes,
-            'phase_pattern_rad':slm['phi_pattern'],
-            'phase_correction_rad':slm['phi_correction'],
-            'phase_requested_rad':slm['phi_requested'],
-            'phase_applied_rad':slm['phi_applied'],
+            'phase_pattern_rad':phase_meta['phi_pattern'],
+            'phase_correction_rad':phase_meta['phi_correction'],
+            'phase_requested_rad':phase_meta['phi_requested'],
+            'phase_applied_rad':phase_meta['phi_applied'],
             'settings':settings,'wavelength_m':wavelength,
             'reference_state_id':snapshot.metadata['state_id'],
-            'model':'weak one-traversal seeded probe; frozen archived population fractions'}
+            'model':('full seeded modal pump/population/thermal/mechanical closure'
+                     if settings.solver_mode=='full_seeded_modal' else
+                     'weak one-traversal seeded probe; frozen archived population fractions'),
+            'solver_diagnostics':solver_diagnostics}

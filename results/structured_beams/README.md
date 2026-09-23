@@ -50,6 +50,15 @@ mechanics, saturation, and multipass hardware were not recomputed for the
 new concentration. This gallery is a controlled optical illustration, not
 a new self-consistent laser operating point.
 
+The calculator also has **Full seeded modal closure**. It reuses the audited
+`ModalThinDiskLaser`, `sample_cycle_heat`, `PlateAssembly`, and Stage 6 Jones
+screen components for the selected Ho map: periodic four-manifold
+pump/population saturation, heat, cooling plate, thermoelastic displacement,
+and photoelasticity are recalculated before each beam is propagated. The six
+input fields remain a fixed external transverse seed basis, so this mode does
+not claim a cavity eigenfield update. It is bounded by the local supervisor
+and may take substantially longer than the weak probe.
+
 The beam overlay is calculated from each input complex field and the generated
 entrance-slice concentration. In this weak-probe model the concentration map
 changes only the real scalar gain term, while the archived population fractions
@@ -60,6 +69,9 @@ mechanical solve or a saturated-gain propagation with stronger spatial gain.
 
 Rebuild with `python examples/structured_beam_gallery.py`. Select an ideal
 phase mask using `--phase-mask none|vortex+1|vortex-1|vortex+2|defocus|astigmatic|axicon`.
+Use `--solver-mode weak_probe` for the fast archived-state probe or
+`--solver-mode full_seeded_modal` for the pump, saturation, thermal,
+thermoelastic, and photoelastic closure described above.
 The mask does not change irradiance immediately across the ideal SLM.
 Exact settings,
 source/state hashes, and power values are in `summary.json`; complex fields

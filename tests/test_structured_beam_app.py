@@ -7,6 +7,7 @@ from examples.structured_beam_app import ROOT, build_gallery_command, validate_r
 
 def test_app_validates_custom_calculation_parameters(tmp_path):
     values=validate_request({
+        'solver_mode':'full_seeded_modal',
         'phase_mask':'vortex+1','phase_strength_rad':2.5,
         'density_seed':23,'cluster_count':30,'cluster_contrast':.2,
         'cluster_min_radius_mm':.1,'cluster_max_radius_mm':1.4,
@@ -16,6 +17,7 @@ def test_app_validates_custom_calculation_parameters(tmp_path):
     assert 'vortex+1' in command
     assert '--plots-only' in command
     assert '--density-seed' in command and '23' in command
+    assert '--solver-mode' in command and 'full_seeded_modal' in command
 
 
 @pytest.mark.parametrize('payload', [

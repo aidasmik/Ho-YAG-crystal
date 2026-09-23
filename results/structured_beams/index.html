@@ -24,9 +24,15 @@
 </head>
 <body>
   <h1>Ho:YAG structured-beam calculator</h1>
-  <p>Choose a phase mask and a seeded random Ho distribution, then press Calculate. Each run evaluates six 1 W input shapes—Gaussian, two helical LG modes, HG(1,1), a Bessel-Gaussian needle, and a flattop super-Gaussian—and returns irradiance, phase, and centerline side profiles. The numerical weak-probe propagation uses the archived Stage 7W population state.</p>
+  <p>Choose the solver, phase mask, and seeded random Ho distribution, then press Calculate. Each run evaluates six 1 W input shapes—Gaussian, two helical LG modes, HG(1,1), a Bessel-Gaussian needle, and a flattop super-Gaussian—and returns irradiance, phase, and centerline side profiles.</p>
   <div class="layout">
     <form class="controls" id="calculator">
+      <label for="solver_mode">Solver</label>
+      <select id="solver_mode" name="solver_mode">
+        <option value="weak_probe">Weak probe (fast)</option>
+        <option value="full_seeded_modal">Full seeded modal closure</option>
+      </select>
+      <p class="note">Full seeded modal closure recomputes periodic pump, four-manifold saturation, heat, cooling plate, thermoelastic displacement, and photoelastic Jones screens for the selected Ho map. It uses the six requested beams as a fixed external seed basis; it does not update the cavity eigenfield.</p>
       <label for="phase_mask">Phase mask</label>
       <select id="phase_mask" name="phase_mask">
         <option value="none">None</option><option value="vortex+1">Vortex +1</option>
@@ -50,7 +56,7 @@
       <input id="post_disk_distance_m" name="post_disk_distance_m" type="number" value="0.25" min="0" max="2" step="0.01">
       <button id="calculate" type="button">Calculate</button>
       <div id="status" class="status">Waiting for a calculation.</div>
-      <p class="note">The phase mask is ideal and phase-only: irradiance is unchanged immediately across the SLM. The Ho map is regenerated from the seed on every calculation.</p>
+      <p class="note">The phase mask is ideal and phase-only: irradiance is unchanged immediately across the SLM. The Ho map is regenerated from the seed on every calculation. Full mode is slower and is subject to the local supervisor time budget.</p>
     </form>
     <main class="images">
       <div id="resultSummary"><span class="pill">Saved example</span> Select parameters and calculate to replace these plots.</div>
@@ -61,7 +67,7 @@
       <img id="densityImage" src="ho_density.png" alt="Calculated random clustered Ho distribution">
       <h2>Calculated modal powers</h2>
       <table class="metrics" id="metrics"><tbody><tr><th>Mode</th><th>Output power</th><th>Disk gain</th></tr></tbody></table>
-      <p class="note">Model scope: one disk traversal plus free-space propagation, frozen archived inversion fractions, and weak-signal gain. A changed Ho map is not silently claimed to be a new self-consistent pump/thermal/mechanical operating point.</p>
+      <p class="note" id="scopeNote">Model scope: one disk traversal plus free-space propagation, frozen archived inversion fractions, and weak-signal gain.</p>
     </main>
   </div>
   <script>
@@ -77,13 +83,17 @@
       document.getElementById('beamDensityImage').src=image(result.images.beam_density);
       document.getElementById('densityImage').src=image(result.images.density);
       const phase=s.phase_mask;
-      document.getElementById('resultSummary').innerHTML=`<span class="pill">Calculated ${result.run_id}</span> Mask: <strong>${phase.name}</strong>; Ho range: ${(s.density_min_active_m3/1e26).toFixed(3)}–${(s.density_max_active_m3/1e26).toFixed(3)} ×10²⁶ ions/m³; immediate SLM irradiance relative change: ${phase.maximum_local_irradiance_relative_change.toExponential(2)}`;
+      const modeLabel=s.solver_mode==='full_seeded_modal'?'Full seeded modal closure':'Weak probe';
+      document.getElementById('resultSummary').innerHTML=`<span class="pill">Calculated ${result.run_id}</span> <strong>${modeLabel}</strong>; Mask: <strong>${phase.name}</strong>; Ho range: ${(s.density_min_active_m3/1e26).toFixed(3)}–${(s.density_max_active_m3/1e26).toFixed(3)} ×10²⁶ ions/m³; immediate SLM irradiance relative change: ${phase.maximum_local_irradiance_relative_change.toExponential(2)}`;
+      document.getElementById('scopeNote').textContent=s.solver_mode==='full_seeded_modal'
+        ? 'Full mode: periodic four-manifold pump/population saturation, heat, bonded thermoelastic assembly, and photoelastic Jones screens were recomputed for this Ho map. The transverse seed basis is fixed and the cavity eigenfield is not updated.'
+        : 'Weak mode: one disk traversal plus free-space propagation using archived inversion fractions; the changed Ho map is not a self-consistent pump, thermal, or mechanical operating point.';
       const rows=Object.entries(s.modes).map(([name,m])=>`<tr><td>${name}</td><td>${m.output_power_W.toFixed(6)} W</td><td>${m.disk_power_gain.toFixed(6)}×</td></tr>`).join('');
       document.getElementById('metrics').innerHTML=`<tbody><tr><th>Mode</th><th>Output power</th><th>Disk gain</th></tr>${rows}</tbody>`;
     }
     calculateButton.addEventListener('click',async ()=>{
       calculateButton.disabled=true;statusBox.className='status';statusBox.textContent='Calculating numerical propagation…';
-      const payload={phase_mask:value('phase_mask'),phase_strength_rad:value('phase_strength_rad'),density_seed:value('density_seed'),cluster_count:value('cluster_count'),cluster_contrast:value('cluster_contrast'),cluster_min_radius_mm:value('cluster_min_radius_mm'),cluster_max_radius_mm:value('cluster_max_radius_mm'),post_disk_distance_m:value('post_disk_distance_m')};
+      const payload={solver_mode:value('solver_mode'),phase_mask:value('phase_mask'),phase_strength_rad:value('phase_strength_rad'),density_seed:value('density_seed'),cluster_count:value('cluster_count'),cluster_contrast:value('cluster_contrast'),cluster_min_radius_mm:value('cluster_min_radius_mm'),cluster_max_radius_mm:value('cluster_max_radius_mm'),post_disk_distance_m:value('post_disk_distance_m')};
       try{const response=await fetch('/calculate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const result=await response.json();if(!response.ok)throw new Error(result.error||'calculation failed');renderResult(result);statusBox.className='status ok';statusBox.textContent='Calculation complete. The plots and metrics above are from the new run.';}
       catch(error){statusBox.className='status error';statusBox.textContent='Calculation failed: '+error.message+'\nStart the local app with: .venv/bin/python examples/structured_beam_app.py';}
       finally{calculateButton.disabled=false;}

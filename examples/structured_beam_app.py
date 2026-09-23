@@ -5,8 +5,8 @@ Start from the repository root:
     .venv/bin/python examples/structured_beam_app.py
 
 Then open http://127.0.0.1:8780/results/structured_beams/index.html.
-The Calculate action runs the existing numerical weak-probe model through the
-bounded local supervisor and returns a new set of solver-generated plots.
+The Calculate action runs the selected numerical model through the bounded
+local supervisor and returns a new set of solver-generated plots.
 """
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'src'))
 
 from hoyag.local_supervisor import BudgetLedger, Limits, run_bounded
-from hoyag.structured_beam_gallery import PHASE_MASKS
+from hoyag.structured_beam_gallery import PHASE_MASKS, SOLVER_MODES
 
 
 def _number(payload, name, low, high, integer=False):
@@ -54,6 +54,9 @@ def validate_request(payload):
     mask = payload.get('phase_mask', 'none')
     if mask not in PHASE_MASKS:
         raise ValueError(f'phase_mask must be one of {PHASE_MASKS}')
+    solver_mode = payload.get('solver_mode', 'weak_probe')
+    if solver_mode not in SOLVER_MODES:
+        raise ValueError(f'solver_mode must be one of {SOLVER_MODES}')
     values = {
         'density_seed': _number(payload, 'density_seed', -2_000_000_000, 2_000_000_000, True),
         'cluster_count': _number(payload, 'cluster_count', 2, 64, True),
@@ -66,6 +69,7 @@ def validate_request(payload):
     if values['cluster_min_radius_mm'] > values['cluster_max_radius_mm']:
         raise ValueError('cluster_min_radius_mm cannot exceed cluster_max_radius_mm')
     values['phase_mask'] = mask
+    values['solver_mode'] = solver_mode
     return values
 
 
@@ -82,6 +86,7 @@ def build_gallery_command(values, output_directory):
         '--phase-mask', values['phase_mask'],
         '--phase-strength-rad', str(values['phase_strength_rad']),
         '--post-disk-distance-m', str(values['post_disk_distance_m']),
+        '--solver-mode', values['solver_mode'],
     ]
 
 
@@ -90,12 +95,14 @@ def run_calculation(values):
     output = ROOT / 'results' / 'structured_beams' / 'runs' / run_id
     output.mkdir(parents=True, exist_ok=False)
     execution = output / 'execution.json'
+    full_solver = values['solver_mode'] == 'full_seeded_modal'
     result = run_bounded(
         build_gallery_command(values, output), cwd=ROOT,
         log_path=output / 'execution.log', summary_path=execution,
         ledger=BudgetLedger(ROOT / '.local_runtime' / 'budget.json', Limits()),
-        label=f'interactive_gallery_{run_id}', configured_seconds=180,
-        category='profile')
+        label=f'interactive_gallery_{run_id}',
+        configured_seconds=900 if full_solver else 180,
+        category='coupled' if full_solver else 'profile')
     if result['status'] != 'completed' or result.get('exit_code') != 0:
         raise RuntimeError(json.dumps(result))
     summary = json.loads((output / 'summary.json').read_text())
