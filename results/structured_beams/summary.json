@@ -1,0 +1,57 @@
+{
+  "model": "weak one-traversal seeded probe; frozen archived population fractions",
+  "application_mode": "seeded_multipass_amplifier",
+  "fidelity_mode": "weak_diagnostic_probe",
+  "source_hash": "0ac1c2434c970354b5424ae50f484b15f66c882d22cdc743a8f5c09eeda5f06f",
+  "reference_state_id": "9e38859accf318d4",
+  "reference_state_sha256": "33a8fdecbc732ca68053e37dfbf86734405f703d8813b211cb042f31ca06b40c",
+  "reference_case": "results/local_stage7w/reference",
+  "fields_sha256": "04a6ac3ad04ce59afec0fbfeb9dcc9ac7a4b1d4983b6c26391f0b276a951374b",
+  "wavelength_m": 2.0903e-06,
+  "settings": {
+    "mean_ho_density_m3": 1.52e+26,
+    "axial_end_to_end_fraction": 0.18,
+    "off_axis_peak_fraction": 0.3,
+    "bump_x_m": 0.00025,
+    "bump_y_m": -0.00017999999999999998,
+    "bump_width_m": 0.0006500000000000001,
+    "waist_m": 0.000408,
+    "input_power_W": 1.0,
+    "post_disk_distance_m": 0.25
+  },
+  "density_mean_active_m3": 1.5199999999999998e+26,
+  "density_min_active_m3": 1.4063157042047677e+26,
+  "density_max_active_m3": 1.985587657115556e+26,
+  "modes": {
+    "Gaussian TEM00": {
+      "input_power_W": 0.9999999999999998,
+      "output_power_W": 1.0137269388832046,
+      "disk_exit_power_W": 1.0137269388832044,
+      "disk_power_gain": 1.0137269388832046
+    },
+    "Helical LG(0,+1)": {
+      "input_power_W": 1.0,
+      "output_power_W": 1.010346989351397,
+      "disk_exit_power_W": 1.0103469893513968,
+      "disk_power_gain": 1.0103469893513968
+    },
+    "Double helix LG(0,+2)": {
+      "input_power_W": 1.0,
+      "output_power_W": 1.0042618455715013,
+      "disk_exit_power_W": 1.0042618455715013,
+      "disk_power_gain": 1.0042618455715013
+    },
+    "Hermite-Gaussian HG(1,1)": {
+      "input_power_W": 1.0,
+      "output_power_W": 1.004257014953631,
+      "disk_exit_power_W": 1.004257014953631,
+      "disk_power_gain": 1.004257014953631
+    }
+  },
+  "time_kind": "steady_state",
+  "limitations": [
+    "imposed density is not pump/heat/mechanics self-consistent",
+    "weak-signal probe; no population depletion by these inputs",
+    "single disk traversal; no specified multipass hardware topology"
+  ]
+}

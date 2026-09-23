@@ -83,3 +83,21 @@ warm-start design. Numerical restart equivalence has not yet been exercised.
 The local implementation does not automatically launch DFT, CFD, FDTD, long
 parameter sweeps, remote compute, or training. A memory or wall-time limit does
 not relax the existing numerical acceptance thresholds.
+
+## Structured seed probes with nonuniform Ho
+
+```bash
+.venv/bin/python examples/structured_beam_gallery.py
+```
+
+This generates `results/structured_beams/input_output_beams.png`,
+`ho_density.png`, `fields.npz`, and `summary.json`. Gaussian, LG(0,+1),
+LG(0,+2), and HG(1,1) complex inputs each have 1 W integrated power. The
+default Ho distribution combines an 18% axial end-to-end gradient and a 30%
+off-axis localized enrichment, normalized to a 1.52e26 ions/m³ active-disk
+mean. The archived Stage 7W population fractions are interpolated to this
+declared density and frozen during one weak signal traversal. The output is
+shown after 0.25 m of free-space propagation; phase excludes the arbitrary
+global offset and masks low-intensity pixels. The plots are numerical probes,
+not a new self-consistent pumped operating point or complete multipass device.
+Use `--help` for density and output-plane parameters.

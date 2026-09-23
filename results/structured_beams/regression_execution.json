@@ -1,0 +1,9 @@
+{
+  "effective_limit_s": 600,
+  "elapsed_s": 87.7802015519992,
+  "exit_code": 0,
+  "label": "structured_beams_regression",
+  "log_path": "/home/aidas/Desktop/FTMC/Ho-YAG-crystal/results/structured_beams/regression.log",
+  "peak_rss_bytes": 253894656,
+  "status": "completed"
+}

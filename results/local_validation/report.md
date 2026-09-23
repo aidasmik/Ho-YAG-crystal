@@ -2,9 +2,11 @@
 
 Branch: `local/bounded-validation-viewer`. The unrelated `YbYAG` working tree
 was left untouched. No remote computation or full 32-case campaign was started.
-The final working-tree numerical-source fingerprint is
+The numerical-source fingerprint at the end of the bounded Stage 7W work was
 `a7a81953b9aab26e8857c90ec332041ec94246ed871d911ff65485d61b60eb07`;
 saved numerical cases retain their own earlier fingerprints below.
+The later structured-beam probe source and its evidence are recorded in
+`results/structured_beams/summary.json`.
 
 ## Software and audit
 

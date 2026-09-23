@@ -381,3 +381,12 @@ incomplete, so that API does not claim a calibrated multipass design.
 Historical Stage 7W results above remain tied to their saved revisions.
 Local software, bounded numerical, viewer, full-campaign, experimental, and
 dataset statuses are reported separately in `docs/STAGE7W_RESULTS.md`.
+
+An additional weak seeded-probe gallery plots absolute input/output irradiance
+and masked relative phase for Gaussian, LG(0,+1), LG(0,+2), and HG(1,1)
+fields. It uses the saved Stage 7W population fractions and an explicit
+nonuniform Ho concentration with an axial gradient and off-axis rich region.
+The output plane is one 1-mm disk traversal plus 0.25 m free space. It does
+not re-solve the pump, heat, or mechanics after changing the dopant map.
+Run `.venv/bin/python examples/structured_beam_gallery.py` to regenerate
+`results/structured_beams/input_output_beams.png` and `ho_density.png`.
