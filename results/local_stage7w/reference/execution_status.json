@@ -1,0 +1,9 @@
+{
+  "effective_limit_s": 900,
+  "elapsed_s": 412.1180591120028,
+  "exit_code": 0,
+  "label": "reference",
+  "log_path": "results/local_stage7w/reference/execution.log",
+  "peak_rss_bytes": 950042624,
+  "status": "completed"
+}

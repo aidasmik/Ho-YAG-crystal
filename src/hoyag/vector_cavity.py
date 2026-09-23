@@ -30,7 +30,10 @@ def aligned_distance(a, b):
     """L2 field change with one irrelevant global phase removed."""
     aa, bb = normalize_vector(a), normalize_vector(b)
     overlap = np.vdot(aa, bb)
-    return float(np.sqrt(max(0., 2. - 2.*min(abs(overlap), 1.))))
+    # Direct residual avoids catastrophic cancellation in 2-2*overlap when
+    # the fields differ only by phase or by a tiny accepted iteration update.
+    phase = overlap/abs(overlap) if abs(overlap)>0 else 1.
+    return float(np.linalg.norm(aa-bb*np.conj(phase)))
 
 
 def subspace_distance(a, b):

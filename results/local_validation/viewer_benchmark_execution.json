@@ -1,0 +1,9 @@
+{
+  "effective_limit_s": 120,
+  "elapsed_s": 7.299762516999181,
+  "exit_code": 0,
+  "label": "viewer_benchmark_final",
+  "log_path": "/home/aidas/Desktop/FTMC/Ho-YAG-crystal/results/local_validation/viewer_benchmark.log",
+  "peak_rss_bytes": 578437120,
+  "status": "completed"
+}

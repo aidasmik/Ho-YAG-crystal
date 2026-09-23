@@ -1,7 +1,7 @@
 from pathlib import Path
 from copy import deepcopy
 import pytest
-from hoyag.polarized_validation import make_polarized_plan,coupled_case_polarized
+from hoyag.polarized_validation import make_polarized_plan,add_six_mode_candidate,coupled_case_polarized
 from hoyag.validation_plan import make_plan,physics_from_repository,validate_plan
 from hoyag.validation_campaign import build_report
 from hoyag.validation_backend import source_manifest
@@ -48,3 +48,15 @@ def test_legacy_case_must_be_explicitly_replanned_for_stage7w():
     c=make_plan(physics_from_repository(ROOT),kind='coupled')['cases'][0]
     with pytest.raises(ValueError,match='explicit Stage 7W'):
         coupled_case_polarized(c)
+
+
+def test_six_mode_candidate_requires_diagnostic():
+    plan=make_polarized_plan(ROOT)
+    with pytest.raises(ValueError,match='not been supported'):
+        add_six_mode_candidate(plan,{})
+    amended=add_six_mode_candidate(plan,{'modes_6_complete_family_candidate':True})
+    candidate=next(c for c in amended['cases'] if c['id']=='modes_6')
+    assert candidate['numerics']['mode_count']==6
+    assert candidate['numerics']['settings']['eigen_candidates']>=10
+    assert next(g for g in amended['groups'] if g['name']=='retained_modes')['case_ids']==[
+        'reference','modes_4','modes_6','modes_8']

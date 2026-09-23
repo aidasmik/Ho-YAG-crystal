@@ -119,3 +119,36 @@ incoherent modal closure, frozen within-cycle mode shapes, prescribed bond/conta
 properties, fixed spectroscopy and a finite candidate bank. Numerical convergence
 does not establish global mode stability, mechanical calibration or experimental
 accuracy. `dataset_ready=false` remains appropriate.
+
+## Bounded local follow-up — 23 September 2026
+
+These results were produced in the separate local branch
+`local/bounded-validation-viewer`. They supplement the historical Actions
+results above; they do not replace that evidence. The persistent local budget
+ledger recorded two expensive coupled attempts, both below the 900 s per-case
+limit, with a peak measured process-tree RSS below 1.3 GB.
+
+| Local case | Outcome | Iterations | Output W | Heat W | Peak disk K | Wall s | Peak RSS |
+|---|---|---:|---:|---:|---:|---:|---:|
+| Two-mode reference | Converged; all final closure gates passed | 7 | 0.7900341761 | 0.6547475427 | 302.3319194 | 412.1 | 950 MB |
+| Six-mode complete-family candidate | Converged; no split boundary in seven accepted iterations | 7 | 0.7900870434 | 0.6547538059 | 302.3320148 | 482.3 | 1254 MB |
+
+The reference state has SHA-256
+`33a8fdecbc732ca68053e37dfbf86734405f703d8813b211cb042f31ca06b40c`;
+the six-mode state has SHA-256
+`15f8dc5404fcd531ba7a12514982e616549ad5d53678164704866a9e559bd2dd`.
+Their numerical-source fingerprints differ (`9839b664…` and `6b2e6f24…`)
+because local implementation changes were made between runs. Consequently,
+the scalar difference between them is informative but is **not** a strict
+source-matched retained-mode convergence test. No local eight-mode or grid
+refinement case was run. `limited_numerical_validation_passed` means only
+that these two bounded cases individually converged; the mode-count chain,
+full campaign, and dataset qualification remain incomplete.
+
+A 10-candidate diagnostic on the saved hot two-mode operator found retained
+boundaries 2, 6, and 8 admissible within that finite bank, while 4 split a
+polarization family. Its maximum full-operator eigenpair residual was
+`4.92e-10`. The diagnostic does not prove global spectral completeness.
+See `results/local_stage7w/family_diagnostic.json`, both local `summary.json`
+files, and `results/local_validation/report.md` for local source hashes,
+execution records, limitations, and viewer measurements.

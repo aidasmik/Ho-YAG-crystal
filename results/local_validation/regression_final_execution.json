@@ -1,0 +1,9 @@
+{
+  "effective_limit_s": 600,
+  "elapsed_s": 98.67290049200165,
+  "exit_code": 0,
+  "label": "regression_final_source",
+  "log_path": "/home/aidas/Desktop/FTMC/Ho-YAG-crystal/results/local_validation/regression_final.log",
+  "peak_rss_bytes": 291631104,
+  "status": "completed"
+}

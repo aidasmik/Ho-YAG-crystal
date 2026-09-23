@@ -1,0 +1,397 @@
+{
+  "acceptance": {
+    "eigen_residual": 5e-07,
+    "energy_balance_relative": 0.0001,
+    "field_overlap": 0.999,
+    "max_mode_power_fraction_change": 0.01,
+    "maximum_comparison_power_fraction": 1.005,
+    "mechanical_residual": 1e-06,
+    "minimum_comparison_power_fraction": 0.999,
+    "opd_difference_rms_m": 2e-09,
+    "power_absolute_floor_W": 1e-08,
+    "power_relative": 0.01,
+    "temperature_K": 0.05
+  },
+  "case_status": {
+    "candidates_6": "not_run",
+    "candidates_8": "not_run",
+    "joint_1": "not_run",
+    "joint_2": "not_run",
+    "material_1": "not_run",
+    "material_2": "not_run",
+    "mechanical_1": "not_run",
+    "mechanical_2": "not_run",
+    "modes_4": "not_run",
+    "modes_8": "not_run",
+    "optical_384": "not_run",
+    "optical_512": "not_run",
+    "reference": "completed",
+    "sensitivity_bond_normal_0.5": "not_run",
+    "sensitivity_bond_normal_2": "not_run",
+    "sensitivity_bond_shear_0.5": "not_run",
+    "sensitivity_bond_shear_2": "not_run",
+    "sensitivity_contact_0.5": "not_run",
+    "sensitivity_contact_2": "not_run",
+    "sensitivity_coolant_0.5": "not_run",
+    "sensitivity_coolant_2": "not_run",
+    "sensitivity_inhomogeneous": "not_run",
+    "sensitivity_support_free": "not_run",
+    "sensitivity_support_roller": "not_run",
+    "start_lg_minus": "not_run",
+    "start_lg_plus": "not_run",
+    "start_lg_two": "not_run",
+    "start_mixed": "not_run",
+    "tolerances_1": "not_run",
+    "tolerances_2": "not_run",
+    "window_384": "not_run",
+    "window_512": "not_run"
+  },
+  "component_numerical_checks_passed": false,
+  "coupled_numerically_qualified": false,
+  "dataset_ready": false,
+  "experimentally_calibrated": false,
+  "groups": [
+    {
+      "case_ids": [
+        "reference",
+        "optical_384",
+        "optical_512"
+      ],
+      "comparison": "refinement",
+      "name": "optical_resolution",
+      "pairs": [
+        {
+          "from": "reference",
+          "reason": "both numerical runs must be completed",
+          "status": "not_evaluated",
+          "to": "optical_384"
+        },
+        {
+          "from": "optical_384",
+          "reason": "both numerical runs must be completed",
+          "status": "not_evaluated",
+          "to": "optical_512"
+        }
+      ],
+      "required": true,
+      "required_successive_pairs": 2,
+      "status": "incomplete"
+    },
+    {
+      "case_ids": [
+        "reference",
+        "window_384",
+        "window_512"
+      ],
+      "comparison": "refinement",
+      "name": "window_padding",
+      "pairs": [
+        {
+          "from": "reference",
+          "reason": "both numerical runs must be completed",
+          "status": "not_evaluated",
+          "to": "window_384"
+        },
+        {
+          "from": "window_384",
+          "reason": "both numerical runs must be completed",
+          "status": "not_evaluated",
+          "to": "window_512"
+        }
+      ],
+      "required": true,
+      "required_successive_pairs": 2,
+      "status": "incomplete"
+    },
+    {
+      "case_ids": [
+        "reference",
+        "material_1",
+        "material_2"
+      ],
+      "comparison": "refinement",
+      "name": "material_resolution",
+      "pairs": [
+        {
+          "from": "reference",
+          "reason": "both numerical runs must be completed",
+          "status": "not_evaluated",
+          "to": "material_1"
+        },
+        {
+          "from": "material_1",
+          "reason": "both numerical runs must be completed",
+          "status": "not_evaluated",
+          "to": "material_2"
+        }
+      ],
+      "required": true,
+      "required_successive_pairs": 2,
+      "status": "incomplete"
+    },
+    {
+      "case_ids": [
+        "reference",
+        "mechanical_1",
+        "mechanical_2"
+      ],
+      "comparison": "refinement",
+      "name": "mechanical_resolution",
+      "pairs": [
+        {
+          "from": "reference",
+          "reason": "both numerical runs must be completed",
+          "status": "not_evaluated",
+          "to": "mechanical_1"
+        },
+        {
+          "from": "mechanical_1",
+          "reason": "both numerical runs must be completed",
+          "status": "not_evaluated",
+          "to": "mechanical_2"
+        }
+      ],
+      "required": true,
+      "required_successive_pairs": 2,
+      "status": "incomplete"
+    },
+    {
+      "case_ids": [
+        "reference",
+        "joint_1",
+        "joint_2"
+      ],
+      "comparison": "refinement",
+      "name": "joint_refinement",
+      "pairs": [
+        {
+          "from": "reference",
+          "reason": "both numerical runs must be completed",
+          "status": "not_evaluated",
+          "to": "joint_1"
+        },
+        {
+          "from": "joint_1",
+          "reason": "both numerical runs must be completed",
+          "status": "not_evaluated",
+          "to": "joint_2"
+        }
+      ],
+      "required": true,
+      "required_successive_pairs": 2,
+      "status": "incomplete"
+    },
+    {
+      "case_ids": [
+        "reference",
+        "tolerances_1",
+        "tolerances_2"
+      ],
+      "comparison": "refinement",
+      "name": "integration_tolerances",
+      "pairs": [
+        {
+          "from": "reference",
+          "reason": "both numerical runs must be completed",
+          "status": "not_evaluated",
+          "to": "tolerances_1"
+        },
+        {
+          "from": "tolerances_1",
+          "reason": "both numerical runs must be completed",
+          "status": "not_evaluated",
+          "to": "tolerances_2"
+        }
+      ],
+      "required": true,
+      "required_successive_pairs": 2,
+      "status": "incomplete"
+    },
+    {
+      "case_ids": [
+        "reference",
+        "modes_4",
+        "modes_8"
+      ],
+      "comparison": "modal_mixture",
+      "name": "retained_modes",
+      "pairs": [
+        {
+          "from": "reference",
+          "reason": "both numerical runs must be completed",
+          "status": "not_evaluated",
+          "to": "modes_4"
+        },
+        {
+          "from": "modes_4",
+          "reason": "both numerical runs must be completed",
+          "status": "not_evaluated",
+          "to": "modes_8"
+        }
+      ],
+      "required": true,
+      "required_successive_pairs": 2,
+      "status": "incomplete"
+    },
+    {
+      "case_ids": [
+        "reference",
+        "candidates_6",
+        "candidates_8"
+      ],
+      "comparison": "modal_mixture",
+      "name": "candidate_spectrum",
+      "pairs": [
+        {
+          "from": "reference",
+          "reason": "both numerical runs must be completed",
+          "status": "not_evaluated",
+          "to": "candidates_6"
+        },
+        {
+          "from": "candidates_6",
+          "reason": "both numerical runs must be completed",
+          "status": "not_evaluated",
+          "to": "candidates_8"
+        }
+      ],
+      "required": true,
+      "required_successive_pairs": 2,
+      "status": "incomplete"
+    },
+    {
+      "case_ids": [
+        "reference",
+        "start_lg_plus",
+        "start_lg_minus",
+        "start_lg_two",
+        "start_mixed"
+      ],
+      "comparison": "modal_mixture",
+      "name": "initialization",
+      "pairs": [
+        {
+          "from": "reference",
+          "reason": "both numerical runs must be completed",
+          "status": "not_evaluated",
+          "to": "start_lg_plus"
+        },
+        {
+          "from": "start_lg_plus",
+          "reason": "both numerical runs must be completed",
+          "status": "not_evaluated",
+          "to": "start_lg_minus"
+        },
+        {
+          "from": "start_lg_minus",
+          "reason": "both numerical runs must be completed",
+          "status": "not_evaluated",
+          "to": "start_lg_two"
+        },
+        {
+          "from": "start_lg_two",
+          "reason": "both numerical runs must be completed",
+          "status": "not_evaluated",
+          "to": "start_mixed"
+        }
+      ],
+      "required": true,
+      "required_successive_pairs": 4,
+      "status": "incomplete"
+    },
+    {
+      "case_ids": [
+        "reference",
+        "sensitivity_contact_0.5",
+        "sensitivity_contact_2",
+        "sensitivity_coolant_0.5",
+        "sensitivity_coolant_2",
+        "sensitivity_bond_normal_0.5",
+        "sensitivity_bond_normal_2",
+        "sensitivity_bond_shear_0.5",
+        "sensitivity_bond_shear_2",
+        "sensitivity_support_roller",
+        "sensitivity_support_free",
+        "sensitivity_inhomogeneous"
+      ],
+      "cases": [
+        {
+          "id": "sensitivity_contact_0.5",
+          "numerically_qualified": false,
+          "status": "not_run"
+        },
+        {
+          "id": "sensitivity_contact_2",
+          "numerically_qualified": false,
+          "status": "not_run"
+        },
+        {
+          "id": "sensitivity_coolant_0.5",
+          "numerically_qualified": false,
+          "status": "not_run"
+        },
+        {
+          "id": "sensitivity_coolant_2",
+          "numerically_qualified": false,
+          "status": "not_run"
+        },
+        {
+          "id": "sensitivity_bond_normal_0.5",
+          "numerically_qualified": false,
+          "status": "not_run"
+        },
+        {
+          "id": "sensitivity_bond_normal_2",
+          "numerically_qualified": false,
+          "status": "not_run"
+        },
+        {
+          "id": "sensitivity_bond_shear_0.5",
+          "numerically_qualified": false,
+          "status": "not_run"
+        },
+        {
+          "id": "sensitivity_bond_shear_2",
+          "numerically_qualified": false,
+          "status": "not_run"
+        },
+        {
+          "id": "sensitivity_support_roller",
+          "numerically_qualified": false,
+          "status": "not_run"
+        },
+        {
+          "id": "sensitivity_support_free",
+          "numerically_qualified": false,
+          "status": "not_run"
+        },
+        {
+          "id": "sensitivity_inhomogeneous",
+          "numerically_qualified": false,
+          "status": "not_run"
+        }
+      ],
+      "comparison": "sensitivity",
+      "name": "cooling_and_density_sensitivity",
+      "note": "Physical changes are not numerical errors. Each new operating point still needs its own refinement.",
+      "required": false,
+      "required_successive_pairs": 2,
+      "status": "incomplete"
+    }
+  ],
+  "kind": "coupled",
+  "limits": [
+    "Numerical qualification applies only to compared physical operating points.",
+    "A frozen-source study is not a coupled hot-cavity refinement.",
+    "Sensitivity results require their own grid studies before dataset use.",
+    "Material/contact calibration and omitted physics are not validated by this campaign.",
+    "Old one-mode controls remain a separate Stage 7V campaign.",
+    "Polarization-family guard can require a larger retained basis; this is not convergence.",
+    "All old acceptance thresholds are retained; modal power, coherency and gain gates are additional."
+  ],
+  "note": "Missing/failed/stale cases never count as passes. Passing here is not physical-model or contact/spectroscopy calibration.",
+  "plan_hash": "bd0f5bc7fc7c7f5a67abeddc401d916d7b35b81ab3a63ad863246749e8c28152",
+  "schema": "hoyag.stage7v/1",
+  "source_hash": "9839b6642bb2d2b082c5ed47b80a3b774a26caf6adbe93e2ce62b17abcf09853",
+  "status": "incomplete"
+}

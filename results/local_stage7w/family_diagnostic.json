@@ -1,0 +1,197 @@
+{
+  "admissible_retained_counts": [
+    2,
+    6,
+    8
+  ],
+  "boundaries": {
+    "2": {
+      "maximum_omitted_log_power_growth": -0.009592923385788387,
+      "minimum_retained_log_power_growth": -0.0034832847462071856,
+      "omitted_indices": [
+        1,
+        2,
+        3,
+        0,
+        7,
+        6,
+        9,
+        8
+      ],
+      "retained_indices": [
+        5,
+        4
+      ],
+      "split_pairs": [],
+      "status": "admissible_within_candidate_bank"
+    },
+    "4": {
+      "maximum_omitted_log_power_growth": -0.00965754705806747,
+      "minimum_retained_log_power_growth": -0.009657279925883845,
+      "omitted_indices": [
+        3,
+        0,
+        7,
+        6,
+        9,
+        8
+      ],
+      "retained_indices": [
+        5,
+        4,
+        1,
+        2
+      ],
+      "split_pairs": [
+        {
+          "best_constant_polarization_overlap_squared": 0.9996125523059277,
+          "complex_relative_gap": 1.598526122278781e-05,
+          "omitted_index": 3,
+          "retained_index": 2,
+          "vector_overlap_squared": 0.0002245347079327246
+        }
+      ],
+      "status": "split_polarization_family"
+    },
+    "6": {
+      "maximum_omitted_log_power_growth": -0.01977894708955416,
+      "minimum_retained_log_power_growth": -0.009727843890680954,
+      "omitted_indices": [
+        7,
+        6,
+        9,
+        8
+      ],
+      "retained_indices": [
+        5,
+        4,
+        1,
+        2,
+        3,
+        0
+      ],
+      "split_pairs": [],
+      "status": "admissible_within_candidate_bank"
+    },
+    "8": {
+      "maximum_omitted_log_power_growth": -0.02058302721093371,
+      "minimum_retained_log_power_growth": -0.019779149254264806,
+      "omitted_indices": [
+        9,
+        8
+      ],
+      "retained_indices": [
+        5,
+        4,
+        1,
+        2,
+        3,
+        0,
+        7,
+        6
+      ],
+      "split_pairs": [],
+      "status": "admissible_within_candidate_bank"
+    }
+  },
+  "branch_overlaps_squared": [
+    [
+      1.189606763297013e-15,
+      1.665045045024951e-15,
+      2.3757067927104764e-13,
+      8.629015437052912e-13,
+      0.999999998872092,
+      5.2056348545554395e-05,
+      1.4412353945375092e-13,
+      4.848968159202495e-15,
+      8.500307161670382e-10,
+      7.218369182514251e-09
+    ],
+    [
+      2.9042143257775316e-15,
+      4.910596759072911e-18,
+      7.957237217191725e-13,
+      3.400478808155267e-13,
+      5.2056336677287284e-05,
+      0.9999999988721497,
+      4.153805418594185e-13,
+      3.6334674644172387e-13,
+      7.228611517521345e-09,
+      8.572356546452827e-10
+    ]
+  ],
+  "candidate_count": 10,
+  "candidate_eigenvalues": [
+    [
+      -0.932380921325165,
+      -0.3478291765767947
+    ],
+    [
+      -0.9275940015332951,
+      -0.36058606496262424
+    ],
+    [
+      -0.9300095131238312,
+      -0.3542195750541642
+    ],
+    [
+      -0.9300037266928924,
+      -0.35423439362223885
+    ],
+    [
+      0.4236098568113323,
+      -0.9039233728942824
+    ],
+    [
+      0.4235998366659106,
+      -0.9039282155321382
+    ],
+    [
+      -0.2945293511412498,
+      0.9453399579714266
+    ],
+    [
+      -0.2945507074437639,
+      0.9453334087880596
+    ],
+    [
+      -0.29195094338958805,
+      0.9457227587818117
+    ],
+    [
+      -0.2919649089940143,
+      0.9457186945845816
+    ]
+  ],
+  "full_operator_residuals": [
+    6.255345260044555e-15,
+    7.74124953911252e-15,
+    4.2164877391965164e-15,
+    3.5320785864553315e-15,
+    4.097211432836248e-15,
+    5.2988751530775735e-15,
+    1.854023484317102e-10,
+    2.094088778888333e-10,
+    2.631501842852758e-10,
+    4.918806262763472e-10
+  ],
+  "gain_ordering": [
+    5,
+    4,
+    1,
+    2,
+    3,
+    0,
+    7,
+    6,
+    9,
+    8
+  ],
+  "global_completeness_verified": false,
+  "modes_6_complete_family_candidate": true,
+  "reference_case": "/home/aidas/Desktop/FTMC/Ho-YAG-crystal/results/local_stage7w/reference",
+  "reference_state_sha256": "33a8fdecbc732ca68053e37dfbf86734405f703d8813b211cb042f31ca06b40c",
+  "scope": "one saved hot operator; coupled solver must independently guard every iteration",
+  "source_hash": "9839b6642bb2d2b082c5ed47b80a3b774a26caf6adbe93e2ce62b17abcf09853",
+  "status": "finite_bank_diagnostic"
+}

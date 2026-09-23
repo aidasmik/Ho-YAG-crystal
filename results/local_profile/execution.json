@@ -1,0 +1,9 @@
+{
+  "effective_limit_s": 180,
+  "elapsed_s": 2.324900235002133,
+  "exit_code": 0,
+  "label": "replay_micro_profile",
+  "log_path": "/home/aidas/Desktop/FTMC/Ho-YAG-crystal/results/local_profile/profile.log",
+  "peak_rss_bytes": 82837504,
+  "status": "completed"
+}

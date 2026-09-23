@@ -68,8 +68,9 @@ def accepted_closure(row, settings):
 def run_polarization_hot_cavity(grid,mesh,cavity,pump_energy_J,assembly_configuration,*,
         repetition_rate_Hz=1e4,pump_duration_s=10e-12,pump_waist_m=.5e-3,
         params=None,density_m3=None,initial_fields=None,mode_count=2,settings=None,
-        tracking=None,spectroscopy=None,progress=None,pump_source=None,
-        pump_absorption_m2=None):
+        tracking=None,spectroscopy=None,progress=None,state_callback=None,
+        checkpoint_callback=None,resume_state=None,pump_source=None,
+        pump_absorption_m2=None,shared_cycle_replay=True):
     """Two-or-more vector eigenbranches with separate incoherent photon states.
 
     Two is a conservative minimum for THIS polarization-unfiltered cavity, not
@@ -112,8 +113,42 @@ def run_polarization_hot_cavity(grid,mesh,cavity,pump_energy_J,assembly_configur
     initial_fractions=initial_log_photons=None
     optical=heat=mean_fractions=eigen=predicted=assembly_heat=None
     used_fields=fields.copy();used_losses=losses.copy()
-    converged=False;status='outer iteration limit reached';streak=0
-    for iteration in range(s.max_outer_iterations):
+    converged=False;status='outer iteration limit reached';streak=0;first_iteration=0
+    if resume_state is not None:
+        r=resume_state
+        first_iteration=int(r['iteration'])
+        if not 0<first_iteration<s.max_outer_iterations:
+            raise ValueError('checkpoint iteration is outside this solver plan')
+        fields=normalized_modes(r['fields_next'])
+        if fields.shape!=(mode_count,2,*grid.shape):
+            raise ValueError('checkpoint mode count or optical grid differs')
+        previous_heat=mesh.field(r['previous_heat'],'checkpoint heat').copy()
+        temperature,displacement,screens=assembly.solve(previous_heat)
+        passive=VectorRoundTrip(grid,cavity,screens)
+        losses=np.asarray(r['losses_next'],float).copy()
+        checked,_=passive_mode_losses(passive,fields)
+        if not np.allclose(losses,checked,rtol=0,atol=1e-9):
+            raise ValueError('checkpoint passive losses disagree with reconstructed assembly')
+        previous_temperature=(np.asarray(r['disk_temperature_K'],float).copy(),
+                              np.asarray(r['plate_temperature_K'],float).copy())
+        previous_u=(np.asarray(r['disk_displacement_m'],float).copy(),
+                    np.asarray(r['plate_displacement_m'],float).copy())
+        if (np.max(abs(previous_temperature[0]-temperature.disk_temperature_K))>1e-8 or
+            np.max(abs(previous_temperature[1]-temperature.plate_temperature_K))>1e-8):
+            raise ValueError('checkpoint thermal state does not reconstruct')
+        if (np.max(abs(previous_u[0]-displacement.disk_u_m))>1e-11 or
+            np.max(abs(previous_u[1]-displacement.plate_u_m))>1e-11):
+            raise ValueError('checkpoint mechanical state does not reconstruct')
+        previous_power=float(r['previous_power_W'])
+        previous_fields=None if r.get('previous_fields') is None else np.asarray(r['previous_fields'],complex).copy()
+        previous_powers=None if r.get('previous_powers_W') is None else np.asarray(r['previous_powers_W'],float).copy()
+        previous_gain=None if r.get('previous_gain') is None else np.asarray(r['previous_gain'],float).copy()
+        initial_fractions=np.asarray(r['initial_fractions'],float).copy()
+        initial_log_photons=(None if r.get('initial_log_photons') is None else
+                             np.asarray(r['initial_log_photons'],float).copy())
+        history=list(r['history'])
+        streak=int(r['streak'])
+    for iteration in range(first_iteration,s.max_outer_iterations):
         begin=time.perf_counter();used_fields=fields.copy();used_losses=losses.copy()
         profiles=[];errors=[]
         for field in used_fields:
@@ -136,10 +171,14 @@ def run_polarization_hot_cavity(grid,mesh,cavity,pump_energy_J,assembly_configur
             status='optical pump cycle did not converge; no steady polarized hot-cavity result'
             break
         tick=time.perf_counter()
-        heat=sample_cycle_heat(model,optical,pump_energy_J,repetition_rate_Hz,
-                              spectroscopy=spectroscopy,rtol=s.optical_rtol/2)
-        mean_fractions=time_averaged_populations(model,optical,pump_energy_J,
-                              repetition_rate_Hz,rtol=s.optical_rtol/2)
+        if shared_cycle_replay:
+            heat,mean_fractions=sample_cycle_heat(model,optical,pump_energy_J,repetition_rate_Hz,
+                spectroscopy=spectroscopy,rtol=s.optical_rtol/2,return_mean_fractions=True)
+        else:
+            heat=sample_cycle_heat(model,optical,pump_energy_J,repetition_rate_Hz,
+                                   spectroscopy=spectroscopy,rtol=s.optical_rtol/2)
+            mean_fractions=time_averaged_populations(model,optical,pump_energy_J,
+                                  repetition_rate_Hz,rtol=s.optical_rtol/2)
         replay_seconds=time.perf_counter()-tick
         raw_heat=heat.heat_W_m3.reshape(mesh.shape)
         source_residual=None if previous_heat is None else _weighted_relative(raw_heat,previous_heat,mesh.volumes_m3)
@@ -213,6 +252,26 @@ def run_polarization_hot_cavity(grid,mesh,cavity,pump_energy_J,assembly_configur
         row['iteration_seconds']=time.perf_counter()-begin
         history.append(row)
         if progress:progress(row)
+        if state_callback:
+            state_callback(row,{
+                'fields_used':used_fields,'fields_predicted':predicted,
+                'output_coupler_fields':np.asarray([op.propagate(f)[1] for f in used_fields]),
+                'density_m3':density,'mean_fractions':mean_fractions.reshape(4,*mesh.shape),
+                'raw_heat_W_m3':raw_heat,'assembly_heat_W_m3':assembly_heat,
+                'disk_temperature_K':temperature.disk_temperature_K,
+                'plate_temperature_K':temperature.plate_temperature_K,
+                'interface_flux_W_m2':temperature.interface_flux_W_m2,
+                'disk_displacement_m':displacement.disk_u_m,
+                'plate_displacement_m':displacement.plate_u_m,
+                'disk_nodes_m':assembly.fem.disk.nodes_m,
+                'plate_nodes_m':assembly.fem.plate.nodes_m,
+                'disk_stress_Pa':displacement.disk_nodal_stress_Pa,
+                'plate_stress_Pa':displacement.plate_nodal_stress_Pa,
+                'plate_r_edges_m':assembly.heat_solver.plate.r_edges_m,
+                'plate_z_edges_m':assembly.heat_solver.plate.z_edges_m,
+                'mean_roundtrip_opd_m':screens.mean_roundtrip_opd_m,
+                'x_m':grid.x,'y_m':grid.y,'r_edges_m':mesh.r_edges_m,
+                'z_edges_m':mesh.z_edges_m})
         streak=streak+1 if all(gates.values()) else 0
         if iteration+1>=s.minimum_outer_iterations and streak>=s.consecutive_converged:
             converged=True;status='converged polarization-resolved adiabatic closure';break
@@ -229,12 +288,30 @@ def run_polarization_hot_cavity(grid,mesh,cavity,pump_energy_J,assembly_configur
         # Keep each separately resolved eigenfield, rather than a non-eigenfield
         # linear blend of two split branches. Per-mode phase is already aligned.
         fields=predicted.copy();passive=passive_new;losses=new_losses.copy()
+        if checkpoint_callback:
+            checkpoint_callback({'iteration':iteration+1,'streak':streak,
+                'history':history.copy(),'branch_ids':list(range(mode_count))},
+                {'fields_next':fields,'losses_next':losses,
+                 'previous_heat':previous_heat,
+                 'disk_temperature_K':previous_temperature[0],
+                 'plate_temperature_K':previous_temperature[1],
+                 'disk_displacement_m':previous_u[0],
+                 'plate_displacement_m':previous_u[1],
+                 'previous_power_W':np.asarray(previous_power),
+                 'previous_fields':previous_fields,
+                 'previous_powers_W':previous_powers,
+                 'previous_gain':previous_gain,
+                 'initial_fractions':initial_fractions,
+                 'initial_log_photons':initial_log_photons,
+                 'r_edges_m':mesh.r_edges_m,'z_edges_m':mesh.z_edges_m,
+                 'x_m':grid.x,'y_m':grid.y})
     metadata={'model':'Stage 7W polarization-resolved adiabatic eigenbranch closure',
          'mode_count':mode_count,'pump_energy_J':pump_energy_J,'repetition_rate_Hz':repetition_rate_Hz,
          'pump_duration_s':pump_duration_s,'pump_waist_m':pump_waist_m,
          'pump_source':source.summary(),'cavity':cavity.summary(),
          'settings':asdict(s),'tracking_settings':asdict(tracking),
          'field_update':'full independently resolved eigenfields; field_relaxation setting is not used',
+         'shared_cycle_replay':shared_cycle_replay,
          'optical_sampling':cavity_sampling_diagnostic(grid,cavity),
          'mesh_convergence_verified':False,'validated_for_dataset':False,'dataset_ready':False,
          'physical_solver_base':'88cd102ea4c0d34eeb49a22639721ff4957f062b',

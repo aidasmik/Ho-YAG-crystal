@@ -72,22 +72,25 @@ def _cycle_quadrature(sol,model,spectroscopy,order):
     times=(middle[:,None]+half[:,None]*nodes).ravel()
     wt=(half[:,None]*weights).ravel()
     totals=np.zeros((3,model.nz,model.ns))
+    fraction_integral=np.zeros((4,model.nz,model.ns))
     for start in range(0,len(times),512):
         stop=min(start+512,len(times)); y=sol.sol(times[start:stop]);count=stop-start
         three=y[:3*model.nc].reshape(3,model.nz,model.ns,count)
         frac=np.concatenate((three,(1-three.sum(axis=0))[None]),axis=0)
+        fraction_integral+=np.sum(frac*wt[None,None,None,start:stop],axis=-1)
         photons=np.exp(y[3*model.nc:3*model.nc+model.nm])
         intensity=2*model.es/model.trt*(model.modes.T@photons)
         b=heat_budget(frac*model.density[None,:,:,None],model.params,spectroscopy,
                       signal_intensity_W_m2=intensity[None])
         for i,a in enumerate((b.heat_W_m3,b.signal_net_W_m3,b.fluorescence_W_m3)):
             totals[i]+=np.sum(a*wt[None,None,start:stop],axis=-1)
-    return totals
+    return totals,fraction_integral
 
 
 def sample_cycle_heat(model: ModalThinDiskLaser, optical_state: OscillatorResult,
                       pump_energy_J, repetition_rate_Hz=1e4, *, spectroscopy=None,
-                      cycles=None, rtol=5e-7, quadrature_order=6, allow_transient=False):
+                      cycles=None, rtol=5e-7, quadrature_order=6, allow_transient=False,
+                      return_mean_fractions=False):
     """Replay a full detected period with a first-law ledger at every voxel.
 
     dU is computed from actual endpoints, not assumed zero at startup or at an
@@ -109,6 +112,7 @@ def sample_cycle_heat(model: ModalThinDiskLaser, optical_state: OscillatorResult
     model.check_fractions(state)
     initial=model.full_fractions(state)*model.density[None]
     total=np.zeros((4,model.nz,model.ns)) # pump, heat, signal, radiation: J/m^3
+    fraction_total=np.zeros((4,model.nz,model.ns))
     quadrature_error=np.zeros_like(total[0]);out_J=np.zeros(model.nm);escaped=0.;loss=0.
     for _ in range(ncycles):
         before=model.full_fractions(state)*model.density[None]
@@ -124,8 +128,9 @@ def sample_cycle_heat(model: ModalThinDiskLaser, optical_state: OscillatorResult
         sol=solve_ivp(model.rhs,(0,period),y0,method='BDF',jac=model.jacobian,
                       rtol=rtol,atol=atol,max_step=period/20,dense_output=True)
         if not sol.success: raise RuntimeError(sol.message)
-        integral=_cycle_quadrature(sol,model,spec,quadrature_order)
-        comparison=_cycle_quadrature(sol,model,spec,max(2,quadrature_order//2))
+        integral,fraction_integral=_cycle_quadrature(sol,model,spec,quadrature_order)
+        comparison,_=_cycle_quadrature(sol,model,spec,max(2,quadrature_order//2))
+        fraction_total+=fraction_integral
         total[1:]+=integral;quadrature_error+=np.max(abs(integral-comparison),axis=0)
         state=sol.y[:3*model.nc,-1].reshape(3,model.nz,model.ns)
         logph=sol.y[3*model.nc:3*model.nc+model.nm,-1]
@@ -151,8 +156,14 @@ def sample_cycle_heat(model: ModalThinDiskLaser, optical_state: OscillatorResult
         'coating_heat_included':False,
     }
     if error>1e-4: raise FloatingPointError(f'cycle energy ledger not converged: {error:g} of incident power')
-    return CycleHeatResult(total[1]/elapsed,total[0]/elapsed,total[2]/elapsed,total[3]/elapsed,
+    result=CycleHeatResult(total[1]/elapsed,total[0]/elapsed,total[2]/elapsed,total[3]/elapsed,
                            stored/elapsed,state,logph,budget)
+    if return_mean_fractions:
+        mean=fraction_total/elapsed
+        if np.min(mean)<-1e-8 or not np.allclose(mean.sum(axis=0),1.,atol=1e-8):
+            raise FloatingPointError('invalid shared cycle-averaged populations')
+        return result,mean
+    return result
 
 
 @dataclass

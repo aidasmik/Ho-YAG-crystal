@@ -358,3 +358,26 @@ The README figures can be rebuilt from the unpacked audited Actions artifact:
 M. Rupp, M. Eichhorn, C. Kieleck, *Iterative 3D modeling of thermal effects in end-pumped continuous-wave Ho³⁺:YAG lasers*, **Applied Physics B 129, 4 (2023)**, DOI 10.1007/s00340-022-07939-z.
 
 That paper validated a different CW rod geometry. It does **not** directly validate the reconstructed picosecond-pumped thin-disk system documented here.
+
+---
+
+## 17. Bounded local work and scientific replay
+
+The local development path now has a persistent compute-budget supervisor,
+finite-bank polarization-family diagnostic, and immutable solver snapshots.
+Use [the local execution guide](docs/LOCAL_EXECUTION.md) for named bounded
+cases, [profiling evidence](docs/PROFILING.md) for measured replay changes,
+and [Stage 7W](docs/STAGE7W.md) for the coupled polarization guard.
+
+The replay viewer reads hash-verified scientific arrays using optional
+PyVista/VTK dependencies. Its cavity state is an incoherent modal mixture:
+it displays per-mode phase and power plus total intensity, not a unique total
+phase. Outer iterations carry `time_kind=outer_iteration`; they are not thermal
+or optical physical seconds. A separate externally seeded amplifier API in
+`hoyag.seeded_amplifier` updates one shared crystal population state across
+declared disk encounters. Hardware topology and seed parameters are still
+incomplete, so that API does not claim a calibrated multipass design.
+
+Historical Stage 7W results above remain tied to their saved revisions.
+Local software, bounded numerical, viewer, full-campaign, experimental, and
+dataset statuses are reported separately in `docs/STAGE7W_RESULTS.md`.
