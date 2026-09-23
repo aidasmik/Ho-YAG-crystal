@@ -1,0 +1,402 @@
+{
+  "source_revision": "acaef27bda08c92f0e198f37813cb52340e0f864",
+  "run_id": 35854247190,
+  "run_status": "in_progress",
+  "workflow_conclusion": null,
+  "testing": {
+    "new_tests": 33,
+    "failures": 0,
+    "independent_audit_failures": [],
+    "artifact_id": 10747110217,
+    "sha256": "fe98e31709cb2bea329b377ad832b726816a83d29beb9ee07204256f05d6d798"
+  },
+  "cases": [
+    {
+      "id": "reference",
+      "status": "completed",
+      "solver_status": "converged polarization-resolved adiabatic closure",
+      "wall_seconds": 164.60169902899997,
+      "iteration_count": 7,
+      "metrics": {
+        "coupled_converged": true,
+        "eigen_residual": 3.3026960715078316e-15,
+        "heat_W": 0.6547475427049965,
+        "mechanical_residual": 1.6763165396201033e-14,
+        "mode_power_W": [
+          0.3947342173154534,
+          0.3952999587454761
+        ],
+        "optical_population_error_relative": 2.895905328575698e-06,
+        "output_W": 0.7900341760609295,
+        "peak_disk_K": 302.3319193908108,
+        "peak_plate_K": 293.71902781024323,
+        "pump_absorbed_W": 2.210987837779745,
+        "thermal_energy_error_relative": 1.4363057998643287e-13
+      },
+      "last_iteration": {
+        "all_convergence_gates_passed": true,
+        "assembly_heat_W": 0.6547066104908388,
+        "assembly_seconds": 1.1203271050000012,
+        "convergence_gates": {
+          "candidate_bank_completed": true,
+          "displacement_change_m": true,
+          "eigen_residual": true,
+          "field_residual": true,
+          "gain_stationarity": true,
+          "heat_residual": true,
+          "loss_residual": true,
+          "mixture_relative_change": true,
+          "mixture_stationarity": true,
+          "modal_gain_change": true,
+          "modal_power_relative_change": true,
+          "no_new_branch_replacement": true,
+          "no_split_polarization_family": true,
+          "output_relative_change": true,
+          "periodic_optical_state": true,
+          "subspace_residual": true,
+          "temperature_change_K": true
+        },
+        "disk_peak_temperature_K": 302.3319193908108,
+        "displacement_change_m": 6.706332038265528e-12,
+        "eigen_converged": true,
+        "eigen_operator_calls": 357,
+        "eigen_residual": 3.3026960715078316e-15,
+        "eigen_seconds": 6.106433793999997,
+        "field_rate_log_gain_mismatch": 0.0001628770364091336,
+        "field_residual": 3.3584344734915116e-05,
+        "gain_stationarity": 1.1761473155472157e-07,
+        "heat_W": 0.6547475427049965,
+        "heat_residual": 0.00017905802339556457,
+        "iteration": 7,
+        "iteration_seconds": 10.236483657999969,
+        "local_energy_error": 2.895905328575698e-06,
+        "loss_residual": 2.1142955441977307e-11,
+        "mechanical_residual": 1.6763165396201033e-14,
+        "mixture_relative_change": 3.386537506140849e-05,
+        "mixture_stationarity": 1.1944069799695549e-05,
+        "modal_gain_change": 1.984857058920375e-08,
+        "modal_log_roundtrip_gain": [
+          0.022394978349255554,
+          0.022395254394216888
+        ],
+        "modal_power_relative_change": 1.3057327094562225e-05,
+        "optical_cycles": 20,
+        "optical_period_cycles": 1,
+        "optical_periodic_converged": true,
+        "optical_seconds": 2.327440017000015,
+        "output_W": 0.7900341760609295,
+        "output_W_by_mode": [
+          0.3947342173154534,
+          0.3952999587454761
+        ],
+        "output_relative_change": 1.3057327094562225e-05,
+        "passive_log_roundtrip_loss": [
+          0.025715510298536404,
+          0.0257155099521414
+        ],
+        "photon_seed_reset_branches": [],
+        "plate_peak_temperature_K": 293.71902781024323,
+        "projection_error": 2.5893901966167476e-05,
+        "replay_seconds": 0.5479312960000016,
+        "split_boundary_pairs": [],
+        "subspace_residual": 8.44277718046681e-06,
+        "temperature_change_K": 0.000691344302424568,
+        "thermal_balance_error_W": 9.403589018575076e-14,
+        "tracking": {
+          "candidate_completeness_verified": false,
+          "candidate_residuals": [
+            1.834490959226134e-14,
+            1.7966115838023086e-14,
+            1.3416735859675449e-10,
+            8.321586379132566e-09
+          ],
+          "exact_degenerate_groups": [],
+          "full_bank_assignment": [
+            0,
+            1
+          ],
+          "full_bank_overlap_squared": [
+            0.9999999988720916,
+            0.9999999988721342
+          ],
+          "matched_overlap_squared": [
+            0.99999999887209,
+            0.9999999988721346
+          ],
+          "maximum_complex_eigenvalue_separation_rotated": 1e-12,
+          "maximum_omitted_log_power_growth": -0.0095929233872732,
+          "minimum_complex_boundary_gap": 1.4563466211621865,
+          "minimum_retained_log_power_growth": -0.0034832847462492253,
+          "photon_seed_reset_branches": [],
+          "retained_candidate_indices": [
+            0,
+            1
+          ],
+          "split_boundary_pairs": []
+        }
+      },
+      "artifact_id": 10746907557,
+      "artifact_sha256": "610788721fc5f3ef64aef25cc8aca9ee08bcdbc25b9ac64f5d1e6e9d964072c4",
+      "source_hash": "5a940796f47fc14a544ef26a6c1d569e1cb590e73f09eed42095eceec44f326d",
+      "source_revision": "acaef27bda08c92f0e198f37813cb52340e0f864"
+    },
+    {
+      "id": "modes_4",
+      "status": "not_converged",
+      "solver_status": "insufficient_mode_capacity: retained boundary splits a polarization family",
+      "wall_seconds": 84.048595783,
+      "iteration_count": 1,
+      "metrics": {
+        "coupled_converged": false,
+        "eigen_residual": null,
+        "heat_W": 0.6424618271711389,
+        "mechanical_residual": 1.7354887432217796e-14,
+        "mode_power_W": [
+          0.40939018555273027,
+          0.40939018555273043,
+          1.0965403757410913e-08,
+          1.0965403757410911e-08
+        ],
+        "optical_population_error_relative": 4.329005811442795e-06,
+        "output_W": 0.8187803930362683,
+        "peak_disk_K": 302.20515114050414,
+        "peak_plate_K": 293.70894460383875,
+        "pump_absorbed_W": 2.220694933770274,
+        "thermal_energy_error_relative": 1.5293474806426635e-13
+      },
+      "last_iteration": {
+        "all_convergence_gates_passed": false,
+        "assembly_heat_W": 0.6424618271711389,
+        "assembly_seconds": 1.3244028769999971,
+        "disk_peak_temperature_K": 302.20515114050414,
+        "displacement_change_m": null,
+        "eigen_converged": false,
+        "eigen_operator_calls": 291,
+        "eigen_residual": null,
+        "eigen_seconds": 5.775592760999984,
+        "field_residual": null,
+        "heat_W": 0.6424618271711389,
+        "heat_residual": null,
+        "iteration": 1,
+        "iteration_seconds": 82.142425556,
+        "local_energy_error": 4.329005811442795e-06,
+        "loss_residual": null,
+        "mechanical_residual": 1.7354887432217796e-14,
+        "optical_cycles": 415,
+        "optical_period_cycles": 1,
+        "optical_periodic_converged": true,
+        "optical_seconds": 74.16992366599999,
+        "output_W": 0.8187803930362683,
+        "output_W_by_mode": [
+          0.40939018555273027,
+          0.40939018555273043,
+          1.0965403757410913e-08,
+          1.0965403757410911e-08
+        ],
+        "output_relative_change": null,
+        "photon_seed_reset_branches": [],
+        "plate_peak_temperature_K": 293.70894460383875,
+        "projection_error": 8.539639472970872e-05,
+        "replay_seconds": 0.7846628190000047,
+        "split_boundary_pairs": [
+          {
+            "best_constant_polarization_overlap_squared": 0.9996082815081604,
+            "complex_relative_gap": 1.62677146943758e-05,
+            "omitted_index": 2,
+            "retained_index": 3,
+            "vector_overlap_squared": 0.00022112109688819488
+          }
+        ],
+        "subspace_residual": null,
+        "temperature_change_K": null,
+        "thermal_balance_error_W": 9.825473767932635e-14,
+        "tracking": {
+          "candidate_completeness_verified": false,
+          "candidate_residuals": [
+            8.48972663145761e-12,
+            4.156527373353596e-11,
+            1.8300658749760755e-08,
+            1.836542695887802e-08,
+            6.3796634903067424e-15,
+            7.517279546569345e-15
+          ],
+          "full_bank_assignment": [
+            4,
+            5,
+            0,
+            1
+          ],
+          "full_bank_overlap_squared": [
+            0.9031867251139277,
+            0.9031892074087994,
+            0.24729741266665156,
+            0.2473009390001977
+          ],
+          "maximum_omitted_log_power_growth": -0.010866514634117676,
+          "minimum_complex_boundary_gap": 1.617956990624078e-05,
+          "minimum_retained_log_power_growth": -0.010866241172069802,
+          "retained_candidate_indices": [
+            5,
+            4,
+            0,
+            3
+          ],
+          "split_boundary_pairs": [
+            {
+              "best_constant_polarization_overlap_squared": 0.9996082815081604,
+              "complex_relative_gap": 1.62677146943758e-05,
+              "omitted_index": 2,
+              "retained_index": 3,
+              "vector_overlap_squared": 0.00022112109688819488
+            }
+          ]
+        }
+      },
+      "artifact_id": 10746348640,
+      "artifact_sha256": "9aab26fbe36e867f5ba7bf31b6adfb290a3498bb4255cb2b6ffad71d0ce41845",
+      "source_hash": "5a940796f47fc14a544ef26a6c1d569e1cb590e73f09eed42095eceec44f326d",
+      "source_revision": "acaef27bda08c92f0e198f37813cb52340e0f864"
+    },
+    {
+      "id": "sensitivity_support_free",
+      "status": "completed",
+      "solver_status": "converged polarization-resolved adiabatic closure",
+      "wall_seconds": 323.934576711,
+      "iteration_count": 7,
+      "metrics": {
+        "coupled_converged": true,
+        "eigen_residual": 4.1592989862547974e-15,
+        "heat_W": 0.6547485407846778,
+        "mechanical_residual": 1.1098088625883984e-14,
+        "mode_power_W": [
+          0.39475351876487685,
+          0.39527828907047935
+        ],
+        "optical_population_error_relative": 2.8958476258708004e-06,
+        "output_W": 0.7900318078353561,
+        "peak_disk_K": 302.33199431652406,
+        "peak_plate_K": 293.71902938626334,
+        "pump_absorbed_W": 2.2109870034424204,
+        "thermal_energy_error_relative": 1.5431361409638703e-13
+      },
+      "last_iteration": {
+        "all_convergence_gates_passed": true,
+        "assembly_heat_W": 0.6547075955189794,
+        "assembly_seconds": 1.965245202999995,
+        "convergence_gates": {
+          "candidate_bank_completed": true,
+          "displacement_change_m": true,
+          "eigen_residual": true,
+          "field_residual": true,
+          "gain_stationarity": true,
+          "heat_residual": true,
+          "loss_residual": true,
+          "mixture_relative_change": true,
+          "mixture_stationarity": true,
+          "modal_gain_change": true,
+          "modal_power_relative_change": true,
+          "no_new_branch_replacement": true,
+          "no_split_polarization_family": true,
+          "output_relative_change": true,
+          "periodic_optical_state": true,
+          "subspace_residual": true,
+          "temperature_change_K": true
+        },
+        "disk_peak_temperature_K": 302.33199431652406,
+        "displacement_change_m": 5.562902674627117e-12,
+        "eigen_converged": true,
+        "eigen_operator_calls": 357,
+        "eigen_residual": 4.1592989862547974e-15,
+        "eigen_seconds": 8.143757031000007,
+        "field_rate_log_gain_mismatch": 0.00016287401792725422,
+        "field_residual": 3.297963964973883e-05,
+        "gain_stationarity": 1.1766057364873128e-07,
+        "heat_W": 0.6547485407846778,
+        "heat_residual": 0.00017909386317083864,
+        "iteration": 7,
+        "iteration_seconds": 16.41172281400003,
+        "local_energy_error": 2.8958476258708004e-06,
+        "loss_residual": 2.109078189871383e-11,
+        "mechanical_residual": 1.1098088625883984e-14,
+        "mixture_relative_change": 3.388688835345098e-05,
+        "mixture_stationarity": 1.1955615221956655e-05,
+        "modal_gain_change": 1.9885463210106424e-08,
+        "modal_log_roundtrip_gain": [
+          0.022394986413008973,
+          0.022395243130266244
+        ],
+        "modal_power_relative_change": 1.3062529065697603e-05,
+        "optical_cycles": 20,
+        "optical_period_cycles": 1,
+        "optical_periodic_converged": true,
+        "optical_seconds": 5.093029191000028,
+        "output_W": 0.7900318078353561,
+        "output_W_by_mode": [
+          0.39475351876487685,
+          0.39527828907047935
+        ],
+        "output_relative_change": 1.3062529065697605e-05,
+        "passive_log_roundtrip_loss": [
+          0.02571551016325722,
+          0.025715509824139865
+        ],
+        "photon_seed_reset_branches": [],
+        "plate_peak_temperature_K": 293.71902938626334,
+        "projection_error": 2.5893605032578648e-05,
+        "replay_seconds": 1.001976792999983,
+        "split_boundary_pairs": [],
+        "subspace_residual": 8.44628468514001e-06,
+        "temperature_change_K": 0.0006955832883477342,
+        "thermal_balance_error_W": 1.0103029524088925e-13,
+        "tracking": {
+          "candidate_completeness_verified": false,
+          "candidate_residuals": [
+            1.624926742307099e-14,
+            1.633538876278539e-14,
+            2.36930136896591e-10,
+            2.9047506428935484e-08
+          ],
+          "exact_degenerate_groups": [],
+          "full_bank_assignment": [
+            0,
+            1
+          ],
+          "full_bank_overlap_squared": [
+            0.9999999989123418,
+            0.9999999989124224
+          ],
+          "matched_overlap_squared": [
+            0.9999999989123445,
+            0.9999999989124211
+          ],
+          "maximum_complex_eigenvalue_separation_rotated": 1e-12,
+          "maximum_omitted_log_power_growth": -0.009593236037365118,
+          "minimum_complex_boundary_gap": 1.4563364826020007,
+          "minimum_retained_log_power_growth": -0.0034832740169116064,
+          "photon_seed_reset_branches": [],
+          "retained_candidate_indices": [
+            0,
+            1
+          ],
+          "split_boundary_pairs": []
+        }
+      },
+      "artifact_id": 10746309189,
+      "artifact_sha256": "061c6bc4c3ba8183b35af10897d8ad0e2fe4cd4a87298ab2ea7799dde735dec4",
+      "source_hash": "5a940796f47fc14a544ef26a6c1d569e1cb590e73f09eed42095eceec44f326d",
+      "source_revision": "acaef27bda08c92f0e198f37813cb52340e0f864"
+    }
+  ],
+  "expected_case_ids": [
+    "reference",
+    "modes_4",
+    "modes_8",
+    "sensitivity_support_free"
+  ],
+  "missing_case_ids": [
+    "modes_8"
+  ],
+  "full_stage7v_qualification": false,
+  "dataset_ready": false,
+  "note": "A representative result does not establish grid, mode-count, hardware or dataset qualification."
+}
