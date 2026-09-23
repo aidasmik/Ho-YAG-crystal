@@ -1,0 +1,76 @@
+name: Build detailed results README
+
+on:
+  push:
+    branches: [docs-results-readme]
+    paths:
+      - 'docs/readme_build/**'
+      - '.github/workflows/readme-results.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      MPLBACKEND: Agg
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -e '.[dev,plots]'
+      - name: Download exact audited Stage 7 artifact
+        env:
+          GH_TOKEN: \${{ github.token }}
+        run: |
+          mkdir -p /tmp/readme-artifact
+          gh api /repos/\${{ github.repository }}/actions/artifacts/10718200278/zip > /tmp/readme-artifact.zip
+          unzip -q /tmp/readme-artifact.zip -d /tmp/readme-artifact
+      - name: Generate figures from audited state
+        run: |
+          python docs/readme_build/generate.py \
+            --artifact-root /tmp/readme-artifact \
+            --output docs/results_readme
+          cp docs/readme_build/generate.py docs/results_readme/generate.py
+          cp docs/readme_build/README_short.md README.md
+          rm -rf docs/readme_build
+      - name: Verify links and repository tests
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          text=Path("README.md").read_text()
+          links=re.findall(r'!\[[^\]]*\]\(([^)]+)\)',text)
+          missing=[p for p in links if not Path(p).exists()]
+          if missing:
+              raise SystemExit("Missing README figures: "+", ".join(missing))
+          pngs=list(Path("docs/results_readme/figures").glob("*.png"))
+          if len(pngs)<17:
+              raise SystemExit(f"Expected at least 17 PNG figures, found {len(pngs)}")
+          print(f"README links valid; {len(pngs)} PNG figures generated")
+          PY
+          python -m pytest -q
+          python audit/deep_check.py
+      - name: Commit rendered documentation
+        env:
+          EXPECTED_HEAD: \${{ github.sha }}
+        run: |
+          set -euo pipefail
+          git config user.name 'Aidas Mikalauskas'
+          git config user.email '89588091+aidasmik@users.noreply.github.com'
+          git add README.md docs/results_readme docs/readme_build
+          git add -u
+          git diff --cached --check
+          git commit -m 'Document coupled thin-disk results with reproducible figures'
+          remote_head=$(git ls-remote origin refs/heads/docs-results-readme | cut -f1)
+          test "$remote_head" = "$EXPECTED_HEAD"
+          git push origin HEAD:refs/heads/docs-results-readme
