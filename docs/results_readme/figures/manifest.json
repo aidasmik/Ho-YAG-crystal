@@ -1,0 +1,70 @@
+[
+  {
+    "file": "01_resonator.png",
+    "description": "Cold-cavity design envelope"
+  },
+  {
+    "file": "02_ho_distribution.png",
+    "description": "Total Ho density used by the coupled reference"
+  },
+  {
+    "file": "03_pump_input.png",
+    "description": "Incident pump | 1907.7 nm, 10 W average"
+  },
+  {
+    "file": "04_cavity_mode.png",
+    "description": "Converged Stage 7 vector mode at disk"
+  },
+  {
+    "file": "05_output_beam.png",
+    "description": "Useful output at output coupler | 2090.3 nm"
+  },
+  {
+    "file": "06_output_phase.png",
+    "description": "Global phase arbitrary; low-intensity pixels masked"
+  },
+  {
+    "file": "07_upper_manifold.png",
+    "description": "Cycle-averaged upper laser manifold"
+  },
+  {
+    "file": "08_heat_source.png",
+    "description": "Thickness-averaged deposited heat"
+  },
+  {
+    "file": "09_disk_temperature.png",
+    "description": "Crystal temperature | front-adjacent cell layer"
+  },
+  {
+    "file": "10_assembly_temperature.png",
+    "description": "Recomputed from archived final relaxed Stage 7 heat"
+  },
+  {
+    "file": "11_front_deformation.png",
+    "description": "Thermo-mechanical crystal front displacement"
+  },
+  {
+    "file": "12_rear_deformation.png",
+    "description": "Thermo-mechanical crystal rear-HR displacement"
+  },
+  {
+    "file": "13_hot_disk_opd.png",
+    "description": "Total mean hot-disk round-trip OPD"
+  },
+  {
+    "file": "14_convergence.png",
+    "description": "Fixed-point convergence, not mesh convergence"
+  },
+  {
+    "file": "15_output_waveform.png",
+    "description": "10 ps pump does not imply 10 ps oscillator output"
+  },
+  {
+    "file": "16_lg1_input.png",
+    "description": "Seeded LG\u2080\u00b9 diagnostic | input at disk"
+  },
+  {
+    "file": "17_lg1_output.png",
+    "description": "Seeded LG\u2080\u00b9 diagnostic | output after one hot round trip"
+  }
+]
