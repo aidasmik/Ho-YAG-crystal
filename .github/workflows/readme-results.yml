@@ -30,10 +30,10 @@ jobs:
       - run: python -m pip install -e '.[dev,plots]'
       - name: Download exact audited Stage 7 artifact
         env:
-          GH_TOKEN: \${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p /tmp/readme-artifact
-          gh api /repos/\${{ github.repository }}/actions/artifacts/10718200278/zip > /tmp/readme-artifact.zip
+          gh api /repos/${{ github.repository }}/actions/artifacts/10718200278/zip > /tmp/readme-artifact.zip
           unzip -q /tmp/readme-artifact.zip -d /tmp/readme-artifact
       - name: Generate figures from audited state
         run: |
@@ -62,7 +62,7 @@ jobs:
           python audit/deep_check.py
       - name: Commit rendered documentation
         env:
-          EXPECTED_HEAD: \${{ github.sha }}
+          EXPECTED_HEAD: ${{ github.sha }}
         run: |
           set -euo pipefail
           git config user.name 'Aidas Mikalauskas'
