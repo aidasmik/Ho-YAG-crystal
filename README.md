@@ -396,3 +396,16 @@ immediate SLM irradiance are saved in `phase_mask.png`.
 The precomputed choices can also be browsed in
 `results/structured_beams/index.html`; regenerate an arbitrary random seed
 with the CLI.
+
+To use the interactive calculator, start the local app:
+
+```bash
+.venv/bin/python examples/structured_beam_app.py
+```
+
+Then open <http://127.0.0.1:8780/results/structured_beams/index.html>. Choose
+the phase mask, mask strength, seeded random Ho cluster distribution, and
+output distance, then press **Calculate**. Each run writes plots and metrics
+under `results/structured_beams/runs/<run-id>/`. The calculator performs a
+bounded weak-probe traversal using archived Stage 7W population fractions; it
+does not claim a new self-consistent pump, thermal, or mechanical solution.

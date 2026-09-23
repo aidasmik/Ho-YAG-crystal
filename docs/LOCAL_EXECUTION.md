@@ -116,3 +116,15 @@ Open `results/structured_beams/index.html` in a browser to switch among the
 seven precomputed ideal-mask results for density seed 17. This selector changes
 archived plots; it does not launch or imply a live solver run.
 Use `--plots-only` for a compact plot/summary output without `fields.npz`.
+
+To use the interactive calculator, start the local HTTP app and open its URL:
+
+```bash
+.venv/bin/python examples/structured_beam_app.py
+# http://127.0.0.1:8780/results/structured_beams/index.html
+```
+
+The form accepts the phase mask, mask strength, Ho cluster seed/count/contrast,
+cluster radius bounds, and propagation distance. **Calculate** creates a new
+run directory with `input_output_beams.png`, `ho_density.png`,
+`phase_mask.png`, and `summary.json`.

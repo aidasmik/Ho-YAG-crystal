@@ -2,6 +2,12 @@
 
 [Open the phase-mask selector](index.html) for seven precomputed mask choices.
 
+For custom calculations, start `examples/structured_beam_app.py` from the
+repository root and open the same page through
+`http://127.0.0.1:8780/results/structured_beams/index.html`. The form generates
+a new seeded clustered Ho map and applies the selected ideal phase mask when
+you press **Calculate**. Results are saved under `runs/<run-id>/`.
+
 ![Computed input and output irradiance and relative phase](input_output_beams.png)
 
 ![Imposed Ho concentration in the disk](ho_density.png)

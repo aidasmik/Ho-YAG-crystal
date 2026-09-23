@@ -3,47 +3,86 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Ho:YAG structured-beam phase masks</title>
+  <title>Ho:YAG structured-beam calculator</title>
   <style>
-    body{font:16px system-ui,sans-serif;background:#101522;color:#eef2fa;max-width:1200px;margin:0 auto;padding:24px}
-    h1{font-size:1.65rem}p{line-height:1.5;color:#c8d2e5}
-    label{display:block;margin:20px 0 8px}select{font:inherit;padding:10px;border-radius:8px;min-width:220px}
-    img{display:block;width:100%;height:auto;margin:20px 0;border-radius:8px;background:white}
-    a{color:#91ceff}.note{font-size:.9rem}
+    :root{color-scheme:dark;font:15px system-ui,sans-serif;background:#101522;color:#eef2fa}
+    body{max-width:1380px;margin:0 auto;padding:22px}
+    h1{margin:0 0 6px;font-size:1.7rem}h2{font-size:1.15rem;margin:26px 0 10px}
+    p{line-height:1.45;color:#c8d2e5}.note{font-size:.9rem;color:#aebbd0}
+    .layout{display:grid;grid-template-columns:290px 1fr;gap:24px;align-items:start}
+    .controls{background:#182237;border:1px solid #30405e;border-radius:12px;padding:16px;position:sticky;top:14px}
+    label{display:block;margin:12px 0 5px;color:#d8e2f3;font-weight:600}
+    input,select,button{box-sizing:border-box;width:100%;font:inherit;border-radius:7px;border:1px solid #506180;padding:8px;background:#0f1728;color:#eef2fa}
+    input[type=number]{font-variant-numeric:tabular-nums}button{margin-top:17px;background:#2878c8;border-color:#69b1f2;font-weight:700;cursor:pointer}button:disabled{opacity:.55;cursor:wait}
+    .status{min-height:44px;margin-top:12px;padding:9px;border-radius:7px;background:#111a2b;color:#bcd0e9;white-space:pre-wrap}
+    .status.error{color:#ffb5b5;border:1px solid #a64b55}.status.ok{color:#b8f0c6;border:1px solid #4e9764}
+    .images{min-width:0}.images img{display:block;width:100%;height:auto;margin:0 0 18px;border-radius:8px;background:#fff}
+    .metrics{width:100%;border-collapse:collapse;background:#182237;border-radius:8px;overflow:hidden}.metrics th,.metrics td{padding:8px;border-bottom:1px solid #30405e;text-align:left}.metrics th{color:#bcd0e9}
+    code{color:#a9d8ff}.pill{display:inline-block;padding:3px 7px;border-radius:10px;background:#253a5c;color:#cce5ff}
+    @media(max-width:850px){.layout{grid-template-columns:1fr}.controls{position:static}}
   </style>
 </head>
 <body>
-  <h1>Structured seed probes through clustered Ho:YAG</h1>
-  <p>Choose a <strong>precomputed ideal phase mask</strong>. The plots show calculated input and output irradiance and phase after one disk traversal and 0.25 m free space. This is a weak diagnostic probe with frozen populations, not a live recalculation.</p>
-  <label for="mask">Applied phase mask</label>
-  <select id="mask">
-    <option value="none">None</option>
-    <option value="vortex+1">Vortex +1</option>
-    <option value="vortex-1">Vortex −1</option>
-    <option value="vortex+2">Vortex +2</option>
-    <option value="defocus">Defocus</option>
-    <option value="astigmatic">Astigmatic</option>
-    <option value="axicon">Axicon</option>
-  </select>
-  <img id="maskImage" src="phase_mask.png" alt="Applied phase and Gaussian irradiance immediately before and after the ideal phase mask">
-  <img id="beamsImage" src="input_output_beams.png" alt="Computed input and output fields for four structured seed profiles">
-  <h2>Ho distribution shared by these probes</h2>
-  <img src="ho_density.png" alt="Seeded Ho-rich and Ho-poor clusters in the crystal">
-  <p class="note">The ideal mask preserves irradiance immediately across the SLM. Change the density seed or mask parameters by rerunning <code>examples/structured_beam_gallery.py</code> from the repository root. Exact settings and hashes are saved with each mask result.</p>
+  <h1>Ho:YAG structured-beam calculator</h1>
+  <p>Choose a beam mask and a seeded random Ho distribution, then press Calculate. The button runs the numerical weak-probe propagation against the archived Stage 7W population state and returns new plots. It does not fabricate frames or reuse a precomputed image.</p>
+  <div class="layout">
+    <form class="controls" id="calculator">
+      <label for="phase_mask">Phase mask</label>
+      <select id="phase_mask" name="phase_mask">
+        <option value="none">None</option><option value="vortex+1">Vortex +1</option>
+        <option value="vortex-1">Vortex −1</option><option value="vortex+2">Vortex +2</option>
+        <option value="defocus">Defocus</option><option value="astigmatic">Astigmatic</option>
+        <option value="axicon">Axicon</option>
+      </select>
+      <label for="phase_strength_rad">Mask strength (rad)</label>
+      <input id="phase_strength_rad" name="phase_strength_rad" type="number" value="3.14159265" min="-50" max="50" step="0.1">
+      <label for="density_seed">Ho distribution seed</label>
+      <input id="density_seed" name="density_seed" type="number" value="17" min="-2000000000" max="2000000000" step="1">
+      <label for="cluster_count">Cluster count</label>
+      <input id="cluster_count" name="cluster_count" type="number" value="24" min="2" max="64" step="1">
+      <label for="cluster_contrast">Cluster contrast</label>
+      <input id="cluster_contrast" name="cluster_contrast" type="number" value="0.27" min="0" max="1" step="0.01">
+      <label for="cluster_min_radius_mm">Smallest cluster radius (mm)</label>
+      <input id="cluster_min_radius_mm" name="cluster_min_radius_mm" type="number" value="0.20" min="0.05" max="2.5" step="0.05">
+      <label for="cluster_max_radius_mm">Largest cluster radius (mm)</label>
+      <input id="cluster_max_radius_mm" name="cluster_max_radius_mm" type="number" value="1.25" min="0.05" max="2.5" step="0.05">
+      <label for="post_disk_distance_m">Output distance after disk (m)</label>
+      <input id="post_disk_distance_m" name="post_disk_distance_m" type="number" value="0.25" min="0" max="2" step="0.01">
+      <button id="calculate" type="button">Calculate</button>
+      <div id="status" class="status">Waiting for a calculation.</div>
+      <p class="note">The phase mask is ideal and phase-only: irradiance is unchanged immediately across the SLM. The Ho map is regenerated from the seed on every calculation.</p>
+    </form>
+    <main class="images">
+      <div id="resultSummary"><span class="pill">Saved example</span> Select parameters and calculate to replace these plots.</div>
+      <img id="phaseImage" src="phase_mask.png" alt="Applied phase mask and immediate irradiance check">
+      <img id="beamsImage" src="input_output_beams.png" alt="Calculated input and output beam irradiance and phase">
+      <img id="densityImage" src="ho_density.png" alt="Calculated random clustered Ho distribution">
+      <h2>Calculated modal powers</h2>
+      <table class="metrics" id="metrics"><tbody><tr><th>Mode</th><th>Output power</th><th>Disk gain</th></tr></tbody></table>
+      <p class="note">Model scope: one disk traversal plus free-space propagation, frozen archived inversion fractions, and weak-signal gain. A changed Ho map is not silently claimed to be a new self-consistent pump/thermal/mechanical operating point.</p>
+    </main>
+  </div>
   <script>
-    const paths={
-      'none':'.',
-      'vortex+1':'vortex_plus1',
-      'vortex-1':'masks/vortex_minus1',
-      'vortex+2':'masks/vortex_plus2',
-      'defocus':'masks/defocus',
-      'astigmatic':'masks/astigmatic',
-      'axicon':'masks/axicon'
-    };
-    document.getElementById('mask').addEventListener('change',event=>{
-      const folder=paths[event.target.value];
-      document.getElementById('maskImage').src=folder+'/phase_mask.png';
-      document.getElementById('beamsImage').src=folder+'/input_output_beams.png';
+    const form=document.getElementById('calculator'),statusBox=document.getElementById('status');
+    const calculateButton=document.getElementById('calculate');
+    const value=id=>document.getElementById(id).value;
+    function image(url){return url+'?cache='+Date.now()}
+    function renderResult(result){
+      const s=result.summary;
+      document.getElementById('phaseImage').src=image(result.images.phase);
+      document.getElementById('beamsImage').src=image(result.images.beams);
+      document.getElementById('densityImage').src=image(result.images.density);
+      const phase=s.phase_mask;
+      document.getElementById('resultSummary').innerHTML=`<span class="pill">Calculated ${result.run_id}</span> Mask: <strong>${phase.name}</strong>; Ho range: ${(s.density_min_active_m3/1e26).toFixed(3)}–${(s.density_max_active_m3/1e26).toFixed(3)} ×10²⁶ ions/m³; immediate SLM irradiance relative change: ${phase.maximum_local_irradiance_relative_change.toExponential(2)}`;
+      const rows=Object.entries(s.modes).map(([name,m])=>`<tr><td>${name}</td><td>${m.output_power_W.toFixed(6)} W</td><td>${m.disk_power_gain.toFixed(6)}×</td></tr>`).join('');
+      document.getElementById('metrics').innerHTML=`<tbody><tr><th>Mode</th><th>Output power</th><th>Disk gain</th></tr>${rows}</tbody>`;
+    }
+    calculateButton.addEventListener('click',async ()=>{
+      calculateButton.disabled=true;statusBox.className='status';statusBox.textContent='Calculating numerical propagation…';
+      const payload={phase_mask:value('phase_mask'),phase_strength_rad:value('phase_strength_rad'),density_seed:value('density_seed'),cluster_count:value('cluster_count'),cluster_contrast:value('cluster_contrast'),cluster_min_radius_mm:value('cluster_min_radius_mm'),cluster_max_radius_mm:value('cluster_max_radius_mm'),post_disk_distance_m:value('post_disk_distance_m')};
+      try{const response=await fetch('/calculate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const result=await response.json();if(!response.ok)throw new Error(result.error||'calculation failed');renderResult(result);statusBox.className='status ok';statusBox.textContent='Calculation complete. The plots and metrics above are from the new run.';}
+      catch(error){statusBox.className='status error';statusBox.textContent='Calculation failed: '+error.message+'\nStart the local app with: .venv/bin/python examples/structured_beam_app.py';}
+      finally{calculateButton.disabled=false;}
     });
   </script>
 </body>
