@@ -1,0 +1,87 @@
+name: Diagnose and launch extended coupled qualification
+on:
+  push:
+    branches: [stage7v-retry-20260923]
+    paths: ['audit/stage7v_eigen_diagnosis.py','.github/workflows/stage7v-extended-retry.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+      MPLBACKEND: Agg
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install the same numerical versions as the archived campaign
+        run: python -m pip install numpy==2.4.6 scipy==1.17.1 matplotlib==3.11.2 pytest==9.1.1 -e '.[dev,plots]'
+      - name: Retrieve and verify archived states
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api /repos/${{ github.repository }}/actions/artifacts/10740066509/zip > /tmp/stage7v-evidence.zip
+          echo '861c3e54f0addccdedda8b909062bc971aaf4446b6adf488f02dd9e28a74220a  /tmp/stage7v-evidence.zip' | sha256sum -c -
+      - name: Check whether the one-mode field is switching polarization branches
+        run: |
+          python audit/stage7v_eigen_diagnosis.py \
+            --archive /tmp/stage7v-evidence.zip --output results/stage7v/eigen_diagnosis
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage7v-frozen-eigen-diagnosis
+          path: results/stage7v/eigen_diagnosis
+          retention-days: 30
+  launch:
+    needs: diagnose
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+    steps:
+      - name: Launch exactly one coupled-only run on unchanged main
+        run: |
+          set -euo pipefail
+          expected=88cd102ea4c0d34eeb49a22639721ff4957f062b
+          actual=$(gh api "repos/$REPO/branches/main" --jq .commit.sha)
+          test "$actual" = "$expected"
+          mkdir -p /tmp/launch
+          gh api "repos/$REPO/actions/workflows/stage7v.yml/runs?event=workflow_dispatch&branch=main&per_page=30" > /tmp/launch/before.json
+          active=$(jq '[.workflow_runs[] | select(.status != "completed")] | length' /tmp/launch/before.json)
+          if [ "$active" -ne 0 ]; then
+            echo 'An existing manually dispatched main campaign is active; not starting a duplicate.'
+            jq '.workflow_runs[] | select(.status != "completed") | {id,html_url,status,head_sha}' /tmp/launch/before.json
+            exit 1
+          fi
+          gh workflow run stage7v.yml --repo "$REPO" --ref main -f scope=coupled -f seconds_per_case=3600
+          printf '{"scope":"coupled","seconds_per_case":3600,"main_revision":"%s","acceptance_criteria_changed":false,"dispatch_requested":true}\n' "$expected" > /tmp/launch/request.json
+          cat /tmp/launch/request.json
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            gh api "repos/$REPO/actions/workflows/stage7v.yml/runs?event=workflow_dispatch&branch=main&per_page=30" > /tmp/launch/after.json
+            jq --slurpfile old /tmp/launch/before.json '[.workflow_runs[] | . as $run | select(($old[0].workflow_runs | map(.id) | index($run.id)) == null) | {id,html_url,status,head_sha,event}]' /tmp/launch/after.json > /tmp/launch/new_runs.json
+            count=$(jq length /tmp/launch/new_runs.json)
+            if [ "$count" -gt 0 ]; then
+              echo 'EXTENDED_COUPLED_RUN'
+              cat /tmp/launch/new_runs.json
+              exit 0
+            fi
+            sleep 3
+          done
+          echo 'Dispatch succeeded but run ID did not become visible within this finite discovery interval.'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage7v-extended-run-launch
+          path: /tmp/launch
+          retention-days: 30
