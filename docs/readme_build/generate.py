@@ -42,7 +42,7 @@ def main():
     history_p=locate(args.artifact_root,"history.csv")
     verify_p=locate(args.artifact_root,"verification.json")
     shutil.copy2(summary_p,data/"stage7_summary.json")
-    shutil.copy2(history_p,data/"stage7_history.csv")
+    (data/"stage7_history.csv").write_text("\n".join(history_p.read_text().splitlines())+"\n")
     shutil.copy2(verify_p,data/"audit_verification.json")
 
     S=json.loads(summary_p.read_text())
