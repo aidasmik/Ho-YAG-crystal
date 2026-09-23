@@ -12,6 +12,8 @@ you press **Calculate**. Results are saved under `runs/<run-id>/`.
 
 ![Centerline side profiles of input and output irradiance](beam_side_profiles.png)
 
+![Incoming beam footprints over the Ho concentration entrance slice](beam_on_ho_density.png)
+
 ![Imposed Ho concentration in the disk](ho_density.png)
 
 ![Ideal SLM phase and unchanged immediate irradiance](phase_mask.png)
@@ -47,6 +49,14 @@ were interpolated and frozen during these weak seeded probes. Pump, heat,
 mechanics, saturation, and multipass hardware were not recomputed for the
 new concentration. This gallery is a controlled optical illustration, not
 a new self-consistent laser operating point.
+
+The beam overlay is calculated from each input complex field and the generated
+entrance-slice concentration. In this weak-probe model the concentration map
+changes only the real scalar gain term, while the archived population fractions
+and refractive, thermal, and mechanical states remain frozen. Therefore a new
+map can change local amplitude and output power without visibly bending the
+wavefront. Shape distortion requires a self-consistent index, thermal,
+mechanical solve or a saturated-gain propagation with stronger spatial gain.
 
 Rebuild with `python examples/structured_beam_gallery.py`. Select an ideal
 phase mask using `--phase-mask none|vortex+1|vortex-1|vortex+2|defocus|astigmatic|axicon`.

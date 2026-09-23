@@ -57,6 +57,7 @@
       <img id="phaseImage" src="phase_mask.png" alt="Applied phase mask and immediate irradiance check">
       <img id="beamsImage" src="input_output_beams.png" alt="Calculated input and output beam irradiance and phase">
       <img id="profilesImage" src="beam_side_profiles.png" alt="Centerline side profiles of input and output beam irradiance">
+      <img id="beamDensityImage" src="beam_on_ho_density.png" alt="Calculated incoming beam footprints over the Ho concentration entrance slice">
       <img id="densityImage" src="ho_density.png" alt="Calculated random clustered Ho distribution">
       <h2>Calculated modal powers</h2>
       <table class="metrics" id="metrics"><tbody><tr><th>Mode</th><th>Output power</th><th>Disk gain</th></tr></tbody></table>
@@ -73,6 +74,7 @@
       document.getElementById('phaseImage').src=image(result.images.phase);
       document.getElementById('beamsImage').src=image(result.images.beams);
       document.getElementById('profilesImage').src=image(result.images.profiles);
+      document.getElementById('beamDensityImage').src=image(result.images.beam_density);
       document.getElementById('densityImage').src=image(result.images.density);
       const phase=s.phase_mask;
       document.getElementById('resultSummary').innerHTML=`<span class="pill">Calculated ${result.run_id}</span> Mask: <strong>${phase.name}</strong>; Ho range: ${(s.density_min_active_m3/1e26).toFixed(3)}–${(s.density_max_active_m3/1e26).toFixed(3)} ×10²⁶ ions/m³; immediate SLM irradiance relative change: ${phase.maximum_local_irradiance_relative_change.toExponential(2)}`;

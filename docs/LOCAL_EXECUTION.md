@@ -95,8 +95,8 @@ not relax the existing numerical acceptance thresholds.
 ```
 
 This generates `results/structured_beams/input_output_beams.png`,
-`beam_side_profiles.png`, `ho_density.png`, `phase_mask.png`, `fields.npz`, and
-`summary.json`. Gaussian, LG(0,+1), LG(0,+2), HG(1,1), Bessel-Gaussian needle,
+`beam_side_profiles.png`, `beam_on_ho_density.png`, `ho_density.png`,
+`phase_mask.png`, `fields.npz`, and `summary.json`. Gaussian, LG(0,+1), LG(0,+2), HG(1,1), Bessel-Gaussian needle,
 and order-8 super-Gaussian flattop complex inputs each have 1 W integrated
 power. The
 default Ho map contains 24 reproducible, randomly placed rich and poor

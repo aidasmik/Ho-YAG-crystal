@@ -109,6 +109,7 @@ def run_calculation(values):
             for key, filename in {
                 'beams': 'input_output_beams.png',
                 'profiles': 'beam_side_profiles.png',
+                'beam_density': 'beam_on_ho_density.png',
                 'density': 'ho_density.png',
                 'phase': 'phase_mask.png',
             }.items()

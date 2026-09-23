@@ -391,7 +391,9 @@ The output plane is one 1-mm disk traversal plus 0.25 m free space. It does
 not re-solve the pump, heat, or mechanics after changing the dopant map.
 Run `.venv/bin/python examples/structured_beam_gallery.py` to regenerate
 `results/structured_beams/input_output_beams.png`, `beam_side_profiles.png`,
-and `ho_density.png`.
+`beam_on_ho_density.png`, and `ho_density.png`. The overlay uses the generated
+entrance-slice Ho concentration as the background and calculated input
+irradiance contours as the beam footprint.
 `--phase-mask` selects `none`, `vortex+1`, `vortex-1`, `vortex+2`,
 `defocus`, `astigmatic`, or `axicon`; the ideal applied phase and unchanged
 immediate SLM irradiance are saved in `phase_mask.png`. Centerline input/output

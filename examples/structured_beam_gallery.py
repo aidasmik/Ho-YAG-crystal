@@ -101,6 +101,41 @@ def draw_side_profiles(result, path):
     plt.close(fig)
 
 
+def draw_beam_on_density(result, path):
+    """Overlay each incoming irradiance footprint on the crystal entrance Ho map."""
+    grid=result['grid']
+    extent=[grid.x[0]*1e3,grid.x[-1]*1e3,grid.y[0]*1e3,grid.y[-1]*1e3]
+    density=result['density'].values_m3/1e26
+    entrance=np.ma.masked_where(density[0] <= 0,density[0])
+    rows=list(result['outcomes'].items())
+    fig,axes=plt.subplots(2,3,figsize=(13,8),constrained_layout=True)
+    axes=np.asarray(axes).ravel()
+    cmap=plt.get_cmap('viridis').copy();cmap.set_bad('#e6e8ec')
+    low=float(entrance.min()); high=float(entrance.max())
+    for ax,(name,case) in zip(axes,rows):
+        background=ax.imshow(entrance,origin='lower',extent=extent,cmap=cmap,
+                            vmin=low,vmax=high,interpolation='nearest')
+        irradiance=abs(case['input_field'])**2
+        normalized=irradiance/max(float(irradiance.max()),1e-30)
+        levels=(.1,.3,.6,.9)
+        ax.contour(grid.x*1e3,grid.y*1e3,normalized,levels=levels,
+                   colors='white',linewidths=(.8,1.0,1.2,1.5))
+        ax.set_title(name)
+        ax.set_xlabel('x (mm)');ax.set_ylabel('y (mm)')
+        ax.set_xlim(-2,2);ax.set_ylim(-2,2);ax.set_aspect('equal')
+        ax.text(.03,.04,'white contours: 10–90% input Imax',transform=ax.transAxes,
+                color='white',fontsize=7,ha='left',va='bottom',
+                bbox={'facecolor':'black','alpha':.35,'pad':2,'edgecolor':'none'})
+    fig.colorbar(background,ax=axes.tolist(),shrink=.86,
+                 label='Ho concentration at entrance (10²⁶ ions/m³)')
+    fig.suptitle('Incoming beam footprints on the Ho:YAG crystal entrance slice\n'
+                 'Background: generated concentration; white contours: calculated input irradiance',
+                 fontsize=14)
+    path.parent.mkdir(parents=True,exist_ok=True)
+    fig.savefig(path,dpi=160)
+    plt.close(fig)
+
+
 def draw_density(result,path):
     grid=result['grid']; density=result['density'].values_m3/1e26
     z_edges=np.asarray(result['z_edges_m'])
@@ -181,6 +216,7 @@ def main():
     output.mkdir(parents=True,exist_ok=True)
     draw_beams(result,output/'input_output_beams.png')
     draw_side_profiles(result,output/'beam_side_profiles.png')
+    draw_beam_on_density(result,output/'beam_on_ho_density.png')
     draw_density(result,output/'ho_density.png')
     draw_phase_mask(result,output/'phase_mask.png')
     archive=output/'fields.npz'
