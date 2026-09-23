@@ -1,113 +1,360 @@
-# Ho:YAG crystal simulation
+# Ho:YAG thin-disk laser — model, results and validation
 
-## Audit corrections — API 0.8
+This repository reconstructs and extends a Ho:YAG laser model into a **10 mm diameter × 1 mm thin-disk resonator** with picosecond pumping, four-manifold gain dynamics, a finite cooling plate, thermoelastic deformation, photoelasticity and a self-consistent vector hot-cavity calculation.
 
-The Stage 0–7 audit defects are corrected. All spatial population results now use
-**(manifold,z,y,x)**; legacy single-pulse archives require explicit axis conversion.
-The weak reference preserves the original complex pulse, and Stage 5/7 absorption
-is bound to a shared, documented pump spectrum. See `docs/AUDIT_FIXES_STAGE0_7.md`
-and `results/audit_fixes/verification.json` for migration and executed checks.
-Fixed-point convergence is still not a claim of mesh or experimental validation.
+The numerical core has passed the Stage 0–7 software/physics audit and API-0.8 corrections. The current reference solution is suitable for numerical research and sensitivity studies, but it is **not yet an experimentally calibrated digital twin** and is **not yet qualified as ground truth for NN/SLM training**. Full mesh/mode-count refinement and calibration of the real crystal–bond–cooler assembly remain required.
 
+---
 
-Reconstruction and extension of the Ho:YAG laser/thermal model of Rupp, Eichhorn and Kieleck.
+## 1. Reference laser and cooling assembly
 
-The original Rupp rod is retained as a validation case. The active working geometry is a **Ho:YAG thin disk: 10 mm diameter x 1 mm thickness**.
+| Quantity | Reference value |
+|---|---:|
+| Active medium | Ho:YAG |
+| Crystal | **10 mm diameter × 1 mm thickness** |
+| Ho density | **1.52 × 10²⁶ m⁻³**, uniform in the current coupled reference |
+| Pump | **1907.7 nm, 10 ps FWHM, 1 mJ, 10 kHz** |
+| Incident average pump power | **10 W** |
+| Pump 1/e² radius | **0.5 mm** |
+| Laser wavelength | **2090.3 nm** |
+| Disk rear signal reflectivity | **99.95%** |
+| Disk rear pump reflectivity | **99.5%** |
+| Air gap | **250 mm** |
+| Output coupler | **500 mm ROC, 2% transmission** |
+| Other signal loss | **0.5% per round trip** |
+| Cooling plate | **20 mm diameter × 3 mm copper**, illustrative |
+| Coolant reference | **293.15 K** |
+| Crystal–plate thermal conductance | **1 × 10⁵ W m⁻² K⁻¹**, assumed |
+| Plate–coolant conductance | **1 × 10⁴ W m⁻² K⁻¹**, assumed |
 
-## Thin-disk resonator
+![Reference resonator](docs/results_readme/figures/01_resonator.png)
 
-Stage 4R adds a proposed two-mirror setup: the disk's plane rear HR coating (99.9% assumed reflectivity) and a concave 3%-transmission output coupler with 500 mm radius of curvature, separated by a 200 mm air gap. Pump and signal each traverse the disk twice on a return encounter. Additional signal round-trip loss is assumed to be 0.5%.
+The plane rear coating of the disk is one resonator mirror. The signal crosses the crystal twice per round trip. The cooling plate is represented as a finite thermal and mechanical body rather than a fixed-temperature boundary.
 
-The cold-cavity FFT field solver and pulse-pumped fixed-mode laser solver are separate fidelity levels. The latter includes shared Ho populations, gain depletion, cavity photon storage, spontaneous seeding, and periodic pump kicks. Stage 5 adds thermal phase and approximate selected-Gaussian thermal feedback; Stage 7 updates full vector eigenfields in an adiabatic cycle-averaged closure. Neither is a full coherent time-dependent 3-D oscillator model. The reported Stage 4R competing-mode run favors the Gaussian mode, not automatic vortex lasing.
+---
 
-See `config/thin_disk_resonator.json`, `docs/STAGE4R_RESONATOR.md`, and `results/resonator/summary.csv`.
+## 2. Coupled physics
 
-```
-pip install -e '.[dev]'
-pytest -q
-python examples/thin_disk_resonator.py --sweep 100 300 600 1000
-```
+The current Stage 7 closure is
 
-## Stage 5: thermal loading and optical phase
+\[
+\mathbf E(x,y)
+\rightarrow N_i(r,\phi,z,t)
+\rightarrow Q(r,\phi,z)
+\rightarrow T_\mathrm{crystal},T_\mathrm{plate}
+\rightarrow \boldsymbol{\sigma},\mathbf u
+\rightarrow \mathbf J_\mathrm{hot}(x,y)
+\rightarrow \mathbf E'(x,y).
+\]
 
-Stage 5A–D adds population-based energy accounting, steady/transient heat diffusion in the actual circular disk, rear-face contact cooling, thermo-refractive OPD, and phase on both cavity disk traversals. The thermal mesh supports asymmetric 3-D sources. The optional self-consistent optical feedback currently updates a selected axisymmetric Gaussian mode through a fitted parabolic thermal lens; it does not solve full aberrated-mode competition.
+Implemented layers include passive diffraction/GVD, four Ho manifolds, repetitive picosecond pumping, structured-light gain/depletion, the HR-backed resonator, energy-consistent lattice heating, finite crystal/plate heat diffusion, compliant crystal–plate mechanics, surface deformation, photoelastic Jones matrices and iterative vector eigenfields.
 
-```
-python -m pip install -e '.[dev,plots]'
-python examples/stage5_thermal_demo.py --nr 64 --nz 12 --iterations 10
-python examples/stage5_plot.py --result results/stage5/generated
-```
+Stage 7 is an **adiabatic cycle-averaged spatial-mode closure**: the spatial field is held fixed during one fast pump-cycle rate solve and updated on the slower outer loop. It is not carrier-resolved Maxwell–Bloch/FDTD.
 
-The thermal example uses the separate 250 mm / 2% reference cavity. At 10 W incident pump, its refined illustrative result is 0.634 W bulk heat, 8.61 K peak temperature rise, and 62.1 nm single-pass OPD variation. These predictions assume rear contact conductance 100000 W/(m^2 K), fixed room-temperature properties and explicitly flagged surrogate fluorescence energies. They are not measurements.
+---
 
-See `config/stage5_thermal.json`, `docs/STAGE5.md`, and `results/stage5/` for numerical validation, assumptions and refinement results.
+## 3. Ho distribution and excitation
 
-## Stage 6: finite plate, mechanical interface and vector wavefront
+The current coupled reference uses a uniform total Ho density inside the physical disk:
 
-Stage 6 adds a finite deformable cooling plate, reciprocal thermal contact, 3-D thermoelastic finite elements for both solids, a compliant normal/shear bond, surface deformation, cubic photoelasticity and an ordered double-pass Jones operator. The illustrative plate is 20 mm diameter x 3 mm C10100 copper. Plate geometry, bond stiffness, contact conductance and mounting are configurable assumptions. This is bonded-interface linear elasticity, not frictional separation or delamination.
+![Ho distribution](docs/results_readme/figures/02_ho_distribution.png)
 
-```
-python examples/stage6_assembly.py --stage5-state results/stage5/generated/state.npz
-python examples/stage6_plot.py --result results/stage6/generated
-```
+The optical solver then predicts where those Ho ions occupy the upper laser manifold:
 
-The finite assembly recomputes temperature from a Stage 5 heat source; it does not reuse a bath-only disk temperature as the plate temperature. The hot-disk optical operator includes both surface displacements and both polarization components. Stage 7 now feeds this assembly back into the optical mode and local gain/heat. See `docs/STAGE6.md`, `config/stage6_assembly.json` and `results/stage6/`.
+![Upper manifold](docs/results_readme/figures/07_upper_manifold.png)
 
-## Stage 7: self-consistent vector hot-cavity feedback
+These panels are different quantities: the first is the **material concentration** \(N_\mathrm{Ho}\), while the second is the cycle-averaged **excited population fraction** \(N_7/N_\mathrm{Ho}\).
 
-Stage 7 solves complex two-polarization cavity eigenfields on an FFT grid instead of fitting a Gaussian radius. Their intensity updates the shared Ho populations and cycle-resolved heat. Both disk and cooling-plate temperatures, bonded-interface stress, surface deformation and photoelastic Jones matrices are recomputed before the next field solve.
+---
 
-This is an **adiabatic, cycle-averaged modal closure**: the spatial fields are fixed within each fast pump-period calculation, while local populations and modal photon energies evolve. It does not resolve coherent mode beating or spatial-field dynamics at every round trip. The default retains one solved mode and therefore is not a global mode-stability or vortex-selection claim.
+## 4. Incoming pump and outgoing laser beam
 
-```
-python -m pip install -e '.[dev,plots]'
-python -m pytest -q
-python examples/stage7_hot_cavity.py --quick --require-converged --output results/stage7/demo
-python examples/stage7_plot.py --result results/stage7/demo
-```
+The reference source is a 1907.7 nm Gaussian pump with 0.5 mm 1/e² radius, 1 mJ pulse energy and 10 kHz repetition rate.
 
-The coarse 10 W pump demonstration converged in six outer iterations: about 0.753 W laser output, 0.672 W deposited heat, 302.358 K peak crystal temperature and 293.675 K peak plate temperature. Those values are fixed-point-converged on the demonstration grids, **not mesh-converged predictions**. Full output arrays and plots are saved as an Actions artifact; source revision, history and workflow IDs are in `results/stage7/`.
+![Pump input](docs/results_readme/figures/03_pump_input.png)
 
-See `docs/STAGE7.md` and `config/stage7_hot_cavity.json`. All 162 project tests passed on the checked Stage 7 source revision; a separate workflow requires actual coupled-demo convergence.
+The Stage 7 resonator field is a complex two-polarization eigenfield rather than a Gaussian fit:
 
-## Working geometry
+![Cavity mode](docs/results_readme/figures/04_cavity_mode.png)
 
-- Circular diameter: 10 mm; thickness: 1 mm; radius: 5 mm.
-- Single-pass FFT examples use a containing square window and zero Ho density outside the disk.
-- The Stage 4R demonstration uses radial quadrature; Stage 5 uses shared optical/thermal annular control volumes over the entire disk face.
-- Stage 7 exchanges grid-resolved vector-field intensities with the same circular material cells using explicit positive quadrature.
+For the audited coarse-grid reference, the useful cycle-averaged laser output is
 
-## Progress
+\[
+\boxed{P_\mathrm{out}=0.7530128\ \mathrm{W}}.
+\]
 
-- Stage 0 — baseline Ho:YAG material parameter database
-- Stage 0.1 — extended spectroscopy and temperature-dependent material database
-- Stage 0P — generic picosecond-pump parameter extension
-- Stage 1 — passive structured-light propagation
-- Stage 1P — picosecond passive spatiotemporal propagation
-- Stage 2P — single-pulse transient Ho:YAG population, pump absorption and saturation
-- Stage 2R — repetitive-pulse relaxation and periodic population accumulation
-- Stage 3 — spatially inhomogeneous Ho concentration N_Ho(z,y,x)
-- Stage 4 — structured 2.09 um signal amplification and gain saturation
-- Stage 4R — HR-backed cavity, output coupling, and fixed-mode pulse-pumped oscillator
-- Stage 5 — heat accounting, circular-disk diffusion, thermo-refractive phase and reduced Gaussian thermal feedback
-- Stage 6 — finite cooling-plate assembly, thermoelastic stress, surface deformation and photoelastic Jones optics
-- Stage 7 — self-consistent adiabatic vector-eigenfield/population/heat/assembly iteration
-- Stage 8 — wavefront-correction datasets and SLM/NN models (not yet implemented)
+The README build post-processes the archived converged field through the archived final hot optical state and scales the profile to that archived power. It does not execute a second nonlinear laser solution.
 
-## 250 mm / 2% output-coupler reference case
+![Laser output](docs/results_readme/figures/05_output_beam.png)
 
-The resonator configuration simulated in the September 22 reference run is preserved separately in
-`config/thin_disk_resonator_250mm_2pct.json`:
+![Laser output phase](docs/results_readme/figures/06_output_phase.png)
 
-- 10 mm diameter × 1 mm Ho:YAG disk
-- 250 mm disk-front-to-output-coupler air gap
-- 500 mm output-coupler radius of curvature
-- 2% output-coupler transmission
-- 99.95% rear signal reflectivity
-- 99.5% rear pump reflectivity
-- 0.5% additional round-trip signal loss
-- 10 ps, 10 kHz, 1907.7 nm pump
+Global optical phase is arbitrary; the phase map masks low-intensity pixels.
 
-The corresponding reference results and threshold bracket are under
-`results/resonator_250mm_2pct/`. See
-`docs/RESONATOR_250MM_2PCT_REFERENCE.md` for model scope and interpretation.
+---
+
+## 5. Energy flow and heat generation
+
+The local small-signal coefficient is
+
+\[
+g=\sigma_{e,L}N_7-\sigma_{a,L}N_8.
+\]
+
+The lattice heat ledger is
+
+\[
+Q_\mathrm{lattice}
+=
+P_\mathrm{pump,net}
+-
+P_\mathrm{stimulated}
+-
+P_\mathrm{fluorescence}
+-
+\frac{\partial U_\mathrm{ions}}{\partial t}.
+\]
+
+For the audited 10 W reference:
+
+| Cycle-averaged quantity | Power |
+|---|---:|
+| Incident pump | **10.000000 W** |
+| Pump absorbed in crystal | **2.205720 W** |
+| Pump escaping | **7.750210 W** |
+| Pump mirror/relay loss | **0.044070 W** |
+| Stimulated transfer to signal | **0.958425 W** |
+| Fluorescence leaving ionic subsystem | **0.574883 W** |
+| Deposited lattice heat | **0.671996 W** |
+| Residual ionic-storage change | **0.000346 W** |
+| Useful output-coupler power | **0.753013 W** |
+
+Stimulated transfer and useful output are not independent terms in one pump partition; intracavity loss and photon storage lie between them.
+
+![Heat source](docs/results_readme/figures/08_heat_source.png)
+
+---
+
+## 6. Crystal and cooling-plate thermal simulation
+
+The two solids satisfy
+
+\[
+\rho C_p\frac{\partial T}{\partial t}
+=
+\nabla\cdot(k\nabla T)+Q.
+\]
+
+Heat crosses the crystal–plate interface through a finite conductance and crosses the plate–coolant boundary through another finite conductance.
+
+For the archived final relaxed heat source:
+
+- maximum crystal cell temperature: **302.36 K = 29.21 °C**;
+- maximum copper-plate temperature: **293.67 K = 20.52 °C**.
+
+![Disk temperature](docs/results_readme/figures/09_disk_temperature.png)
+
+![Crystal and copper plate](docs/results_readme/figures/10_assembly_temperature.png)
+
+The plate is therefore neither rigid nor isothermal. The contact and coolant conductances are assumptions until calibrated to the real mount.
+
+---
+
+## 7. Thermo-mechanical deformation
+
+Both crystal and plate satisfy linear thermoelastic equilibrium,
+
+\[
+\nabla\cdot\boldsymbol{\sigma}=0,
+\qquad
+\boldsymbol{\sigma}
+=
+\mathbf C:
+\left[
+\boldsymbol{\varepsilon}
+-
+\alpha(T-T_0)\mathbf I
+\right].
+\]
+
+A compliant bond transfers normal and shear traction. The crystal rear face is not directly fixed.
+
+![Front deformation](docs/results_readme/figures/11_front_deformation.png)
+
+![Rear deformation](docs/results_readme/figures/12_rear_deformation.png)
+
+Positive \(z\) points from the optical front into the cooling plate. The interface is currently a **bilateral compliant bond**; opening, Coulomb friction, delamination, solder plasticity and creep are not solved.
+
+---
+
+## 8. Hot-disk optical-path distortion
+
+The reflected optical distortion includes:
+
+1. thermo-refractive index change;
+2. motion of both crystal surfaces;
+3. stress-induced photoelasticity/birefringence.
+
+For the rear-coated disk, the geometric reflected optical path is
+
+\[
+\Delta\mathrm{OPD}_\mathrm{geom}
+=
+2\left[(1-n)u_{\mathrm{front},z}+n\,u_{\mathrm{rear},z}\right].
+\]
+
+Thus twice the front-surface bulge is not sufficient.
+
+The photoelastic response is an ordered two-polarization Jones operator. Current photoelastic coefficients are host-YAG reference values, not a complete measured Ho:YAG 2.09 µm tensor.
+
+![Hot-disk OPD](docs/results_readme/figures/13_hot_disk_opd.png)
+
+---
+
+## 9. Coupled hot-cavity convergence
+
+The outer loop recomputes
+
+\[
+\mathbf E
+\rightarrow N_i
+\rightarrow Q
+\rightarrow T
+\rightarrow (\boldsymbol{\sigma},\mathbf u)
+\rightarrow \mathbf E_\mathrm{new}.
+\]
+
+The corrected audited reference converged in **six outer iterations**:
+
+![Coupled convergence](docs/results_readme/figures/14_convergence.png)
+
+| Residual | Final value |
+|---|---:|
+| Phase-aligned vector-field residual | **1.34 × 10⁻⁴** |
+| Unrelaxed heat-source residual | **1.65 × 10⁻³** |
+| Maximum temperature change | **6.68 × 10⁻³ K** |
+| Maximum displacement change | **5.67 × 10⁻¹¹ m** |
+| Output-power relative change | **2.61 × 10⁻⁴** |
+| Full-grid eigenpair residual | **4.39 × 10⁻¹⁴** |
+
+These establish fixed-point convergence on the selected discretization, not complete mesh or mode-count convergence.
+
+---
+
+## 10. Temporal output
+
+The pump pulse is 10 ps, but the model contains no mode-locking mechanism. The optical output therefore need not be picosecond.
+
+![Output waveform](docs/results_readme/figures/15_output_waveform.png)
+
+The plotted waveform is the archived cycle from the corrected Stage 7 reference.
+
+---
+
+## 11. Seeded spiral-light diagnostic
+
+A seeded vortex amplifier test and spontaneous free-running vortex selection are different questions.
+
+The following uses the final archived hot operator with a seeded \(LG_0^1\) input at the cavity waist:
+
+| Input | Output after one hot round-trip operator |
+|---|---|
+| ![LG input](docs/results_readme/figures/16_lg1_input.png) | ![LG output](docs/results_readme/figures/17_lg1_output.png) |
+
+This is a weak seeded diagnostic. It is **not evidence that the free-running resonator selects stable LG₀¹ lasing**. Multiple retained eigenbranches are supported, but complete multimode stability and mode-count refinement remain outstanding.
+
+---
+
+## 12. Audit and software status
+
+A deep Stage 0–7 audit found real software/interface defects, including population-axis mismatch, phase loss in a weak-reference diagnostic, pump-duration/spectrum decoupling, FFT detuning-sign inconsistency, insufficient parameter validation, unsafe evanescent evaluation and density-statistics violations.
+
+Those defects were corrected in API 0.8.
+
+The correction campaign recorded:
+
+- **219 tests passed**;
+- **19 independent audit probes passed**;
+- the corrected 10 W Stage 7 reference again converged in six outer iterations.
+
+Relevant documents:
+
+- docs/AUDIT_STAGE0_7_20260922.md — original failure report;
+- docs/AUDIT_FIXES_STAGE0_7.md — corrections and migration;
+- docs/STAGE7.md — coupled hot-cavity definition;
+- docs/STAGE6.md — crystal/cooling-plate mechanics;
+- docs/STAGE5.md — heat and thermo-optic model.
+
+---
+
+## 13. Remaining limitations
+
+This model is not yet a hardware-calibrated digital twin.
+
+Key unresolved items:
+
+- full optical/material/mechanical mesh refinement;
+- retained-mode completeness and nonlinear multimode stability;
+- coherent mode beating and round-trip-by-round-trip transverse mode evolution;
+- measured crystal–plate thermal contact, bond stiffness, preload and coolant coupling;
+- unilateral contact/opening/friction/delamination/plasticity;
+- complete temperature-dependent Ho:YAG spectroscopy;
+- radiation trapping and fluorescence reabsorption;
+- coating absorption/heating and coating-layer stress;
+- a fully validated Ho:YAG photoelastic tensor at 2.09 µm;
+- fully spectrally resolved saturated broadband pump propagation.
+
+For these reasons, the project still marks the current hot-cavity state as **not yet qualified for NN training-label generation**.
+
+---
+
+## 14. Figure provenance
+
+The figures in this README are regenerated in GitHub Actions from the exact audited Stage 7 verification artifact produced by the API-0.8 correction workflow.
+
+The documentation build:
+
+1. downloads that immutable Actions artifact;
+2. copies the compact Stage 7 summary/history/audit record into docs/results_readme/data;
+3. uses its archived converged field, populations and heat;
+4. recomputes the finite crystal/plate thermo-mechanical state required for visualization using the current Stage 6 implementation;
+5. post-processes the archived field through the final hot optical operator;
+6. records SHA-256 provenance;
+7. does **not** solve a new nonlinear oscillator fixed point.
+
+Raw multi-megabyte NPZ arrays remain in the Actions artifact rather than being duplicated in the repository.
+
+See docs/results_readme/figures/manifest.json and docs/results_readme/data/derived_metrics.json.
+
+---
+
+## 15. Reproduce
+
+Clone the repository and install:
+
+    git clone https://github.com/aidasmik/Ho-YAG-crystal.git
+    cd Ho-YAG-crystal
+    python -m pip install -e '.[dev,plots]'
+
+Run the full tests and independent audit:
+
+    python -m pytest -q
+    python audit/deep_check.py
+
+Run the coarse coupled reference:
+
+    python examples/stage7_hot_cavity.py --quick --require-converged --output results/stage7/demo
+
+The README figures can be rebuilt from the unpacked audited Actions artifact:
+
+    python docs/results_readme/generate.py \
+      --artifact-root /path/to/unpacked/audited/artifact \
+      --output docs/results_readme
+
+---
+
+## 16. Core reference
+
+M. Rupp, M. Eichhorn, C. Kieleck, *Iterative 3D modeling of thermal effects in end-pumped continuous-wave Ho³⁺:YAG lasers*, **Applied Physics B 129, 4 (2023)**, DOI 10.1007/s00340-022-07939-z.
+
+That paper validated a different CW rod geometry. It does **not** directly validate the reconstructed picosecond-pumped thin-disk system documented here.

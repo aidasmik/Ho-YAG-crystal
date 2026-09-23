@@ -1,0 +1,15 @@
+{
+  "source_artifact_state_sha256": "c9232e9f5753ac575c36890a8ff77feb23e8d1a7753c65eca3abf66a6fbf7e02",
+  "source_artifact_summary_sha256": "0002d6f181d4c786061b2cbfeff6a49e42c443fb9c74ea0fdb32fe1edc012ded",
+  "output_W": 0.753012799716634,
+  "absorbed_pump_W": 2.2057198209615145,
+  "heat_W": 0.6719956086959558,
+  "peak_disk_temperature_K": 302.3580209840307,
+  "peak_plate_temperature_K": 293.67487329382976,
+  "front_displacement_pv_nm_within_1p5mm": 25.142492878017794,
+  "rear_displacement_pv_nm_within_1p5mm": 13.863945388101385,
+  "roundtrip_opd_pv_nm_within_1p5mm": 208.48636680416064,
+  "stage7_converged": true,
+  "outer_iterations": 6,
+  "note": "Figures are post-processing of the audited Stage 7 artifact. No new nonlinear oscillator fixed point is solved by this documentation build."
+}
