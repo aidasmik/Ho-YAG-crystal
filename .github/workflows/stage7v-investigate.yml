@@ -1,0 +1,35 @@
+name: Diagnose Stage 7V stalled iterations
+on:
+  push:
+    branches: [stage7v-retry-20260923]
+    paths: ['audit/stage7v_stall_report.py','.github/workflows/stage7v-investigate.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Retrieve exact completed campaign evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api /repos/${{ github.repository }}/actions/artifacts/10740066509/zip > /tmp/stage7v-evidence.zip
+      - name: Inspect partial iterations without reinterpreting timeout as success
+        run: |
+          python audit/stage7v_stall_report.py \
+            --archive /tmp/stage7v-evidence.zip \
+            --sha256 861c3e54f0addccdedda8b909062bc971aaf4446b6adf488f02dd9e28a74220a \
+            --output results/stage7v/stall_diagnosis
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage7v-stall-diagnosis
+          path: results/stage7v/stall_diagnosis
+          retention-days: 30
