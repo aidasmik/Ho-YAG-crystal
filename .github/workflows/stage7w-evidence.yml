@@ -1,0 +1,49 @@
+name: Collect Stage 7W executed evidence
+on:
+  push:
+    branches: [stage7w-polarization]
+    paths: ['docs/stage7w_evidence.py','.github/workflows/stage7w-evidence.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Extract only measured values from exact source artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python docs/stage7w_evidence.py --repo '${{ github.repository }}' --run-id 35854247190 --output results/stage7w
+      - name: Publish compact evidence without modifying numerical source
+        if: github.ref == 'refs/heads/stage7w-polarization'
+        env:
+          EXPECTED_HEAD: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          git config user.name 'Aidas Mikalauskas'
+          git config user.email '89588091+aidasmik@users.noreply.github.com'
+          git add results/stage7w/evidence_summary.json results/stage7w/cases
+          git diff --cached --check
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record hash-verified Stage 7W representative results'
+            remote=$(git ls-remote origin refs/heads/stage7w-polarization | cut -f1)
+            test "$remote" = "$EXPECTED_HEAD"
+            git push origin HEAD:refs/heads/stage7w-polarization
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage7w-compact-evidence
+          path: results/stage7w
+          retention-days: 30
