@@ -174,23 +174,6 @@ Demonstrate a pump step, a reduced-cooling case, and correction enable/disable w
 
 Report tested hardware, mesh sizes, optical grid, model assumptions, solver update rate, render FPS, latency, and real-time factor. Missing material, bonding, mounting, actuator or cooling data must remain explicit uncertainties. Numerical verification is not experimental validation.
 
-## Repository implementation boundary
-
-The current replay adapter accepts only checksum-verified saved numerical
-arrays. Live Stage 7W snapshots use `time_kind=outer_iteration`; there is no
-physical transient clock for the fixed-point closure. The oscillator's modal
-fields are incoherent, so a total scalar phase is unavailable; only per-mode
-phase, modal powers, total intensity, and polarization diagnostics are valid.
-
-The externally seeded amplifier is a separate generic encounter/relay API.
-Its hardware topology and seed specifications are incomplete, and
-`seeded_amplifier_configuration_complete=false`. Viewer dependencies are
-optional. The local supervisor caps combined automated numerical execution
-at 7200 s, coupled cases at 900 s, and memory at the smaller of 8 GiB and 70%
-of installed RAM. Unsupported physical controls remain disabled. Passing
-software tests or a finite numerical check is not experimental validation or
-dataset qualification.
-
 ## Supporting sources
 
 These support the implementation methods, not Ho:YAG parameter values or promised performance.
