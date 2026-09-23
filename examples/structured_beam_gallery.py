@@ -31,25 +31,41 @@ def draw_beams(result, path):
     grid=result['grid']; extent=[grid.x[0]*1e3,grid.x[-1]*1e3,
                                   grid.y[0]*1e3,grid.y[-1]*1e3]
     rows=list(result['outcomes'].items())
-    fig,axes=plt.subplots(len(rows),4,figsize=(15,13),constrained_layout=True)
+    y_index=int(np.argmin(abs(grid.y)))
+    fig,axes=plt.subplots(len(rows),6,figsize=(22,14),constrained_layout=True)
+    axes=np.asarray(axes)
     phase_cmap=plt.get_cmap('twilight').copy();phase_cmap.set_bad('#262935')
     for i,(name,case) in enumerate(rows):
         inp,out=case['input_field'],case['output_field']
         ii,oi=abs(inp)**2,abs(out)**2
         vmax=max(float(ii.max()),float(oi.max()))
-        for col,(data,title) in enumerate(((ii,'Input irradiance'),(oi,'Output irradiance'))):
-            image=axes[i,col].imshow(data,origin='lower',extent=extent,cmap='inferno',
-                norm=PowerNorm(gamma=.55,vmin=0,vmax=vmax),interpolation='nearest')
-            axes[i,col].set_title(f'{title}\n{case["input_power_W" if col==0 else "output_power_W"]:.4f} W')
-            fig.colorbar(image,ax=axes[i,col],shrink=.72,label='W/m²')
-        for col,(field,title) in enumerate(((inp,'Input phase'),(out,'Output phase')),2):
+        image=axes[i,0].imshow(ii,origin='lower',extent=extent,cmap='inferno',
+            norm=PowerNorm(gamma=.55,vmin=0,vmax=vmax),interpolation='nearest')
+        axes[i,0].set_title(f'Input irradiance\n{case["input_power_W"]:.4f} W')
+        fig.colorbar(image,ax=axes[i,0],shrink=.72,label='W/m²')
+        image=axes[i,2].imshow(oi,origin='lower',extent=extent,cmap='inferno',
+            norm=PowerNorm(gamma=.55,vmin=0,vmax=vmax),interpolation='nearest')
+        axes[i,2].set_title(f'Output irradiance\n{case["output_power_W"]:.4f} W')
+        fig.colorbar(image,ax=axes[i,2],shrink=.72,label='W/m²')
+        axes[i,1].plot(grid.x*1e3,ii[y_index],color='tab:blue',linewidth=1.8)
+        axes[i,1].set_title('Input side profile')
+        axes[i,1].set_ylabel('W/m²')
+        axes[i,3].plot(grid.x*1e3,oi[y_index],color='tab:orange',linewidth=1.8)
+        axes[i,3].set_title('Output side profile')
+        axes[i,3].set_ylabel('W/m²')
+        for col,(field,title) in enumerate(((inp,'Input phase'),(out,'Output phase')),4):
             image=axes[i,col].imshow(_relative_phase(field),origin='lower',extent=extent,
                  cmap=phase_cmap,vmin=-np.pi,vmax=np.pi,interpolation='nearest')
-            axes[i,col].set_title(title+' (rad; global phase removed)')
+            axes[i,col].set_title(title+' (rad)')
             fig.colorbar(image,ax=axes[i,col],shrink=.72,ticks=[-np.pi,0,np.pi])
         axes[i,0].set_ylabel(f'{name}\ny (mm)\nDisk gain {case["disk_power_gain"]:.4f}×')
         for ax in axes[i]:
-            ax.set_xlabel('x (mm)');ax.set_xlim(-2,2);ax.set_ylim(-2,2)
+            ax.set_xlabel('x (mm)')
+            ax.set_xlim(-2,2)
+        for col in (0,2,4,5):
+            axes[i,col].set_ylim(-2,2)
+        for col in (1,3):
+            axes[i,col].set_ylim(bottom=0)
     fig.suptitle(f'Ideal phase mask: {result["settings"].phase_mask_name} | '
                  'structured seed → one Ho:YAG traversal → '
                  f'{result["settings"].post_disk_distance_m:g} m free space\n'

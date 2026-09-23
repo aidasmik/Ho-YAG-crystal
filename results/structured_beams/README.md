@@ -24,7 +24,8 @@ All six inputs have 1 W integrated power at 2.0903 µm: Gaussian, two helical
 Laguerre-Gaussian modes, HG(1,1), a Bessel-Gaussian needle, and an order-8
 super-Gaussian flattop. The output plane is one 1-mm Ho:YAG traversal followed
 by 0.25 m of free-space propagation.
-The input/output irradiance panels use W/m²; phase is masked below 1% of
+The input/output irradiance panels and their adjacent centerline profiles use
+W/m²; phase is masked below 1% of
 peak local irradiance and has an arbitrary global phase removed. The helical
 LG modes have winding charges +1 and +2; their intensity is not animated as
 rotating.

@@ -395,7 +395,9 @@ and `ho_density.png`.
 `--phase-mask` selects `none`, `vortex+1`, `vortex-1`, `vortex+2`,
 `defocus`, `astigmatic`, or `axicon`; the ideal applied phase and unchanged
 immediate SLM irradiance are saved in `phase_mask.png`. Centerline input/output
-irradiance cuts for all six modes are saved in `beam_side_profiles.png`.
+irradiance cuts for all six modes are saved beside the corresponding input and
+output maps in `input_output_beams.png` and also collected in
+`beam_side_profiles.png`.
 The precomputed choices can also be browsed in
 `results/structured_beams/index.html`; regenerate an arbitrary random seed
 with the CLI.
