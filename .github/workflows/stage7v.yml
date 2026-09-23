@@ -1,0 +1,250 @@
+name: Stage 7V numerical qualification
+on:
+  pull_request:
+    paths: ['src/hoyag/**','tests/test_stage7v*','examples/stage7v*','examples/stage7_validation.py','.github/workflows/stage7v.yml']
+  push:
+    paths: ['src/hoyag/validation_*','tests/test_stage7v*','examples/stage7v*','examples/stage7_validation.py','.github/workflows/stage7v.yml']
+  workflow_dispatch:
+    inputs:
+      scope:
+        description: 'Campaign scope; full includes coupled and fixed-source component cases'
+        type: choice
+        options: [full,coupled,frozen]
+        default: full
+      seconds_per_case:
+        description: 'Explicit execution limit per case; timeout is never convergence'
+        type: string
+        default: '900'
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: stage7v-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: false
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+      PYTHONUNBUFFERED: '1'
+      MPLBACKEND: Agg
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -e '.[dev,plots]'
+      - run: |
+          mkdir -p results/stage7v/tests
+          python -m pytest -q --junitxml=results/stage7v/tests/junit.xml
+          python audit/deep_check.py
+          cp results/deep_audit/report.json results/stage7v/tests/audit.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage7v-tests
+          path: results/stage7v/tests
+          retention-days: 14
+  prepare:
+    needs: tests
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/stage7v-qualification'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      actions: read
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      budget: ${{ steps.plan.outputs.budget }}
+    env:
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+      MPLBACKEND: Agg
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -e '.[dev,plots]'
+      - name: Obtain the immutable audited source state
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/archive /tmp/plan-files/reference
+          gh api /repos/${{ github.repository }}/actions/artifacts/10718200278/zip > /tmp/audited.zip
+          echo '7f910df189cc7364a97e515c50d6d2a0084eddbf3b5e58be261a14f3db664d17  /tmp/audited.zip' | sha256sum -c -
+          unzip -q /tmp/audited.zip -d /tmp/archive
+          python - <<'PY'
+          from pathlib import Path
+          import shutil
+          roots=list(Path('/tmp/archive').rglob('state.npz'))
+          assert len(roots)==1, roots
+          for name in ('state.npz','summary.json','history.csv'):
+              shutil.copy2(roots[0].parent/name,Path('/tmp/plan-files/reference')/name)
+          PY
+      - name: Generate explicit plans and fixed numerical dependency versions
+        id: plan
+        env:
+          REQUESTED_SCOPE: ${{ inputs.scope || 'full' }}
+          CASE_BUDGET: ${{ inputs.seconds_per_case || '900' }}
+        run: |
+          python examples/stage7_validation.py plan --kind coupled --output /tmp/plan-files/coupled.json
+          python examples/stage7_validation.py plan --kind frozen --reference /tmp/plan-files/reference --output /tmp/plan-files/frozen.json
+          python - <<'PY'
+          import json,os,importlib.metadata
+          from pathlib import Path
+          scope=os.environ['REQUESTED_SCOPE']
+          assert scope in ('full','coupled','frozen')
+          budget=int(os.environ['CASE_BUDGET'])
+          assert 30<=budget<=21600
+          kinds=['coupled','frozen'] if scope=='full' else [scope]
+          rows=[]
+          for kind in kinds:
+              p=json.loads(Path('/tmp/plan-files',kind+'.json').read_text())
+              rows += [{'scope':kind,'id':c['id']} for c in p['cases']]
+          with open(os.environ['GITHUB_OUTPUT'],'a') as f:
+              f.write('matrix='+json.dumps({'include':rows})+'\n')
+              f.write('budget='+str(budget)+'\n')
+          Path('/tmp/plan-files/numerical-lock.txt').write_text('\n'.join(
+              name+'=='+importlib.metadata.version(name) for name in ('numpy','scipy','matplotlib','pytest'))+'\n')
+          print(json.dumps({'cases_planned':len(rows),'seconds_per_case':budget,'cases_qualified':0}))
+          PY
+      - name: Publish the generated coupled plan on the integration branch only
+        if: github.ref == 'refs/heads/stage7v-qualification'
+        env:
+          EXPECTED_HEAD: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          cp /tmp/plan-files/coupled.json config/stage7v_validation.json
+          git config user.name 'Aidas Mikalauskas'
+          git config user.email '89588091+aidasmik@users.noreply.github.com'
+          git add config/stage7v_validation.json
+          if ! git diff --cached --quiet; then
+            git diff --cached --check
+            git commit -m 'Store generated Stage 7V refinement and multimode campaign'
+            remote=$(git ls-remote origin refs/heads/stage7v-qualification | cut -f1)
+            test "$remote" = "$EXPECTED_HEAD"
+            git push origin HEAD:refs/heads/stage7v-qualification
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage7v-plans
+          path: /tmp/plan-files
+          retention-days: 14
+  cases:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 110
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+    env:
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+      MPLBACKEND: Agg
+      PYTHONUNBUFFERED: '1'
+      CASE_ID: ${{ matrix.id }}
+      CASE_SCOPE: ${{ matrix.scope }}
+      CASE_BUDGET: ${{ needs.prepare.outputs.budget }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/download-artifact@v4
+        with:
+          name: stage7v-plans
+          path: /tmp/plan-files
+      - run: python -m pip install -r /tmp/plan-files/numerical-lock.txt -e '.[dev,plots]'
+      - name: Execute one bounded numerical case
+        id: simulation
+        continue-on-error: true
+        run: |
+          python - <<'PY'
+          import os,subprocess,sys
+          from pathlib import Path
+          kind=os.environ['CASE_SCOPE'];cid=os.environ['CASE_ID']
+          cmd=[sys.executable,'examples/stage7v_bounded.py','--plan','/tmp/plan-files/'+kind+'.json',
+               '--cases',cid,'--output','results/stage7v/evidence/'+kind,
+               '--seconds-per-case',os.environ['CASE_BUDGET']]
+          if kind=='frozen':cmd+=['--reference','/tmp/plan-files/reference']
+          raise SystemExit(subprocess.call(cmd))
+          PY
+      - name: Preserve per-case runtime provenance and execution outcome
+        if: always()
+        env:
+          SIMULATION_OUTCOME: ${{ steps.simulation.outcome }}
+        run: |
+          python - <<'PY'
+          import os,json,shutil
+          from pathlib import Path
+          scope=Path('results/stage7v/evidence')/os.environ['CASE_SCOPE']
+          case=scope/os.environ['CASE_ID'];case.mkdir(parents=True,exist_ok=True)
+          if (scope/'source_manifest.json').exists():shutil.copy2(scope/'source_manifest.json',case/'source_manifest.json')
+          (case/'workflow_outcome.json').write_text(json.dumps({'outcome':os.environ['SIMULATION_OUTCOME'],
+              'note':'Task outcome is not numerical qualification. Consult summary.json and qualification.json.'},indent=2)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage7v-case-${{ matrix.scope }}-${{ matrix.id }}
+          path: results/stage7v/evidence
+          retention-days: 14
+          compression-level: 6
+  collect:
+    needs: [prepare,cases]
+    if: always() && needs.prepare.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+      MPLBACKEND: Agg
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/download-artifact@v4
+        with:
+          name: stage7v-plans
+          path: /tmp/plan-files
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: stage7v-case-*
+          merge-multiple: true
+          path: results/stage7v/evidence
+      - run: python -m pip install -r /tmp/plan-files/numerical-lock.txt -e '.[dev,plots]'
+      - name: Build reports without turning missing or timed-out cases into passes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json,sys,shutil
+          sys.path.insert(0,'src')
+          from hoyag.validation_campaign import build_report,write_json
+          from hoyag.validation_backend import source_manifest
+          root=Path('.').resolve();current=source_manifest(root)
+          for kind in ('coupled','frozen'):
+              out=Path('results/stage7v/evidence')/kind
+              if not out.exists():continue
+              plan=json.loads(Path('/tmp/plan-files',kind+'.json').read_text())
+              preferred=out/'reference/source_manifest.json'
+              manifests=list(out.glob('*/source_manifest.json'))
+              manifest=json.loads((preferred if preferred.exists() else manifests[0]).read_text()) if manifests else current
+              if manifest['files'] != current['files']:raise RuntimeError('numerical source mismatch in collected evidence')
+              write_json(out/'source_manifest.json',manifest);write_json(out/'plan.json',plan)
+              report=build_report(plan,out,manifest)
+              print('CAMPAIGN_REPORT '+json.dumps({'kind':kind,'status':report['status'],
+                    'case_status':report['case_status'],'dataset_ready':False}))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage7v-complete-evidence
+          path: results/stage7v/evidence
+          retention-days: 14
