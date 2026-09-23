@@ -50,4 +50,5 @@ and the 3-D Ho map are in the default `fields.npz`. The `vortex+1` example
 also includes its complex fields; the other precomputed masks use
 `--plots-only` and retain plots and summaries. Rerun a selected mask without
 that flag to save its field arrays. The full regression suite passed
-**326 tests** after this addition; see `regression_final.log`.
+**331 tests** after this addition; see the local regression log for the latest
+run.
