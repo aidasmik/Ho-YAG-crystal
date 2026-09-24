@@ -28,6 +28,7 @@ from .assembly import (solve_yb_assembly, solve_yb_cooler_temperature,
 from .pulsed import propagate_pulse
 from .multipass_pump import steady_multipass_pump, transport_multipass_pump
 from .beam_shaping import gaussian_seed_and_target_mask
+from .regenerative import RegenerativeCavity, amplify_regenerative
 
 
 @dataclass(frozen=True)
@@ -492,12 +493,15 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
                          *, compute_thermal: bool = True,
                          operation_duration_s: float = 0.0,
                          cooling_mode: str = "fixed", cooling_target_C: float = 40.0,
-                         cooling_h_max_W_m2K: float = 100000.0):
-    """Periodic pulsed seed with fixed pump-only CW profile and ideal relays.
+                         cooling_h_max_W_m2K: float = 100000.0,
+                         architecture: str = "ideal_multipass",
+                         regenerative_cavity: RegenerativeCavity | None = None):
+    """Periodic pulsed seed through ideal relays or a regenerative cavity.
 
-    The population is iterated from pulse to pulse. During the short seed the
-    pump is neglected, while between seeds the local pump rates restore the
-    population. The fixed pump profile ignores pulse-induced pump saturation.
+    Both paths iterate one physical disk population from pulse to pulse.
+    Pumping during each short signal pulse is neglected. The ideal relay path
+    holds its pump profile fixed; the regenerative path recomputes pump rates
+    during inversion recovery.
     """
     if selected_beam not in BEAM_NAMES:
         raise ValueError("unknown seed beam")
@@ -512,7 +516,8 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
             cooling_mode not in ("fixed", "feedback") or
             not np.isfinite(cooling_target_C) or not 20 <= cooling_target_C <= 250 or
             not np.isfinite(cooling_h_max_W_m2K) or
-            not 10000 <= cooling_h_max_W_m2K <= 200000):
+            not 10000 <= cooling_h_max_W_m2K <= 200000 or
+            architecture not in ("ideal_multipass", "regenerative")):
         raise ValueError("invalid pulsed seed settings")
     grid = Grid2D.square(settings.grid_n, settings.field_size_m)
     common = GallerySettings(mean_ho_density_m3=material.number_density_m3,
@@ -539,53 +544,79 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
     pump = np.exp(-2 * (x*x + y*y) / settings.pump_radius_m**2)
     pump *= settings.pump_power_W / (float(pump.sum()) * grid.dx * grid.dy)
     dz = settings.thickness_m / settings.z_steps
-    pump_state = steady_multipass_pump(
-        material, pump, scale, settings.thickness_m, pump_passes)
-    beta_steady = pump_state.excited_fraction_by_slice
-    up, down = material.rates_s1(pump_state.total_midpoint_intensity_W_m2_by_slice, 0)
-    recovery_rate = up + down + 1 / material.lifetime_s
     time = np.linspace(-3 * seed_fwhm_s, 3 * seed_fwhm_s, 41)
     pulse_shape = np.exp(-4 * np.log(2) * (time / seed_fwhm_s)**2)
     pulse_shape /= np.trapezoid(pulse_shape, time)
     input_fluence = seed_energy_J * abs(source)**2
     disk_input_fluence = seed_energy_J * abs(seed)**2
     initial_signal = pulse_shape[:, None, None] * disk_input_fluence[None]
-    dark_time = 1 / repetition_rate_Hz - (time[-1] - time[0])
-    if dark_time <= 0:
-        raise ValueError("pulse window exceeds repetition period")
-    beta_before = beta_steady.copy()
-    cycles = 0
-    residual = math.inf
-    for cycles in range(1, 101):
-        signal = initial_signal
-        beta = beta_before.copy()
-        signal_gain_fluence = np.zeros_like(beta)
-        for _ in range(signal_traversals):
-            pulse = propagate_pulse(material, time, np.zeros_like(signal), signal,
-                                    settings.thickness_m, settings.z_steps,
-                                    initial_excited_fraction=beta,
-                                    density_scale_by_slice=scale)
-            signal = pulse.signal_out_W_m2
-            signal_gain_fluence += pulse.signal_fluence_change_J_m2_by_slice
-            beta = pulse.final_excited_fraction_by_slice
-        following = beta_steady + (beta - beta_steady) * np.exp(-recovery_rate * dark_time)
-        residual = float(np.max(abs(following - beta_before)))
-        beta_before = following
-        if residual <= 1e-6:
-            break
+    regen = None
+    if architecture == "regenerative":
+        regen = amplify_regenerative(
+            material, grid, seed, seed_energy_J, pump, scale,
+            settings.thickness_m, pump_passes, repetition_rate_Hz,
+            regenerative_cavity or RegenerativeCavity(),
+            fluorescence_spectrum(material).mean_photon_energy_J,
+            settings.fluorescence_escape_yield)
+        fluence_out = abs(regen["output_field"])**2
+        signal = pulse_shape[:, None, None] * fluence_out[None]
+        heat_slices = regen["heat_W_m3_by_slice"]
+        pump_absorbed = regen["pump_absorbed_W_m2_by_slice"]
+        signal_gain = regen["signal_gain_W_m2_by_slice"]
+        fluorescence = regen["escaping_fluorescence_W_m2_by_slice"]
+        cycles, residual = regen["cycles"], regen["residual"]
+        mean_beta_before = regen["mean_excited_fraction_before_pulse"]
+        pump_iterations = regen["pump_steady_iterations"]
+        disk_output_J = regen["stored_energy_J"]
+        field_out = regen["output_field"] / math.sqrt(seed_energy_J)
     else:
-        raise RuntimeError("pulsed Yb population did not converge within 100 cycles")
-    beta_dark_integral = (beta_steady * dark_time +
-                          (beta - beta_steady) *
-                          (-np.expm1(-recovery_rate * dark_time)) / recovery_rate)
-    beta_average = beta_dark_integral * repetition_rate_Hz
-    _, pump_absorbed, _ = transport_multipass_pump(
-        material, pump, scale, settings.thickness_m, pump_passes, beta_average)
-    fluorescence = (density * beta_average / material.lifetime_s *
-                    settings.fluorescence_escape_yield *
-                    fluorescence_spectrum(material).mean_photon_energy_J * dz)
-    signal_gain = signal_gain_fluence * repetition_rate_Hz
-    heat_slices = (pump_absorbed - signal_gain - fluorescence) / dz
+        pump_state = steady_multipass_pump(
+            material, pump, scale, settings.thickness_m, pump_passes)
+        beta_steady = pump_state.excited_fraction_by_slice
+        up, down = material.rates_s1(pump_state.total_midpoint_intensity_W_m2_by_slice, 0)
+        recovery_rate = up + down + 1 / material.lifetime_s
+        dark_time = 1 / repetition_rate_Hz - (time[-1] - time[0])
+        if dark_time <= 0:
+            raise ValueError("pulse window exceeds repetition period")
+        beta_before = beta_steady.copy()
+        cycles = 0
+        residual = math.inf
+        for cycles in range(1, 101):
+            signal = initial_signal
+            beta = beta_before.copy()
+            signal_gain_fluence = np.zeros_like(beta)
+            for _ in range(signal_traversals):
+                pulse = propagate_pulse(material, time, np.zeros_like(signal), signal,
+                                        settings.thickness_m, settings.z_steps,
+                                        initial_excited_fraction=beta,
+                                        density_scale_by_slice=scale)
+                signal = pulse.signal_out_W_m2
+                signal_gain_fluence += pulse.signal_fluence_change_J_m2_by_slice
+                beta = pulse.final_excited_fraction_by_slice
+            following = beta_steady + (beta - beta_steady) * np.exp(-recovery_rate * dark_time)
+            residual = float(np.max(abs(following - beta_before)))
+            beta_before = following
+            if residual <= 1e-6:
+                break
+        else:
+            raise RuntimeError("pulsed Yb population did not converge within 100 cycles")
+        beta_dark_integral = (beta_steady * dark_time +
+                              (beta - beta_steady) *
+                              (-np.expm1(-recovery_rate * dark_time)) / recovery_rate)
+        beta_average = beta_dark_integral * repetition_rate_Hz
+        _, pump_absorbed, _ = transport_multipass_pump(
+            material, pump, scale, settings.thickness_m, pump_passes, beta_average)
+        fluorescence = (density * beta_average / material.lifetime_s *
+                        settings.fluorescence_escape_yield *
+                        fluorescence_spectrum(material).mean_photon_energy_J * dz)
+        signal_gain = signal_gain_fluence * repetition_rate_Hz
+        heat_slices = (pump_absorbed - signal_gain - fluorescence) / dz
+        fluence_out = np.trapezoid(signal, time, axis=0)
+        disk_output_J = float(np.sum(fluence_out) * grid.dx * grid.dy)
+        gain_amplitude = np.sqrt(np.maximum(fluence_out, 0) / np.maximum(disk_input_fluence, 1e-30))
+        field_out = seed * gain_amplitude
+        mean_beta_before = float(np.mean(beta_before))
+        pump_iterations = pump_state.iterations
     pixel_area = grid.dx * grid.dy
     heat_W = float(np.sum(heat_slices) * dz * pixel_area)
     absorbed_W = float(np.sum(pump_absorbed) * pixel_area)
@@ -604,7 +635,12 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
         try:
             thermal = _thermal_or_design_reference(
                 mesh, heat_polar, grid, configuration,
-                "Fixed pump-profile periodic heat on generic C10100 copper; scalar optical path and surface deformation; photoelasticity omitted.")
+                ("Periodic pump and signal heat on generic C10100 copper; scalar optical path "
+                 "and surface deformation; photoelasticity omitted. The regenerative pump "
+                 "transport is recomputed during recovery."
+                 if architecture == "regenerative" else
+                 "Fixed pump-profile periodic heat on generic C10100 copper; scalar optical "
+                 "path and surface deformation; photoelasticity omitted."))
         except ValueError as exc:
             thermal = {"status": "out_of_scope", "reason": str(exc)}
         if operation_duration_s:
@@ -612,17 +648,14 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
                                                  configuration, operation_duration_s,
                                                  cooling_mode, cooling_target_C,
                                                  cooling_h_max_W_m2K)
-    fluence_out = np.trapezoid(signal, time, axis=0)
-    disk_output_J = float(np.sum(fluence_out) * grid.dx * grid.dy)
-    gain_amplitude = np.sqrt(np.maximum(fluence_out, 0) / np.maximum(disk_input_fluence, 1e-30))
-    field_out = seed * gain_amplitude
     thermal_feedback_applied = bool(timeline is not None and
                                     timeline["requested_material_range_valid"])
     if thermal_feedback_applied:
-        # An ideal image relay returns the same transverse coordinate to the
-        # same physical disk. Two thickness traversals make one active-mirror
-        # round trip; this phase is applied at each encounter in that model.
-        phase_screen = (np.pi * signal_traversals /
+        # This is a lumped post-amplifier OPD approximation. A fully coupled
+        # hot-cavity model must apply the screen on each disk encounter.
+        effective_traversals = (2 * (regenerative_cavity or RegenerativeCavity()).round_trips
+                                if architecture == "regenerative" else signal_traversals)
+        phase_screen = (np.pi * effective_traversals /
                         (material.signal_wavelength_nm * 1e-9) *
                         timeline["final_roundtrip_opd_m"])
         field_out *= np.exp(1j * phase_screen)
@@ -647,9 +680,15 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
         "output_power_trace_W": np.sum(signal, axis=(1, 2)) * grid.dx * grid.dy,
         "input_energy_J": seed_energy_J, "disk_output_energy_J": disk_output_J,
         "output_energy_J": optical_power(field_out, grid) * seed_energy_J,
+        "architecture": architecture,
+        "regenerative": ({key: value for key, value in regen.items()
+                          if key not in ("output_field", "heat_W_m3_by_slice",
+                                         "pump_absorbed_W_m2_by_slice", "signal_gain_W_m2_by_slice",
+                                         "escaping_fluorescence_W_m2_by_slice")}
+                         if regen is not None else None),
         "cycles": cycles, "residual": residual,
         "pump_passes": pump_passes,
-        "pump_steady_iterations": pump_state.iterations,
+        "pump_steady_iterations": pump_iterations,
         "cycle_average_heat_W_upper_or_assumed": heat_W,
         "cycle_average_pump_absorbed_W": absorbed_W,
         "cycle_average_signal_gain_W": signal_gain_W,
@@ -659,8 +698,18 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
         "thermal_timeline": timeline,
         "thermal_feedback_applied": thermal_feedback_applied,
         "thermal_feedback_time_s": (operation_duration_s if thermal_feedback_applied else None),
-        "mean_excited_fraction_before_pulse": float(np.mean(beta_before)),
-        "scope": (f"Gaussian TEM00 source shaped by a phase-only target mask plus optional "
+        "mean_excited_fraction_before_pulse": mean_beta_before,
+        "scope": (("Regenerative mode: short-pulse Frantz–Nodvik saturation in one shared Yb disk, "
+                   "two disk traversals per round trip, scalar diffraction over the air gap, "
+                   "curved mirror, finite disk aperture, discrete Pockels-cell hold and extraction, "
+                   "and pump recovery recomputed between rounds and seed pulses. The held loss, "
+                   "switch efficiencies, cavity geometry and host index are engineering assumptions. "
+                   "The thermal screen is applied after extraction, not fed back into each cavity "
+                   "round; spectral effects, gain narrowing, Kerr phase, ASE, Pockels rise time, "
+                   "and damage are not modeled. The displayed output time trace assumes the "
+                   "input Gaussian temporal shape; only pulse fluence is solved. "
+                   if architecture == "regenerative" else
+                   f"Gaussian TEM00 source shaped by a phase-only target mask plus optional "
                   "added phase, then propagated to the disk. LG, HG, Bessel and flat-top names "
                   "describe approximate targets, not guaranteed pure modes. The flat-top mask "
                   "uses a 48-step scalar alternating-projection design. "
@@ -669,7 +718,7 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
                   "between signal traversals. Retarded-time intensity transport omits "
                   "GVD, Kerr phase, walkoff, coherent diffraction within each pulse pass, "
                   "and gain feedback from thermal beam reshaping. The recorded thermal OPD "
-                  "is applied per ideal-relayed disk encounter before output-plane diffraction "
+                  "is applied as a lumped screen before output-plane diffraction "
                   "only when the requested operating time remains inside the 20–26.85 C "
                   "thermo-mechanical parameter range, which is not a crystal survival limit. "
                   "Cycle-averaged heat uses the fixed pump profile "
@@ -677,5 +726,5 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
                   "runs only inside its material temperature range. The output spatial "
                   "phase retains the shaped disk-incident phase "
                   "and includes free-space propagation; high-extraction phase accuracy "
-                  "requires a coupled space-time field solver.")
+                  "requires a coupled space-time field solver."))
     }

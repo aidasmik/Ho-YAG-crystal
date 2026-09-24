@@ -5,7 +5,7 @@
 <title>Yb:LuAG local calculator</title>
 <style>
   :root{font:15px system-ui,sans-serif;color:#edf3ff;background:#101722;color-scheme:dark}
-  body{max-width:1200px;margin:auto;padding:24px}h1{margin:0 0 5px}p{line-height:1.5;color:#c4d0df}
+  body{max-width:1540px;margin:auto;padding:24px}h1{margin:0 0 5px}p{line-height:1.5;color:#c4d0df}
   a{color:#8ac9ff}.layout{display:grid;grid-template-columns:290px 1fr;gap:22px}
   form,.card{background:#182436;border:1px solid #36465c;border-radius:11px;padding:18px}
   label{display:block;margin:11px 0 4px}input,select,button{box-sizing:border-box;width:100%;padding:8px;font:inherit;border:1px solid #61748d;border-radius:6px;background:#101927;color:#fff}
@@ -17,8 +17,8 @@
   .beam-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
   .beam-grid figure{margin:0;min-width:0}.beam-grid canvas{width:100%;aspect-ratio:1;background:#101927;image-rendering:pixelated}
   .pulse-beam-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
-  .beam-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
-  .beam-view{display:grid;grid-template-columns:52px minmax(0,1fr);grid-template-rows:auto auto;gap:5px;max-width:480px;margin:auto}
+  .beam-pair{display:grid;grid-template-columns:1fr;gap:18px}
+  .beam-view{display:grid;grid-template-columns:72px minmax(0,1fr);grid-template-rows:auto auto;gap:7px;max-width:720px;margin:auto}
   .beam-view .side-wrap{grid-column:1;grid-row:1;position:relative;min-height:0;background:#f8fafc}
   .beam-view .side{position:absolute;inset:0;width:100%;height:100%;background:#f8fafc}
   .beam-view .map-wrap{grid-column:2;grid-row:1;position:relative;aspect-ratio:1;min-width:0}
@@ -27,6 +27,7 @@
   .beam-view .disk-ring{position:absolute;inset:0;width:100%;height:100%;background:none;pointer-events:none}
   .beam-legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:#d1dded;margin:9px 0}.beam-legend span:before{content:'';display:inline-block;width:18px;border-top:2px solid #ffad62;margin-right:5px;vertical-align:middle}.beam-legend .ideal:before{border-top:2px dashed #0087a5}.beam-legend .rim:before{border-top:2px solid #20242c}
   .beam-view-label{text-align:center;color:#c5d6ea;font-size:12px;margin-top:7px}
+  .full-disk-overview{width:112px;height:112px;position:relative;margin:10px auto 0}.full-disk-overview canvas{width:100%;height:100%;display:block}.full-disk-overview svg{position:absolute;inset:0;background:none;pointer-events:none}
   .pulse-beam-grid figure{margin:0;min-width:0}.pulse-beam-grid canvas{display:block;width:100%;aspect-ratio:1;background:#101927;image-rendering:pixelated}
   .pulse-beam-grid figcaption{font-size:13px;color:#c5d6ea;margin-top:5px}
   .pulse-beam-card{min-width:0;padding:14px;background:#111b2a;border:1px solid #36465c;border-radius:8px}.pulse-beam-card h3{margin:0 0 12px}
@@ -37,7 +38,7 @@
   [hidden]{display:none!important}
   details.card summary{cursor:pointer;font-weight:700;font-size:1.2rem}details.card[open] summary{margin-bottom:12px}
   .control-title{font-size:1rem;margin:18px 0 3px;color:#97d5ff}.advanced{margin-top:16px;border-top:1px solid #36465c;padding-top:12px}.advanced summary{cursor:pointer;color:#c4d0df}
-  #pulseResults>#pulseDensityCard{order:0}#pulseResults>#pulseBeamCard{order:1}#pulseResults>#pulsePhaseCard{order:2}#pulseResults>#thermalTimelineCard{order:3}#pulseResults>#pulseMetricsCard{order:4}#pulseResults>#pulseCoolerCard{order:5}#pulseResults>*{order:6}
+  #pulseResults>#pulseDensityCard{order:0}#pulseResults>#pulseBeamCard{order:1}#pulseResults>#pulsePhaseCard{order:2}#pulseResults>#pulseMetricsCard{order:3}#pulseResults>#gainCard{order:4}#pulseResults>#thermalTimelineCard{order:5}#pulseResults>#pulseCoolerCard{order:6}#pulseResults>*{order:7}
   .timeline-chart{height:auto;width:100%;background:#111b2a}.timeline-grid{display:grid;gap:16px}.phase-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.phase-grid figure{margin:0;min-width:0}.phase-grid canvas{width:100%;aspect-ratio:1}.validity-warning{border-left:4px solid #f0a95c;padding:10px 13px;background:#32291f;color:#ffe1b5}
   @media(max-width:1100px){.beam-pair{grid-template-columns:1fr}}
   @media(max-width:700px){.beam-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
@@ -58,6 +59,15 @@
   <h3 class="control-title">3 · Phase</h3>
   <label>Added aberration / correction<select name="phase_mask"><option value="none">None</option><option value="vortex+1">Additional vortex +1</option><option value="vortex-1">Additional vortex −1</option><option value="vortex+2">Additional vortex +2</option><option value="defocus">Defocus</option><option value="astigmatic">Astigmatic</option><option value="axicon">Additional axicon</option></select></label>
   <label>Added phase strength (rad)<input name="phase_strength_rad" type="number" min="-50" max="50" step="any" value="3.14159265" required></label>
+  <label>Amplifier architecture<select name="architecture" id="architecture"><option value="ideal_multipass">Ideal relayed multipass</option><option value="regenerative" selected>Regenerative cavity</option></select></label>
+  <div id="regenControls" hidden><p>Editable cavity assumptions; these are not supplied by the proposal. Two disk traversals per round trip.</p>
+  <label>Stored round trips<input name="regen_round_trips" type="number" min="1" max="60" step="1" value="10"></label>
+  <label>Disk-to-mirror air gap (m)<input name="cavity_length_m" type="number" min="0.01" max="2" step="any" value="0.25"></label>
+  <label>Mirror radius of curvature (m)<input name="mirror_radius_m" type="number" min="0.02" max="10" step="any" value="0.5"></label>
+  <label>Disk HR reflectivity<input name="disk_hr_reflectivity" type="number" min="0.5" max="1" step="any" value="0.9995"></label>
+  <label>Held round-trip retention, including switch<input name="held_retention" type="number" min="0.01" max="1" step="any" value="0.98"></label>
+  <label>Injection efficiency<input name="injection_efficiency" type="number" min="0.01" max="1" step="any" value="0.9"></label>
+  <label>Extraction efficiency<input name="extraction_efficiency" type="number" min="0.01" max="1" step="any" value="0.9"></label></div>
   <label>Operating time (s)<input name="operation_duration_s" type="number" min="0.001" max="120" step="any" value="30" required></label>
   <h3 class="control-title">4 · Cooler flow</h3>
   <label>Water-side control<select name="cooling_mode"><option value="feedback">Automatic bounded flow</option><option value="fixed">Fixed flow</option></select></label>
@@ -82,6 +92,7 @@
   <button type="submit">Calculate selected pulsed beam</button><p id="pulsedStatus">Ready.</p>
 </form><main class="cards" id="pulseResults">
   <section class="card" id="pulseMetricsCard"><h2>Pulse result</h2><div id="pulseMetrics" class="metrics"></div></section>
+  <section class="card" id="gainCard"><h2>Gain and pump-to-output power</h2><p id="powerSummary"></p><svg id="gainChart" viewBox="0 0 680 240" aria-label="Pulse energy through the selected amplifier"></svg><svg id="pumpOutputChart" viewBox="0 0 680 240" aria-label="Incident pump power versus average output laser power"></svg><button type="button" id="pumpSweepButton">Calculate five-point pump-power curve</button><small id="pumpSweepStatus">The plot initially shows the selected operating point. The sweep holds the seed and geometry fixed and recomputes the periodic optical state at each pump value; it does not recompute cooler temperature.</small></section>
   <details class="card" id="pulseCoolerCard"><summary>Steady copper design reference and surface maps</summary><div id="pulseHeatMetrics" class="metrics"></div><p id="pulseThermalText"></p><div id="pulseThermalMaps" class="pulse-beam-grid" hidden><figure><canvas id="pulseOpdCanvas"></canvas><figcaption>Scalar round-trip optical path change (nm)</figcaption></figure><figure><canvas id="pulseDisplacementCanvas"></canvas><figcaption>Front surface displacement (nm)</figcaption></figure><figure><canvas id="pulseRearCanvas"></canvas><figcaption>Rear surface displacement (nm)</figcaption></figure><figure><svg id="pulseDeformationProfile" class="spatial-profile" viewBox="0 0 560 160"></svg><figcaption>Front and rear center cuts, displacement relative to their own center (nm); vertical scale enlarged</figcaption></figure></div></details>
   <section class="card" id="pulseDensityCard"><h2>Yb distribution</h2><p>Dark blue = lower Yb density, teal = middle, yellow = higher density; black = outside the 10 mm disk. This spatial map is synthetic until measured crystal data are supplied.</p><div class="pulse-beam-grid"><figure><canvas id="pulseDensityCanvas" style="width:100%;aspect-ratio:1;image-rendering:pixelated"></canvas><figcaption>Yb density at the disk entrance</figcaption></figure></div></section>
   <section class="card" id="pulseBeamCard"><h2>Gaussian source, shaped disk input, and amplified beam</h2><p id="pulseBeamScope">The Gaussian retains its intensity at the SLM. Structure forms after propagation to the disk.</p><div id="pulseMaps" class="beam-pair"></div></section>
@@ -227,19 +238,26 @@ function renderBeamView(container,title,values,reference,x,unit,showDisk=true){
  const card=document.createElement('article');card.className='pulse-beam-card';
  const h=document.createElement('h3');h.textContent=title;card.append(h);
  const view=document.createElement('div');view.className='beam-view';
- const cy=Math.floor(values.length/2),cx=Math.floor(values[0].length/2);
+ const center=Math.floor(values.length/2),half=Math.max(5,Math.min(center,Math.round(2/(x[1]-x[0]))));
+ const start=center-half,end=Math.min(values.length,center+half),zoom=values.slice(start,end).map(row=>row.slice(start,end)),zoomReference=reference.slice(start,end).map(row=>row.slice(start,end));
+ const cy=Math.floor(zoom.length/2),cx=Math.floor(zoom[0].length/2);
  const side=document.createElementNS('http://www.w3.org/2000/svg','svg');side.classList.add('side');
- cutProfile(side,values.map(row=>row[cx]),reference.map(row=>row[cx]),true);
+ cutProfile(side,zoom.map(row=>row[cx]),zoomReference.map(row=>row[cx]),true);
  const sideWrap=document.createElement('div');sideWrap.className='side-wrap';sideWrap.append(side);
  const mapWrap=document.createElement('div');mapWrap.className='map-wrap';
- const canvas=document.createElement('canvas');drawBeamHeatmap(canvas,values);
- const rim=document.createElementNS('http://www.w3.org/2000/svg','svg');rim.classList.add('disk-ring');rim.setAttribute('viewBox','0 0 100 100');rim.innerHTML=`<circle cx="50" cy="50" r="${(500/diskExtentMm).toFixed(3)}" fill="none" stroke="#20242c" stroke-width=".36"/>`;
- mapWrap.append(canvas);if(showDisk)mapWrap.append(rim);
- const bottom=document.createElementNS('http://www.w3.org/2000/svg','svg');bottom.classList.add('bottom');cutProfile(bottom,values[cy],reference[cy],false);
+ const canvas=document.createElement('canvas');drawBeamHeatmap(canvas,zoom);mapWrap.append(canvas);
+ const bottom=document.createElementNS('http://www.w3.org/2000/svg','svg');bottom.classList.add('bottom');cutProfile(bottom,zoom[cy],zoomReference[cy],false);
  view.append(sideWrap,mapWrap,bottom);card.append(view);
- const label=document.createElement('div');label.className='beam-view-label';label.textContent=`x, y: ${x[0].toFixed(1)} to ${x.at(-1).toFixed(1)} mm · center cuts in ${unit}${showDisk?' · black circle: Ø10 mm crystal':''}`;
+ const label=document.createElement('div');label.className='beam-view-label';label.textContent=`Zoomed x, y: ${x[start].toFixed(2)} to ${x[end-1].toFixed(2)} mm · center cuts in ${unit}`;
  const legend=document.createElement('div');legend.className='beam-legend';legend.innerHTML='<span>Selected Yb</span><span class="ideal">Uniform Yb</span>'+(showDisk?'<span class="rim">Crystal edge</span>':'');
- card.append(label,legend);container.append(card);
+ card.append(label,legend);
+ if(showDisk){
+  const overview=document.createElement('div');overview.className='full-disk-overview';
+  const full=document.createElement('canvas');drawBeamHeatmap(full,values);overview.append(full);
+  const rim=document.createElementNS('http://www.w3.org/2000/svg','svg');rim.setAttribute('viewBox','0 0 100 100');rim.innerHTML=`<circle cx="50" cy="50" r="${(500/diskExtentMm).toFixed(3)}" fill="none" stroke="#20242c" stroke-width=".55"/>`;overview.append(rim);card.append(overview);
+  const fullLabel=document.createElement('div');fullLabel.className='beam-view-label';fullLabel.textContent='Full disk overview · black contour: actual Ø10 mm crystal';card.append(fullLabel);
+ }
+ container.append(card);
 }
 function drawFootprint(canvas,density,intensity){
  drawMap(canvas,density,'density');const n=intensity.length,max=Math.max(...intensity.flat(),1e-30),ctx=canvas.getContext('2d'),image=ctx.getImageData(0,0,n,n);
@@ -344,14 +362,39 @@ async function calculateStructured(){
 }
 structuredForm.addEventListener('submit',e=>{e.preventDefault();calculateStructured()});
 const pulsedForm=document.getElementById('pulsedForm'),pulsedStatus=document.getElementById('pulsedStatus');
+let pulseRequestSerial=0;
+const architectureInput=document.getElementById('architecture');
+architectureInput.addEventListener('change',()=>{document.getElementById('regenControls').hidden=architectureInput.value!=='regenerative';pulsedForm.elements.signal_traversals.disabled=architectureInput.value==='regenerative'});
+architectureInput.dispatchEvent(new Event('change'));
+function plotOperatingCurve(svg,points,xTitle,yTitle,logY=false){
+ const W=680,H=240,L=84,R=28,T=20,B=48,positive=points.map(p=>p[1]).filter(v=>v>0);
+ const xmax=Math.max(...points.map(p=>p[0]),1e-12)*1.05;
+ const ymin=logY?Math.min(...positive,1e-30):0,ymax=Math.max(...points.map(p=>p[1]),1e-30)*1.08;
+ const xx=v=>L+v/xmax*(W-L-R), yy=v=>logY?H-B-(Math.log10(Math.max(v,ymin))-Math.log10(ymin))/Math.max(1e-12,Math.log10(ymax/ymin))*(H-T-B):H-B-v/ymax*(H-T-B);
+ const path=points.map((p,i)=>`${i?'L':'M'}${xx(p[0]).toFixed(1)},${yy(p[1]).toFixed(1)}`).join(' ');
+ svg.innerHTML=`<line x1="${L}" y1="${H-B}" x2="${W-R}" y2="${H-B}" stroke="#91a5bd"/><line x1="${L}" y1="${T}" x2="${L}" y2="${H-B}" stroke="#91a5bd"/>`+
+  `<text x="${W/2}" y="${H-8}" text-anchor="middle" fill="#cbd9e8" font-size="13">${xTitle}</text><text x="14" y="${T+12}" fill="#cbd9e8" font-size="12">${yTitle}</text>`+
+  `<text x="${L}" y="${H-B+17}" fill="#cbd9e8" font-size="11">0</text><text x="${W-R}" y="${H-B+17}" text-anchor="end" fill="#cbd9e8" font-size="11">${Math.max(...points.map(p=>p[0])).toPrecision(3)}</text>`+
+  `<text x="${L-7}" y="${T+6}" text-anchor="end" fill="#cbd9e8" font-size="11">${ymax.toPrecision(3)}</text>`+
+  (points.length>1?`<path d="${path}" fill="none" stroke="#ffad62" stroke-width="3"/>`:'')+
+  points.map(p=>`<circle cx="${xx(p[0])}" cy="${yy(p[1])}" r="4" fill="#ffad62"/>`).join('');
+}
 async function calculatePulsed(){
+ const serial=++pulseRequestSerial;
  pulsedStatus.textContent='Converging Yb pulse train…';pulsedStatus.classList.remove('error');
  try{
   const data=Object.fromEntries(new FormData(pulsedForm).entries());
   const response=await fetch('/api/pulsed',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
-  const r=await response.json();if(!response.ok)throw Error(r.error||'Pulse calculation failed');
+  const r=await response.json();if(serial!==pulseRequestSerial)return;if(!response.ok)throw Error(r.error||'Pulse calculation failed');
   diskExtentMm=r.x_mm.length*(r.x_mm[1]-r.x_mm[0]);
-  document.getElementById('pulseMetrics').innerHTML=metric('Yb doping',r.yb_at_percent.toFixed(0)+' at.%')+metric('Input energy',(r.input_energy_J*1e9).toFixed(3)+' nJ')+metric('Disk exit energy',(r.disk_output_energy_J*1e9).toFixed(3)+' nJ')+metric('Energy gain',(r.disk_output_energy_J/r.input_energy_J).toFixed(2)+'×')+metric('Stretched pulse',r.amplifier_fwhm_ps_assumed.toFixed(2)+' ps')+metric('Stretch factor',r.stretch_factor.toFixed(1)+'×')+metric('Pump passes',String(r.pump_passes))+metric('Peak pump intensity',r.peak_pump_intensity_kW_cm2.toFixed(2)+' kW/cm²')+metric('Grid-mean pre-pulse excitation',(100*r.mean_excited_fraction_before_pulse).toFixed(2)+'%')+metric('Convergence',r.cycles+' cycles');
+  document.getElementById('pulseMetrics').innerHTML=metric('Yb doping',r.yb_at_percent.toFixed(0)+' at.%')+metric('Input energy',(r.input_energy_J*1e9).toFixed(3)+' nJ')+metric(r.regenerative?'Intracavity before switch':'Disk exit energy',(r.disk_output_energy_J*1e9).toFixed(3)+' nJ')+metric('Extracted output',(r.output_energy_J*1e9).toFixed(3)+' nJ')+metric('Net extracted gain',r.net_energy_gain.toFixed(2)+'×')+metric('Average laser output',r.average_output_W.toPrecision(4)+' W')+metric('Stretched pulse',r.amplifier_fwhm_ps_assumed.toFixed(2)+' ps')+metric('Stretch factor',r.stretch_factor.toFixed(1)+'×')+metric('Pump passes',String(r.pump_passes))+metric('Peak pump intensity',r.peak_pump_intensity_kW_cm2.toFixed(2)+' kW/cm²')+metric('Grid-mean pre-pulse excitation',(100*r.mean_excited_fraction_before_pulse).toFixed(2)+'%')+metric('Convergence',r.cycles+' cycles');
+  const gainPoints=r.regenerative?[[0,r.input_energy_J*r.regenerative.injection_efficiency],...r.regenerative.roundtrip_energy_J.map((p,i)=>[i+1,p[2]]),[r.regenerative.roundtrip_energy_J.length+1,r.output_energy_J]]:[[0,r.input_energy_J],[1,r.output_energy_J]];
+  plotOperatingCurve(document.getElementById('gainChart'),gainPoints,r.regenerative?'Round trips (last point: extracted)':'Input → output','Pulse energy (J)',true);
+  plotOperatingCurve(document.getElementById('pumpOutputChart'),[[r.incident_pump_W,r.average_output_W]],'Incident pump power (W)','Output (W)');
+  const powerSummary=document.getElementById('powerSummary'),hotInvalid=r.thermal_timeline&&!r.thermal_timeline.requested_material_range_valid;
+  powerSummary.className=hotInvalid?'validity-warning':'';
+  powerSummary.textContent=`${r.architecture==='regenerative'?'Regenerative cavity':'Ideal relayed multipass'} · ${r.incident_pump_W.toPrecision(4)} W pump → ${r.average_output_W.toPrecision(4)} W average extracted signal · net gain ${r.net_energy_gain.toPrecision(4)}×. ${r.regenerative?`Cold-cavity waist ${(r.regenerative.cold_cavity_waist_m*1e3).toFixed(3)} mm; storage ${(r.regenerative.storage_time_s*1e9).toFixed(2)} ns. `:''}${hotInvalid?'Fixed-temperature optical estimate only: the requested thermal state exceeds the validated material range.':''}`;
+  document.getElementById('pumpSweepStatus').textContent='Selected fixed-temperature optical point shown. Calculate the five-point curve to recompute optical output at other pump powers.';
   document.getElementById('pulseHeatMetrics').innerHTML=metric('Pump absorbed',r.cycle_average_pump_absorbed_W.toFixed(3)+' W')+metric('Signal gain',r.cycle_average_signal_gain_W.toFixed(6)+' W')+metric('Escaping fluorescence',r.cycle_average_escaping_fluorescence_W.toFixed(3)+' W')+metric('Heat upper bound / assumption',r.cycle_average_heat_W_upper_or_assumed.toFixed(3)+' W');
   renderThermal(r.thermal,r.x_mm,'pulse');
   if(r.thermal_timeline)renderTimeline(r.thermal_timeline);
@@ -367,14 +410,18 @@ async function calculatePulsed(){
   const residualLimit=drawResidualPhaseMap(document.getElementById('residualPhaseCanvas'),r.phase_residual_rad,r.output_fluence_J_m2);
   document.getElementById('residualPhaseLabel').textContent=`Phase residual: blue negative, red positive; ±${residualLimit.toFixed(3)} rad · weighted RMS ${r.phase_residual_rms_rad.toFixed(3)} rad`;
   document.getElementById('pulseBeamScope').textContent=r.thermal_feedback_applied?
-   `Gaussian source → phase-only target mask plus optional added phase → ${Number(data.slm_to_disk_m).toFixed(3)} m free-space propagation → disk gain. Calculated thermal OPD is applied at each ideal-relayed disk encounter using the ${r.thermal_feedback_time_s.toPrecision(3)} s thermal state. Dashed output uses uniform Yb and no thermal phase.`:
+   `Gaussian source → phase-only target mask plus optional added phase → ${Number(data.slm_to_disk_m).toFixed(3)} m free-space propagation → disk gain. Calculated thermal OPD is applied after extraction using the ${r.thermal_feedback_time_s.toPrecision(3)} s thermal state. Dashed output uses uniform Yb and no thermal phase.`:
    `Gaussian source → phase-only target mask plus optional added phase → ${Number(data.slm_to_disk_m).toFixed(3)} m free-space propagation → disk gain. No validated thermal phase was available for this operating point; output is shown without thermal correction. Dashed output uses uniform Yb and no thermal phase.`;
   drawProfile(document.getElementById('pulseTrace'),r.input_power_trace_W,r.output_power_trace_W);
   document.getElementById('pulseScope').textContent=`${r.reference_scope} ${r.source_fwhm_fs_assumed} fs source: approximately ${r.transform_limited_seed_spectral_fwhm_nm.toFixed(2)} nm transform-limited Gaussian bandwidth at 1030 nm. Assumed 12 at.% lifetime ${(r.lifetime_s_assumed*1e3).toFixed(3)} ms is interpolated, not measured at 12 at.%. ${r.spectral_scope} ${r.scope}`;
   pulsedStatus.textContent='Periodic pulse calculation complete.';
- }catch(e){pulsedStatus.textContent=e.message;pulsedStatus.classList.add('error');throw e}
+ }catch(e){if(serial===pulseRequestSerial){pulsedStatus.textContent=e.message;pulsedStatus.classList.add('error')}throw e}
 }
 pulsedForm.addEventListener('submit',e=>{e.preventDefault();calculatePulsed().catch(()=>{})});calculatePulsed().catch(()=>{});
+document.getElementById('pumpSweepButton').addEventListener('click',async()=>{
+ const button=document.getElementById('pumpSweepButton'),status=document.getElementById('pumpSweepStatus');button.disabled=true;status.textContent='Computing five periodic optical states…';
+ try{const response=await fetch('/api/pump-sweep',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(new FormData(pulsedForm).entries()))});const result=await response.json();if(!response.ok)throw Error(result.error||'Pump sweep failed');plotOperatingCurve(document.getElementById('pumpOutputChart'),result.points.map(p=>[p.incident_pump_W,p.average_output_W]),'Incident pump power (W)','Output (W)');status.textContent='Five periodic optical states; seed, shaping, cavity settings and 10 kHz rate held fixed. Gain cross sections stay at 20 °C; cooler and temperature are not recomputed.'}catch(e){status.textContent=e.message}finally{button.disabled=false}
+});
 document.getElementById('thermalDemo').addEventListener('click',()=>{pulsedForm.elements.pump_W.value='0.2';calculatePulsed().catch(()=>{})});
 </script>
 </body></html>

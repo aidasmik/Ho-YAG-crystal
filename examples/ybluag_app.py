@@ -24,6 +24,7 @@ from ybluag import (YbLuAGMaterial, YbGallerySettings, fluorescence_spectrum,
                     propagate_cw, scan_output_coupler, simulate_structured_gallery,
                     simulate_pulsed_seed)
 from ybluag.model import _spectra
+from ybluag.regenerative import RegenerativeCavity
 
 PAGE = ROOT / "Yb-LuAG" / "app.html"
 COATINGS = ROOT / "config" / "ybluag_10at_coatings.json"
@@ -173,7 +174,7 @@ def calculate_structured(data):
     }
 
 
-def calculate_pulsed(data, *, compute_thermal=True):
+def calculate_pulsed(data, *, compute_thermal=True, summary_only=False):
     if not isinstance(data, dict):
         raise ValueError("request must be an object")
     from hoyag.structured_beam_gallery import PHASE_MASKS, BEAM_NAMES
@@ -203,6 +204,14 @@ def calculate_pulsed(data, *, compute_thermal=True):
         "slm_to_disk_m": 0.25,
         "cooling_mode": "feedback",
         "cooling_target_C": 40.0,
+        "architecture": "ideal_multipass",
+        "regen_round_trips": 10,
+        "cavity_length_m": 0.25,
+        "mirror_radius_m": 0.5,
+        "disk_hr_reflectivity": 0.9995,
+        "held_retention": 0.98,
+        "injection_efficiency": 0.9,
+        "extraction_efficiency": 0.9,
         "cooling_h_max_W_m2K": 100000.0,
         **data,
     }
@@ -235,6 +244,17 @@ def calculate_pulsed(data, *, compute_thermal=True):
         number(data, "repetition_rate_kHz", 0.01, 100) * 1e3,
         integer(data, "signal_traversals", 1, 10))
     pump_passes = integer(data, "pump_passes", 1, 48)
+    architecture = data.get("architecture", "ideal_multipass")
+    if architecture not in ("ideal_multipass", "regenerative"):
+        raise ValueError("unknown amplifier architecture")
+    regenerative_cavity = RegenerativeCavity(
+        round_trips=integer(data, "regen_round_trips", 1, 60),
+        air_gap_m=number(data, "cavity_length_m", 0.01, 2),
+        mirror_radius_m=number(data, "mirror_radius_m", 0.02, 10),
+        disk_hr_reflectivity=number(data, "disk_hr_reflectivity", 0.5, 1),
+        held_roundtrip_retention=number(data, "held_retention", 0.01, 1),
+        injection_efficiency=number(data, "injection_efficiency", 0.01, 1),
+        extraction_efficiency=number(data, "extraction_efficiency", 0.01, 1)) if architecture == "regenerative" else None
     cooling_mode = data.get("cooling_mode", "feedback")
     if cooling_mode not in ("fixed", "feedback"):
         raise ValueError("unknown cooling mode")
@@ -245,11 +265,17 @@ def calculate_pulsed(data, *, compute_thermal=True):
         operation_duration_s=number(data, "operation_duration_s", 0, 120),
         cooling_mode=cooling_mode,
         cooling_target_C=number(data, "cooling_target_C", 20, 250),
-        cooling_h_max_W_m2K=number(data, "cooling_h_max_W_m2K", 10000, 200000))
+        cooling_h_max_W_m2K=number(data, "cooling_h_max_W_m2K", 10000, 200000),
+        architecture=architecture, regenerative_cavity=regenerative_cavity)
+    if summary_only:
+        return {"incident_pump_W": settings.pump_power_W,
+                "average_output_W": result["output_energy_J"]*pulse_args[2],
+                "net_energy_gain": result["output_energy_J"]/result["input_energy_J"]}
     reference = (result if settings.cluster_contrast == 0 and not result["thermal_feedback_applied"] else
                  simulate_pulsed_seed(material, replace(settings, cluster_contrast=0.0),
                                       beam, *pulse_args, pump_passes=pump_passes,
-                                      compute_thermal=False))
+                                      compute_thermal=False, architecture=architecture,
+                                      regenerative_cavity=regenerative_cavity))
     actual_phase = result["output_phase"]
     reference_phase = reference["output_phase"]
     weights = result["output_fluence_J_m2"]
@@ -273,6 +299,9 @@ def calculate_pulsed(data, *, compute_thermal=True):
         "stretch_factor": amplifier_fwhm_ps * 1000 / source_fwhm_fs,
         "transform_limited_seed_spectral_fwhm_nm": spectral_fwhm_nm,
         "peak_pump_intensity_kW_cm2": peak_pump_kW_cm2,
+        "incident_pump_W": settings.pump_power_W,
+        "average_output_W": result["output_energy_J"]*pulse_args[2],
+        "net_energy_gain": result["output_energy_J"]/result["input_energy_J"],
         "proposal_targets": proposal["targets"],
         "x_mm": jsonable(result["grid"].x * 1e3),
         "y_mm": jsonable(result["grid"].y * 1e3),
@@ -280,7 +309,7 @@ def calculate_pulsed(data, *, compute_thermal=True):
         "uniform_isothermal_output_phase": jsonable(reference_phase),
         "phase_residual_rad": jsonable(phase_residual),
         "phase_residual_rms_rad": phase_residual_rms,
-        "reference_scope": "Dashed output profiles use the same Gaussian source, target-shaping mask, added phase, SLM-to-disk propagation, and pump with uniform Yb concentration and no thermal phase. The selected output receives transient thermal OPD only when the requested-time temperature is within the stated material range; temperature-dependent gain and relay feedback remain omitted.",
+        "reference_scope": "Dashed output profiles use the same Gaussian source, target-shaping mask, added phase, SLM-to-disk propagation, pump and selected amplifier architecture with uniform Yb concentration and no thermal phase. The selected output receives transient thermal OPD only when the requested-time temperature is within the stated material range; temperature-dependent gain and thermal cavity feedback remain omitted.",
         "spectral_scope": "Pulse gain uses the 1030 nm center cross sections. The femtosecond source bandwidth, chirp, gain narrowing, dispersion and nonlinear phase are not propagated spectrally; pulse energy is a monochromatic engineering estimate.",
     }
 
@@ -302,7 +331,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         endpoint = urlparse(self.path).path
-        if endpoint not in ("/api/calculate", "/api/structured", "/api/pulsed"):
+        if endpoint not in ("/api/calculate", "/api/structured", "/api/pulsed", "/api/pump-sweep"):
             self.respond(404, b"Not found", "text/plain; charset=utf-8")
             return
         try:
@@ -312,9 +341,17 @@ class Handler(BaseHTTPRequestHandler):
             if not 0 < length <= 4096:
                 raise ValueError("invalid request size")
             payload = json.loads(self.rfile.read(length))
-            response = (calculate_structured(payload) if endpoint == "/api/structured"
-                        else calculate_pulsed(payload) if endpoint == "/api/pulsed"
-                        else calculate(payload))
+            if endpoint == "/api/pump-sweep":
+                top = number(payload, "pump_W", 0.001, 1000)
+                response = {"points": [calculate_pulsed(
+                    {**payload, "pump_W": max(0.001, top*fraction),
+                     "operation_duration_s": 0},
+                    compute_thermal=False, summary_only=True)
+                    for fraction in (0.2, 0.4, 0.6, 0.8, 1.0)]}
+            else:
+                response = (calculate_structured(payload) if endpoint == "/api/structured"
+                            else calculate_pulsed(payload) if endpoint == "/api/pulsed"
+                            else calculate(payload))
             status = 200
         except (ValueError, TypeError, RuntimeError, json.JSONDecodeError) as exc:
             response, status = {"error": str(exc)}, 400
