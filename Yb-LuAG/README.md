@@ -9,8 +9,14 @@ From the repository root, run `python examples/ybluag_desktop.py` using a
 Python environment with Tk, Matplotlib, Pillow and the project dependencies.
 The desktop window exposes the CW, structured CW, and proposal pulse solvers,
 including regenerative cavity controls. It restores the latest saved Yb result
-and displays beam maps with adjacent horizontal and vertical profiles, phase
-and synthetic dopant maps, gain curves, cooler timeline, and thermal surfaces.
+and displays beam maps with a horizontal center cut above and a vertical
+center cut beside each image, phase and synthetic dopant maps, gain curves,
+cooler timeline, and thermal surfaces. The **Beam on crystal** tab overlays
+calculated disk-entrance 1/e² and 50%-of-peak beam contours on the Yb entrance
+concentration, with full-disk and footprint-detail views. The toolbar on every
+plot tab provides zoom, pan, and reset controls. "Added phase for selected beam"
+is the shaping phase generated from the selected target; optional correction
+phase is shown separately.
 The five-point pump curve is calculated on demand from the displayed pulse
 configuration. Results and logs are saved in `results/desktop_runs/` under the
 shared bounded-run ledger. The physics scope and assumptions below apply to
@@ -85,15 +91,22 @@ instantaneous response, and constant-temperature coolant bath are assumptions,
 not a measured cooling-system design. Short pulses at 10 kHz deposit average
 heat continuously, while the finite coolant conductance removes increasing
 power as the plate warms, so this model approaches a steady temperature.
-Each sampled temperature drives a
-bonded elastic solve and round-trip OPD. The first pump/population startup
-interval is approximated. Under ideal image relays, the thermal phase is
-accumulated over the signal traversals and propagated to the output plane
-only if the requested-time state remains inside the available room-temperature
-thermomechanical parameter range. The output phase residual is the wrapped,
+Each sampled temperature drives a bonded elastic solve and round-trip OPD.
+Thermal integration has a separate configurable maximum internal timestep.
+Five synthetic crystal/plate probes sample the same field with response time,
+sampling, latency, bias, noise and missing status. Cooling can use delivered
+disk-probe measurements, the exact disk maximum as an ideal full-state
+benchmark, or fixed conductance. The first
+pump/population startup interval is approximated. Cold, lumped
+post-extraction phase, and coupled steady regenerative modes are explicit
+choices. Coupled steady mode iterates local temperature-dependent gain, heat,
+temperature, deformation and a scalar phase at each disk encounter, stopping
+outside the 293.15–300 K assembly property range. It does not resolve
+transient optical/population feedback. The output phase residual is the wrapped,
 fluence-weighted piston-removed difference from an otherwise identical
-uniform-Yb, isothermal run. Beam-reshaping feedback into gain, photoelastic
-birefringence, and an actual relay geometry are omitted.
+uniform-Yb, isothermal run. Photoelastic birefringence, measured
+concentration-dependent index and a calibrated actual relay geometry are
+omitted.
 The app simulates one selected pulse shape at a time.
 Every CW and pulsed shape can overlay a dashed uniform-Yb output profile
 computed with the same pump and seed settings. Yb concentration maps use a

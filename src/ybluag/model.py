@@ -161,32 +161,82 @@ class YbLuAGMaterial:
         _positive("wavelength_nm", wavelength_nm)
         return spectral_cross_sections_m2(wavelength_nm, self.temperature_K)
 
-    def rates_s1(self, pump_intensity_W_m2, signal_intensity_W_m2):
+    def local_cross_sections_m2(self, wavelength_nm, temperature_K):
+        """Canonical absorption/emission on a local temperature field.
+
+        Uses the reconstructed absorption grid and the same McCumber relation
+        as ``cross_sections_m2``. The spatial field is never clamped to the
+        archive range; callers must choose an explicit extrapolation model if
+        they need one. Concentration changes ion density, not cross sections.
+        """
+        _positive("wavelength_nm", wavelength_nm)
+        wl, temperatures, absorption, _ = _spectra()
+        temp = np.asarray(temperature_K, dtype=float)
+        if (np.any(~np.isfinite(temp)) or np.any(temp < temperatures[0]-1e-9) or
+                np.any(temp > temperatures[-1]+1e-9) or
+                not wl[0] <= wavelength_nm <= wl[-1]):
+            raise ValueError("local spectral query outside 880–1150 nm or 293.15–473.15 K")
+        # Interpolation at an exact archive boundary may differ by a few ulps.
+        temp = np.clip(temp, temperatures[0], temperatures[-1])
+        absorption_at_wavelength = np.array(
+            [np.interp(wavelength_nm, wl, row) for row in absorption])
+        sigma_abs = np.interp(temp, temperatures, absorption_at_wavelength)
+        kbt_cm1 = (K_B * temp / (H * C)) / 100.0
+        z_ground = sum(np.exp(-energy / kbt_cm1) for energy in GROUND_STARK_CM1)
+        z_excited = sum(np.exp(-(energy - EXCITED_STARK_CM1[0]) / kbt_cm1)
+                        for energy in EXCITED_STARK_CM1)
+        sigma_em = sigma_abs * z_ground / z_excited * np.exp(
+            (EXCITED_STARK_CM1[0] - 1e7 / wavelength_nm) / kbt_cm1)
+        return sigma_abs, sigma_em
+
+    def rates_s1(self, pump_intensity_W_m2, signal_intensity_W_m2,
+                 temperature_K=None):
         """Per-ion total upward and downward rates including reabsorption."""
         pump = np.asarray(pump_intensity_W_m2, dtype=float)
         signal = np.asarray(signal_intensity_W_m2, dtype=float)
         if (np.any(~np.isfinite(pump)) or np.any(pump < 0) or
                 np.any(~np.isfinite(signal)) or np.any(signal < 0)):
             raise ValueError("intensities must be finite and nonnegative")
-        ap, ep = self.cross_sections_m2(self.pump_wavelength_nm)
-        a_s, e_s = self.cross_sections_m2(self.signal_wavelength_nm)
+        query = (self.cross_sections_m2 if temperature_K is None else
+                 lambda wavelength: self.local_cross_sections_m2(wavelength, temperature_K))
+        ap, ep = query(self.pump_wavelength_nm)
+        a_s, e_s = query(self.signal_wavelength_nm)
         pump_flux = pump / (H * C / (self.pump_wavelength_nm * 1e-9))
         signal_flux = signal / (H * C / (self.signal_wavelength_nm * 1e-9))
         return ap * pump_flux + a_s * signal_flux, ep * pump_flux + e_s * signal_flux
 
-    def excited_fraction_cw(self, pump_intensity_W_m2, signal_intensity_W_m2=0.0):
+    def excited_fraction_cw(self, pump_intensity_W_m2, signal_intensity_W_m2=0.0,
+                            temperature_K=None):
         """Steady solution of dβ/dt = (1-β)Wup - β(Wdown+1/τ)."""
-        up, down = self.rates_s1(pump_intensity_W_m2, signal_intensity_W_m2)
+        up, down = self.rates_s1(pump_intensity_W_m2, signal_intensity_W_m2,
+                                 temperature_K)
         return up / (up + down + 1.0 / self.lifetime_s)
 
-    def coefficients_m1(self, excited_fraction):
+    def coefficients_m1(self, excited_fraction, temperature_K=None):
+        """Scalar-density compatibility API for pump absorption and signal gain."""
+        return self.local_coefficients_m1(excited_fraction,
+                                          self.number_density_m3,
+                                          temperature_K)
+
+    def local_coefficients_m1(self, excited_fraction, density_m3,
+                              temperature_K=None):
+        """Pump absorption and signal gain from local population, density and T.
+
+        Concentration changes the ion density only. No unsupported direct
+        concentration dependence of cross sections or refractive index is
+        inferred here.
+        """
         beta = np.asarray(excited_fraction, dtype=float)
-        if np.any(~np.isfinite(beta)) or np.any((beta < 0) | (beta > 1)):
-            raise ValueError("excited fraction must be in [0, 1]")
-        ap, ep = self.cross_sections_m2(self.pump_wavelength_nm)
-        a_s, e_s = self.cross_sections_m2(self.signal_wavelength_nm)
-        ground = self.number_density_m3 * (1.0 - beta)
-        excited = self.number_density_m3 * beta
+        density = np.asarray(density_m3, dtype=float)
+        if (np.any(~np.isfinite(beta)) or np.any((beta < 0) | (beta > 1)) or
+                np.any(~np.isfinite(density)) or np.any(density < 0)):
+            raise ValueError("invalid local population or concentration")
+        query = (self.cross_sections_m2 if temperature_K is None else
+                 lambda wavelength: self.local_cross_sections_m2(wavelength, temperature_K))
+        ap, ep = query(self.pump_wavelength_nm)
+        a_s, e_s = query(self.signal_wavelength_nm)
+        ground = density * (1.0 - beta)
+        excited = density * beta
         return ap * ground - ep * excited, e_s * excited - a_s * ground
 
     def transparency_fraction(self):

@@ -22,6 +22,24 @@ LUAG_PHASE_INDEX_ASSUMED = 1.8302
 LUAG_GROUP_INDEX_ASSUMED = 1.8488
 
 
+def _local_fluence_transfer(incoming, log_gain, saturation_J_m2):
+    """Vectorized Frantz–Nodvik map for temperature-varying saturation fluence."""
+    fluence = np.asarray(incoming, dtype=float)
+    gain = np.asarray(log_gain, dtype=float)
+    saturation = np.asarray(saturation_J_m2, dtype=float)
+    if (np.any(~np.isfinite(fluence)) or np.any(fluence < 0) or
+            np.any(~np.isfinite(gain)) or
+            np.any(~np.isfinite(saturation)) or np.any(saturation <= 0)):
+        raise ValueError("invalid local Frantz–Nodvik state")
+    u = fluence / saturation
+    log_expm1 = np.empty_like(u)
+    small = u < 50
+    with np.errstate(divide="ignore"):
+        log_expm1[small] = np.log(np.expm1(u[small]))
+    log_expm1[~small] = u[~small] + np.log1p(-np.exp(-u[~small]))
+    return saturation * np.logaddexp(0, gain+log_expm1)
+
+
 @dataclass(frozen=True)
 class RegenerativeCavity:
     round_trips: int = 10
@@ -71,7 +89,8 @@ def amplify_regenerative(material: YbLuAGMaterial, grid: Grid2D, seed_field,
                          thickness_m: float, pump_passes: int,
                          repetition_rate_Hz: float, cavity_settings: RegenerativeCavity,
                          fluorescence_photon_energy_J: float,
-                         fluorescence_escape_yield: float):
+                         fluorescence_escape_yield: float, *,
+                         temperature_K_by_slice=None, encounter_opd_m=None):
     """Converge the periodic inversion and return a cycle energy ledger.
 
     The held Pockels/polarizer state is represented by a measured-or-assumed
@@ -89,8 +108,20 @@ def amplify_regenerative(material: YbLuAGMaterial, grid: Grid2D, seed_field,
     dz = thickness_m/scale.shape[0]
     pixel_area = grid.dx*grid.dy
     photon_J = H*C/(material.signal_wavelength_nm*1e-9)
-    sigma_a, sigma_e = material.cross_sections_m2(material.signal_wavelength_nm)
+    temperature = (None if temperature_K_by_slice is None else
+                   np.broadcast_to(np.asarray(temperature_K_by_slice, dtype=float),
+                                   scale.shape))
+    sigma_a, sigma_e = (material.cross_sections_m2(material.signal_wavelength_nm)
+                        if temperature is None else
+                        material.local_cross_sections_m2(material.signal_wavelength_nm,
+                                                         temperature))
     saturation_J_m2 = photon_J/(sigma_a+sigma_e)
+    encounter_opd = (np.zeros(grid.shape) if encounter_opd_m is None else
+                     np.asarray(encounter_opd_m, dtype=float))
+    if encounter_opd.shape != grid.shape or np.any(~np.isfinite(encounter_opd)):
+        raise ValueError("encounter OPD must match the optical grid")
+    encounter_phase = np.exp(2j*np.pi*encounter_opd /
+                             (material.signal_wavelength_nm*1e-9))
     density = material.number_density_m3*scale
     x, y = grid.mesh
     aperture = (x*x+y*y) <= (cavity_settings.disk_diameter_m/2)**2
@@ -107,9 +138,18 @@ def amplify_regenerative(material: YbLuAGMaterial, grid: Grid2D, seed_field,
         excited_integral = np.zeros_like(beta)
         for _ in range(chunks):
             dt = duration_s/chunks
+            midpoint, _, _ = transport_multipass_pump(
+                material, pump, scale, thickness_m, pump_passes, beta,
+                temperature_K_by_slice=temperature)
+            up, down = material.rates_s1(midpoint, 0, temperature)
+            predictor_rate = up+down+1/material.lifetime_s
+            predictor_equilibrium = up/predictor_rate
+            beta_mid = predictor_equilibrium + (beta-predictor_equilibrium)*np.exp(
+                -predictor_rate*dt/2)
             midpoint, absorbed, _ = transport_multipass_pump(
-                material, pump, scale, thickness_m, pump_passes, beta)
-            up, down = material.rates_s1(midpoint, 0)
+                material, pump, scale, thickness_m, pump_passes, beta_mid,
+                temperature_K_by_slice=temperature)
+            up, down = material.rates_s1(midpoint, 0, temperature)
             rate = up+down+1/material.lifetime_s
             equilibrium = up/rate
             factor = -np.expm1(-rate*dt)
@@ -121,8 +161,13 @@ def amplify_regenerative(material: YbLuAGMaterial, grid: Grid2D, seed_field,
     def disk_pass(field, beta, order, signal_ledger):
         for iz in order:
             incoming = np.abs(field)**2
-            g = density[iz]*((sigma_a+sigma_e)*beta[iz]-sigma_a)*dz
-            outgoing = fluence_transfer(incoming, g, saturation_J_m2)
+            sa = sigma_a if temperature is None else sigma_a[iz]
+            se = sigma_e if temperature is None else sigma_e[iz]
+            fsat = saturation_J_m2 if temperature is None else saturation_J_m2[iz]
+            g = density[iz]*((sa+se)*beta[iz]-sa)*dz
+            outgoing = (fluence_transfer(incoming, g, fsat)
+                        if temperature is None else
+                        _local_fluence_transfer(incoming, g, fsat))
             change = outgoing-incoming
             signal_ledger[iz] += change
             population_change = np.divide(change, density[iz]*dz*photon_J,
@@ -134,9 +179,12 @@ def amplify_regenerative(material: YbLuAGMaterial, grid: Grid2D, seed_field,
             beta[iz] = np.clip(beta[iz], 0, 1)
             field *= np.sqrt(np.divide(outgoing, incoming,
                                        out=np.ones_like(outgoing), where=incoming > 0))
+        field *= encounter_phase
         return field
 
-    pump_steady = steady_multipass_pump(material, pump, scale, thickness_m, pump_passes)
+    pump_steady = steady_multipass_pump(
+        material, pump, scale, thickness_m, pump_passes,
+        temperature_K_by_slice=temperature)
     beta_before = pump_steady.excited_fraction_by_slice.copy()
     roundtrip_s = cavity.roundtrip_time_s
     period_s = 1/repetition_rate_Hz
@@ -237,6 +285,9 @@ def amplify_regenerative(material: YbLuAGMaterial, grid: Grid2D, seed_field,
         "cycles": cycle,
         "residual": residual,
         "mean_excited_fraction_before_pulse": float(np.mean(beta_before)),
+        "excited_fraction_before_pulse_by_slice": beta_before.copy(),
+        "local_temperature_K_by_slice": (None if temperature is None else temperature.copy()),
+        "encounter_opd_m": encounter_opd.copy(),
         "pump_steady_iterations": pump_steady.iterations,
         "recovery_substeps": cavity_settings.recovery_substeps,
         "saturation_fluence_J_m2": saturation_J_m2,

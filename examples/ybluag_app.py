@@ -26,6 +26,7 @@ from ybluag import (YbLuAGMaterial, YbGallerySettings, fluorescence_spectrum,
 from ybluag.model import _spectra
 from ybluag.regenerative import RegenerativeCavity
 from ybluag.diagnostics import gain_feasibility, hardware_validity, spectral_gain_screen
+from ybluag.sensors import TemperatureProbe
 
 PAGE = ROOT / "Yb-LuAG" / "app.html"
 COATINGS = ROOT / "config" / "ybluag_10at_coatings.json"
@@ -134,7 +135,9 @@ def calculate_structured(data):
         raise ValueError("request must be an object")
     data = {"slm_to_disk_m": 0.25, "grid_n": 96,
             "field_size_mm": 12.0, "optical_z_steps": 4,
-            "thermal_nr": 8, "thermal_nphi": 12, "thermal_nz": 4, **data}
+            "thermal_nr": 8, "thermal_nphi": 12, "thermal_nz": 4,
+            "disk_radius_mm": 5.0,
+            "assembly_property_model": "reference_10at", **data}
     from hoyag.structured_beam_gallery import PHASE_MASKS, BEAM_NAMES
     mask = data.get("phase_mask", "none")
     if mask not in PHASE_MASKS:
@@ -149,6 +152,8 @@ def calculate_structured(data):
         pump_power_W=number(data, "pump_W", 0.001, 1000),
         pump_radius_m=number(data, "radius_mm", 0.1, 5) * 1e-3,
         thickness_m=number(data, "thickness_um", 1, 2000) * 1e-6,
+        disk_radius_m=number(data, "disk_radius_mm", 1, 10) * 1e-3,
+        assembly_property_model=data["assembly_property_model"],
         input_power_W=number(data, "signal_W", 0.001, 100),
         waist_m=number(data, "waist_mm", 0.1, 2) * 1e-3,
         post_disk_distance_m=number(data, "distance_m", 0, 2),
@@ -220,6 +225,9 @@ def calculate_pulsed(data, *, compute_thermal=True, summary_only=False):
         "pump_W": proposal["pump"]["incident_average_power_W"],
         "radius_mm": proposal["geometry"]["pump_beam_diameter_mm"] / 2,
         "thickness_um": proposal["geometry"]["disk_thickness_um"],
+        "yb_at_percent": proposal["material"]["yb_at_percent"],
+        "disk_radius_mm": 5.0,
+        "assembly_property_model": "proposal_12at",
         "seed_energy_nj": proposal["seed"]["energy_nJ"],
         "seed_fwhm_ps": proposal["seed"]["amplifier_intensity_fwhm_ps"],
         "source_fwhm_fs": proposal["seed"]["source_intensity_fwhm_fs"],
@@ -240,10 +248,13 @@ def calculate_pulsed(data, *, compute_thermal=True, summary_only=False):
         "thermal_nz": 4,
         "escape_yield": 0.0,
         "operation_duration_s": 30.0,
+        "thermal_internal_max_step_s": 10.0,
+        "probe_seed": 0,
         "slm_to_disk_m": 0.25,
         "cooling_mode": "feedback",
         "cooling_target_C": 40.0,
         "architecture": "ideal_multipass",
+        "thermal_optical_mode": "lumped_phase",
         "regen_round_trips": 10,
         "cavity_length_m": 0.25,
         "mirror_radius_m": 0.5,
@@ -262,6 +273,8 @@ def calculate_pulsed(data, *, compute_thermal=True, summary_only=False):
         pump_power_W=number(data, "pump_W", 0.001, 1000),
         pump_radius_m=number(data, "radius_mm", 0.1, 5) * 1e-3,
         thickness_m=number(data, "thickness_um", 1, 2000) * 1e-6,
+        disk_radius_m=number(data, "disk_radius_mm", 1, 10) * 1e-3,
+        assembly_property_model=data["assembly_property_model"],
         waist_m=number(data, "waist_mm", 0.1, 2) * 1e-3,
         post_disk_distance_m=number(data, "distance_m", 0, 2),
         slm_to_disk_distance_m=number(data, "slm_to_disk_m", 0.001, 2),
@@ -278,7 +291,7 @@ def calculate_pulsed(data, *, compute_thermal=True, summary_only=False):
         thermal_nphi=integer(data, "thermal_nphi", 4, 96),
         thermal_nz=integer(data, "thermal_nz", 1, 24))
     material = YbLuAGMaterial(
-            yb_at_percent=proposal["material"]["yb_at_percent"],
+            yb_at_percent=number(data, "yb_at_percent", 5, 15),
             lifetime_s=proposal["material"]["lifetime_s"],
             pump_wavelength_nm=proposal["optics"]["pump_wavelength_nm"],
             signal_wavelength_nm=proposal["optics"]["signal_wavelength_nm"])
@@ -298,10 +311,24 @@ def calculate_pulsed(data, *, compute_thermal=True, summary_only=False):
         disk_hr_reflectivity=number(data, "disk_hr_reflectivity", 0.5, 1),
         held_roundtrip_retention=number(data, "held_retention", 0.01, 1),
         injection_efficiency=number(data, "injection_efficiency", 0.01, 1),
-        extraction_efficiency=number(data, "extraction_efficiency", 0.01, 1)) if architecture == "regenerative" else None
+        extraction_efficiency=number(data, "extraction_efficiency", 0.01, 1),
+        disk_diameter_m=2*settings.disk_radius_m) if architecture == "regenerative" else None
     cooling_mode = data.get("cooling_mode", "feedback")
-    if cooling_mode not in ("fixed", "feedback"):
+    if cooling_mode not in ("fixed", "feedback", "sensor_feedback"):
         raise ValueError("unknown cooling mode")
+    thermal_optical_mode = data["thermal_optical_mode"]
+    if thermal_optical_mode not in ("cold", "lumped_phase", "coupled_steady"):
+        raise ValueError("unknown thermal-optical calculation mode")
+    probe_specs = data.get("temperature_probes")
+    if probe_specs is not None:
+        if not isinstance(probe_specs, list) or len(probe_specs) != 5:
+            raise ValueError("temperature_probes must contain five probe specifications")
+        try:
+            temperature_probes = tuple(TemperatureProbe(**spec) for spec in probe_specs)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"invalid temperature probe: {exc}") from exc
+    else:
+        temperature_probes = None
     result = simulate_pulsed_seed(
         material,
         settings, beam,
@@ -310,7 +337,11 @@ def calculate_pulsed(data, *, compute_thermal=True, summary_only=False):
         cooling_mode=cooling_mode,
         cooling_target_C=number(data, "cooling_target_C", 20, 250),
         cooling_h_max_W_m2K=number(data, "cooling_h_max_W_m2K", 10000, 200000),
-        architecture=architecture, regenerative_cavity=regenerative_cavity)
+        architecture=architecture, regenerative_cavity=regenerative_cavity,
+        thermal_optical_mode=thermal_optical_mode,
+        thermal_internal_max_step_s=number(data, "thermal_internal_max_step_s", .001, 120),
+        temperature_probes=temperature_probes,
+        probe_seed=integer(data, "probe_seed", 0, 2**31-1))
     if summary_only:
         return {"incident_pump_W": settings.pump_power_W,
                 "average_output_W": result["output_energy_J"]*pulse_args[2],
@@ -330,9 +361,17 @@ def calculate_pulsed(data, *, compute_thermal=True, summary_only=False):
     cold_density_rms = float(np.sqrt(np.average(
         cold_density_residual[mask]**2, weights=weights[mask])))
     hot_phase_validity = ("extrapolated_unvalidated"
-                          if result["thermal_timeline"] is not None else
+                          if result["thermal_feedback_applied"] else
+                          "outside_supported_conditions"
+                          if result["thermal_timeline"] is not None and
+                             not result["thermal_timeline"]["requested_material_range_valid"] else
                           "not_calculated")
     hot_phase_reason = (
+        "Coupled steady optics uses local-temperature spectra and scalar phase "
+        "at every regenerative disk encounter; generic assembly coefficients "
+        "remain uncalibrated."
+        if result["thermal_optical_mode"] == "coupled_steady" and
+           result["thermal_feedback_applied"] else
         "Material parameters are within their stated range, but the generic assembly "
         "is uncalibrated and thermal phase is applied after amplification only."
         if result["thermal_feedback_applied"] else
@@ -368,12 +407,16 @@ def calculate_pulsed(data, *, compute_thermal=True, summary_only=False):
     spectral_screen = spectral_gain_screen(
         material, source_fwhm_fs=source_fwhm_fs,
         stretched_fwhm_ps=amplifier_fwhm_ps,
-        shared_inversion=result["mean_excited_fraction_before_pulse"],
+        excited_fraction_by_slice=result["pre_pulse_excited_fraction_by_slice"],
+        density_m3_by_slice=result["yb_density_m3"],
+        temperature_K_by_slice=result["optical_temperature_K_by_slice"],
+        incident_fluence_J_m2=result["disk_input_fluence_J_m2"],
+        architecture=architecture,
         material_traversals=feasibility["material_traversals"],
         thickness_m=settings.thickness_m)
     return {
         **{key: jsonable(value) for key, value in result.items() if key != "grid"},
-        "yb_at_percent": proposal["material"]["yb_at_percent"],
+        "yb_at_percent": material.yb_at_percent,
         "concentration_dependent_index_status": "not_calculated: no measured bulk dn/dYb for this crystal",
         "lifetime_s_assumed": proposal["material"]["lifetime_s"],
         "lifetime_status": proposal["material"]["lifetime_status"],
@@ -405,7 +448,10 @@ def calculate_pulsed(data, *, compute_thermal=True, summary_only=False):
             if not result["thermal_feedback_applied"] else None,
         "hot_phase_validity": hot_phase_validity,
         "hot_phase_reason": hot_phase_reason,
-        "reference_scope": "Dashed output profiles use the same Gaussian source, target-shaping mask, added phase, SLM-to-disk propagation, pump and selected amplifier architecture with uniform Yb concentration and no thermal phase. The selected output receives transient thermal OPD only when the requested-time temperature is within the stated material range; temperature-dependent gain and thermal cavity feedback remain omitted.",
+        "reference_scope": ("Dashed output profiles use the same Gaussian source, target-shaping mask, optional correction, SLM-to-disk propagation, pump and selected amplifier architecture with uniform Yb and cold optics. "
+                            + ("The selected output is a converged steady regenerative thermal-optical result with local-temperature spectra and per-encounter scalar bulk/surface phase."
+                               if result["thermal_optical_mode"] == "coupled_steady" else
+                               "The selected output uses a post-extraction lumped thermal phase only when the requested-time state is within the assembly-property range; hot gain feedback is omitted.")),
         "spectral_scope": "Pulse gain uses the 1030 nm center cross sections. The femtosecond source bandwidth, chirp, gain narrowing, dispersion and nonlinear phase are not propagated spectrally; pulse energy is a monochromatic engineering estimate.",
     }
 

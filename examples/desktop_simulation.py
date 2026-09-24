@@ -35,7 +35,8 @@ from ybluag_desktop_views import YbResultPanel
 
 NUMERIC_RANGES = {
     "pump_W": (.001, 1000), "radius_mm": (.01, 10),
-    "thickness_um": (1, 2000), "waist_mm": (.1, 2),
+    "thickness_um": (1, 2000), "disk_radius_mm": (1, 10),
+    "yb_at_percent": (5, 15), "waist_mm": (.1, 2),
     "signal_W": (.001, 100), "seed_W": (0, 1000),
     "pump_nm": (880, 1150), "signal_nm": (880, 1150),
     "phase_strength_rad": (-50, 50), "seed_energy_nj": (.001, 100000),
@@ -49,6 +50,8 @@ NUMERIC_RANGES = {
     "density_seed": (-2e9, 2e9), "cluster_count": (2, 64),
     "cluster_contrast": (0, 1), "escape_yield": (0, 1),
     "operation_duration_s": (0, 120), "cooling_target_C": (20, 250),
+    "thermal_internal_max_step_s": (.001, 120),
+    "probe_seed": (0, 2**31-1),
     "cooling_h_max_W_m2K": (10000, 200000),
     "grid_n": (32, 768), "field_size_mm": (8, 24),
     "optical_z_steps": (1, 16), "thermal_nr": (4, 48),
@@ -56,7 +59,7 @@ NUMERIC_RANGES = {
 }
 INTEGER_KEYS = {"grid_n", "optical_z_steps", "thermal_nr", "thermal_nphi",
                 "thermal_nz", "pump_passes", "signal_traversals", "regen_round_trips",
-                "density_seed", "cluster_count"}
+                "density_seed", "cluster_count", "probe_seed"}
 
 
 def validate_yb_payload(kind: str, values: dict) -> dict:
@@ -79,8 +82,13 @@ def validate_yb_payload(kind: str, values: dict) -> dict:
     if kind != "cw":
         if payload["selected_beam"] not in BEAM_NAMES or payload["phase_mask"] not in PHASE_MASKS:
             raise ValueError("unknown beam or phase mask")
+        if payload["assembly_property_model"] not in ("reference_10at", "proposal_12at"):
+            raise ValueError("unknown Yb assembly property assumption")
     if kind in ("pulsed", "pump_sweep") and payload["seed_fwhm_ps"] * 1000 < payload["source_fwhm_fs"]:
         raise ValueError("stretched pulse must be at least as long as source pulse")
+    if kind in ("pulsed", "pump_sweep") and payload["thermal_optical_mode"] not in (
+            "cold", "lumped_phase", "coupled_steady"):
+        raise ValueError("unknown thermal-optical mode")
     if kind == "structured" and not .1 <= payload["radius_mm"] <= 5:
         raise ValueError("structured pump radius must be 0.1–5 mm")
     return payload
@@ -93,21 +101,29 @@ def field(key, label, default, choices=None):
 YB_FIELDS = (
     field("kind", "Calculation", "pulsed", ("pulsed", "structured", "cw")),
     field("selected_beam", "Target beam", BEAM_NAMES[0], BEAM_NAMES),
-    field("phase_mask", "Added phase mask", "none", PHASE_MASKS),
-    field("phase_strength_rad", "Added phase (rad)", math.pi),
+    field("phase_mask", "Optional phase correction", "none", PHASE_MASKS),
+    field("phase_strength_rad", "Correction strength (rad)", math.pi),
     field("architecture", "Amplifier architecture", "regenerative",
           ("regenerative", "ideal_multipass")),
+    field("thermal_optical_mode", "Thermal-optical calculation", "lumped_phase",
+          ("cold", "lumped_phase", "coupled_steady")),
     field("solver_mode", "Structured CW solver", "saturated_cw",
           ("weak_probe", "saturated_cw", "modal_cw")),
     field("pump_W", "Pump power (W)", 40),
     field("radius_mm", "Pump radius (mm)", 1),
     field("thickness_um", "Disk thickness (µm)", 100),
+    field("yb_at_percent", "Yb concentration (at.%)", 12),
+    field("disk_radius_mm", "Disk radius (mm)", 5),
+    field("assembly_property_model", "Assembly property assumption", "proposal_12at",
+          ("reference_10at", "proposal_12at")),
     field("grid_n", "Optical grid points per axis", 96),
     field("field_size_mm", "Optical window (mm)", 12),
     field("optical_z_steps", "Optical depth cells", 4),
     field("thermal_nr", "Thermal radial cells", 8),
     field("thermal_nphi", "Thermal angular cells", 12),
     field("thermal_nz", "Thermal depth cells", 4),
+    field("thermal_internal_max_step_s", "Thermal internal max step (s)", 10),
+    field("probe_seed", "Temperature-probe noise seed", 0),
     field("waist_mm", "Signal waist (mm)", 0.6),
     field("signal_W", "Structured input (W)", 1),
     field("seed_W", "CW input (W)", 1),
@@ -133,7 +149,7 @@ YB_FIELDS = (
     field("cluster_contrast", "Cluster contrast", 0.27),
     field("escape_yield", "Fluorescence escape yield", 0),
     field("operation_duration_s", "Operating time (s)", 30),
-    field("cooling_mode", "Cooler control", "feedback", ("feedback", "fixed")),
+    field("cooling_mode", "Cooler control", "feedback", ("feedback", "sensor_feedback", "fixed")),
     field("cooling_target_C", "Cooler target (°C)", 40),
     field("cooling_h_max_W_m2K", "Maximum cooler h (W/m²K)", 100000),
 )
@@ -444,20 +460,17 @@ class DesktopSimulation(tk.Tk):
 
     def update_yb_fields(self):
         kind = self.yb_input.vars["kind"].get()
-        previous = getattr(self, "previous_yb_kind", None)
-        if kind != previous:
-            thickness = self.yb_input.vars["thickness_um"]
-            if kind == "structured" and thickness.get() == "100":
-                thickness.set("150")
-            elif kind == "pulsed" and thickness.get() == "150":
-                thickness.set("100")
-            self.previous_yb_kind = kind
-        common = {"kind", "pump_W", "radius_mm", "thickness_um", "grid_n",
+        common = {"kind", "pump_W", "radius_mm", "thickness_um", "disk_radius_mm",
+                  "yb_at_percent",
+                  "assembly_property_model", "grid_n",
                   "field_size_mm", "optical_z_steps", "thermal_nr",
                   "thermal_nphi", "thermal_nz"}
         if kind == "cw":
             common -= {"grid_n", "field_size_mm", "optical_z_steps",
-                       "thermal_nr", "thermal_nphi", "thermal_nz"}
+                       "thermal_nr", "thermal_nphi", "thermal_nz",
+                       "disk_radius_mm", "assembly_property_model", "yb_at_percent"}
+        if kind == "structured":
+            common -= {"yb_at_percent"}
         shaped = {"selected_beam", "phase_mask", "phase_strength_rad", "waist_mm",
                   "distance_m", "slm_to_disk_m", "density_seed", "cluster_count",
                   "cluster_contrast", "escape_yield"}
@@ -467,8 +480,11 @@ class DesktopSimulation(tk.Tk):
             keys = common | shaped | {"solver_mode", "signal_W"}
         else:
             keys = common | shaped | {"architecture", "seed_energy_nj",
+                   "thermal_optical_mode",
                    "source_fwhm_fs", "seed_fwhm_ps", "repetition_rate_kHz",
                    "pump_passes", "signal_traversals", "operation_duration_s",
+                   "thermal_internal_max_step_s",
+                   "probe_seed",
                    "cooling_mode", "cooling_target_C", "cooling_h_max_W_m2K"}
             if self.yb_input.vars["architecture"].get() == "regenerative":
                 keys |= {"regen_round_trips", "cavity_length_m", "mirror_radius_m",

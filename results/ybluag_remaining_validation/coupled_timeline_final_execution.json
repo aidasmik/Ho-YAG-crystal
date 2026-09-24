@@ -1,0 +1,9 @@
+{
+  "effective_limit_s": 120,
+  "elapsed_s": 0.8631703840001137,
+  "exit_code": 0,
+  "label": "ybluag_small_coupled_controller_final",
+  "log_path": "/home/aidas/Desktop/FTMC/Ho-YAG-crystal/results/ybluag_remaining_validation/coupled_timeline_final.log",
+  "peak_rss_bytes": 91394048,
+  "status": "completed"
+}

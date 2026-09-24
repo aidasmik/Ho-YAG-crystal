@@ -85,8 +85,11 @@ def hardware_validity(*, pump_nm: float, coating_band_nm: tuple[float, float],
 
 
 def spectral_gain_screen(material: YbLuAGMaterial, *, source_fwhm_fs: float,
-                         stretched_fwhm_ps: float, shared_inversion: float,
-                         material_traversals: int, thickness_m: float) -> dict:
+                         stretched_fwhm_ps: float, shared_inversion: float | None = None,
+                         material_traversals: int, thickness_m: float,
+                         excited_fraction_by_slice=None, density_m3_by_slice=None,
+                         temperature_K_by_slice=None, incident_fluence_J_m2=None,
+                         architecture="ideal_multipass") -> dict:
     """Wavelength-resolved *small-signal* screen using one shared inversion.
 
     The transform-limited source intensity FWHM sets a Gaussian power spectrum.
@@ -100,20 +103,54 @@ def spectral_gain_screen(material: YbLuAGMaterial, *, source_fwhm_fs: float,
     wavelengths = np.linspace(center-2*bandwidth, center+2*bandwidth, 41)
     if wavelengths[0] < 880 or wavelengths[-1] > 1150:
         return {"status": "not_calculated", "reason": "source band extends beyond reconstructed spectra"}
-    sa, se = spectral_cross_sections_m2(wavelengths, material.temperature_K)
+    if architecture != "ideal_multipass":
+        return {"status": "not_calculated", "reason":
+                "regenerative wavelength-dependent cavity propagation is not implemented"}
     weights = np.exp(-4*math.log(2)*((wavelengths-center)/bandwidth)**2)
     weights /= weights.sum()
-    g = material.number_density_m3*(se*shared_inversion-sa*(1-shared_inversion))
-    small_signal = np.exp(g*thickness_m*material_traversals)
+    spatial = excited_fraction_by_slice is not None
+    if spatial:
+        beta = np.asarray(excited_fraction_by_slice, dtype=float)
+        density = np.asarray(density_m3_by_slice, dtype=float)
+        incident = np.asarray(incident_fluence_J_m2, dtype=float)
+        if (beta.ndim != 3 or density.shape != beta.shape or
+                incident.shape != beta.shape[1:] or
+                not np.all(np.isfinite(beta)) or np.any((beta < 0) | (beta > 1)) or
+                not np.all(np.isfinite(density)) or np.any(density < 0) or
+                not np.all(np.isfinite(incident)) or np.any(incident < 0) or
+                not np.sum(incident) > 0):
+            raise ValueError("invalid spatial spectral population, density or incident field")
+        temperature = (np.full(beta.shape, material.temperature_K)
+                       if temperature_K_by_slice is None else
+                       np.broadcast_to(np.asarray(temperature_K_by_slice, float), beta.shape))
+        dz = thickness_m / beta.shape[0]
+        small_signal = []
+        for wavelength in wavelengths:
+            sa, se = material.local_cross_sections_m2(float(wavelength), temperature)
+            log_gain = np.sum(density * (se*beta-sa*(1-beta)), axis=0) * dz * material_traversals
+            if np.max(log_gain) > 700:
+                return {"status": "not_calculated", "reason": "small-signal exponential exceeds numeric range"}
+            small_signal.append(float(np.sum(incident * np.exp(log_gain)) / np.sum(incident)))
+        small_signal = np.asarray(small_signal)
+    else:
+        if shared_inversion is None or not 0 <= shared_inversion <= 1:
+            raise ValueError("supply spatial population or valid homogeneous inversion")
+        sa, se = spectral_cross_sections_m2(wavelengths, material.temperature_K)
+        g = material.number_density_m3*(se*shared_inversion-sa*(1-shared_inversion))
+        small_signal = np.exp(g*thickness_m*material_traversals)
     return {
-        "status": "small_signal_screen_only",
+        "status": "spatial_small_signal_screen_only" if spatial else "small_signal_screen_only",
         "wavelength_nm": wavelengths.tolist(),
         "input_spectral_weights": weights.tolist(),
         "unsaturated_gain": small_signal.tolist(),
-        "shared_inversion": shared_inversion,
+        "shared_inversion": None if spatial else shared_inversion,
+        "spatial_weighting": ("incident-fluence-weighted exp(integrated local gain)" if spatial
+                              else "homogeneous analytic reference"),
         "source_fwhm_nm": bandwidth,
         "stretch_preserves_spectral_magnitude": True,
         "spectral_phase": None,
         "compressed_duration_s": None,
-        "reason": "One shared pre-pulse mean inversion; no spectral-bin-specific inversion. This is not a wavelength-resolved saturated pulse prediction.",
+        "reason": ("One spatial pre-pulse inversion shared by all wavelength bins; ideal relays, no spectral saturation or cavity wavelength dependence."
+                   if spatial else
+                   "Homogeneous inversion reference; no spectral-bin-specific inversion. This is not a saturated pulse prediction."),
     }

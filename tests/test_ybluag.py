@@ -98,7 +98,7 @@ class YbLuAGPhysicsTests(unittest.TestCase):
         self.assertFalse(result["thermal_feedback_applied"])
         self.assertIsNone(result["phase_residual_rms_rad"])
         self.assertIsNone(result["phase_residual_rad"])
-        self.assertEqual(result["hot_phase_validity"], "extrapolated_unvalidated")
+        self.assertEqual(result["hot_phase_validity"], "outside_supported_conditions")
         self.assertIn("hot wavefront error is unknown", result["hot_phase_reason"])
         self.assertLess(result["cold_density_phase_residual_rms_rad"], 1e-12)
         self.assertLess(timeline["energy_balance_relative_max"], 1e-7)

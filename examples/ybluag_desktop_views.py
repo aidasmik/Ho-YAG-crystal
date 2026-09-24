@@ -6,8 +6,9 @@ from tkinter import ttk
 
 import matplotlib
 matplotlib.use("TkAgg")
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from matplotlib.figure import Figure
+from matplotlib.lines import Line2D
 from matplotlib.patches import Circle
 import numpy as np
 
@@ -24,7 +25,7 @@ def _line_pair(ax, x, y, label, style="-"):
 class YbResultPanel(ttk.Frame):
     """Solver output organized as native plots and readable scientific metrics."""
 
-    NAMES = ("Overview", "Beam and profiles", "Phase and Yb", "Gain and pulse",
+    NAMES = ("Overview", "Beam and profiles", "Beam on crystal", "Phase and Yb", "Gain and pulse",
              "Cooling timeline", "Thermal surfaces")
 
     def __init__(self, parent):
@@ -34,6 +35,7 @@ class YbResultPanel(ttk.Frame):
         self.frames = {}
         self.figures = {}
         self.canvases = {}
+        self.toolbars = {}
         self.overview = None
         for name in self.NAMES:
             frame = ttk.Frame(self.tabs)
@@ -47,11 +49,15 @@ class YbResultPanel(ttk.Frame):
                 scroll.pack(side="right", fill="y")
                 self.overview = text
             else:
-                fig = Figure(figsize=(10, 7), dpi=100, constrained_layout=True)
+                fig = Figure(figsize=(10, 8), dpi=100, constrained_layout=True)
                 canvas = FigureCanvasTkAgg(fig, master=frame)
                 canvas.get_tk_widget().pack(fill="both", expand=True)
+                toolbar = NavigationToolbar2Tk(canvas, frame, pack_toolbar=False)
+                toolbar.update()
+                toolbar.pack(fill="x")
                 self.figures[name] = fig
                 self.canvases[name] = canvas
+                self.toolbars[name] = toolbar
         self.kind = None
         self.result = None
         self.directory = None
@@ -69,6 +75,7 @@ class YbResultPanel(ttk.Frame):
         self.overview.configure(state="disabled")
 
     def _finish(self, name):
+        self.toolbars[name].update()
         self.canvases[name].draw_idle()
 
     def draw(self, kind, result, directory, beam):
@@ -78,7 +85,7 @@ class YbResultPanel(ttk.Frame):
             self._visible(("Overview", "Gain and pulse"))
             self._cw()
         elif kind == "structured":
-            self._visible(("Overview", "Beam and profiles", "Phase and Yb",
+            self._visible(("Overview", "Beam and profiles", "Beam on crystal", "Phase and Yb",
                            "Gain and pulse", "Thermal surfaces"))
             self._structured()
         else:
@@ -108,28 +115,100 @@ class YbResultPanel(ttk.Frame):
         name = "Beam and profiles"
         fig = self.figures[name]
         fig.clear()
-        axes = fig.subplots(3, 2)
+        fig.set_layout_engine(None)
         cases = ((source, "Gaussian source"), (incident, "Shaped disk input"),
                  (output, "Amplified output"))
-        for row, (values, label) in enumerate(cases):
+        for column, (values, label) in enumerate(cases):
             values = _array(values)
-            image = self._map(axes[row, 0], values, label, x, y, cmap="inferno", disk=True)
-            fig.colorbar(image, ax=axes[row, 0], shrink=.7, label=unit)
-            ax = axes[row, 1]
+            left = .025 + column * .325
+            image_ax = fig.add_axes((left + .07, .27, .21, .27))
+            top_ax = fig.add_axes((left + .07, .56, .21, .09), sharex=image_ax)
+            side_ax = fig.add_axes((left, .27, .06, .27), sharey=image_ax)
+            color_ax = fig.add_axes((left + .285, .27, .012, .27))
+            image = self._map(image_ax, values, "", x, y, cmap="inferno", disk=True)
+            fig.colorbar(image, cax=color_ax)
+            color_ax.tick_params(labelsize=7, pad=1)
+            fig.text(left + .17, .69, label, ha="center", fontsize=11)
             iy, ix = len(y) // 2, len(x) // 2
-            _line_pair(ax, x, values[iy], "x cut")
-            _line_pair(ax, y, values[:, ix], "y cut", "--")
-            if row == 2 and reference is not None:
+            peak = float(values.max())
+            norm = peak if peak > 0 else 1.0
+            top_ax.plot(x, values[iy] / norm, color="#20242c", linewidth=1.2)
+            side_ax.plot(values[:, ix] / norm, y, color="#20242c", linewidth=1.2)
+            if column == 2 and reference is not None:
                 ref = _array(reference)
-                _line_pair(ax, x, ref[iy], "uniform Yb x", ":")
-                _line_pair(ax, y, ref[:, ix], "uniform Yb y", "-.")
-            ax.set(xlabel="position (mm)", ylabel="normalized center-cut fluence/irradiance",
-                   title=f"{label} · top and side profiles")
-            ax.set_xlim(-2, 2)
-            ax.set_ylim(bottom=0)
-            ax.grid(alpha=.2)
-            ax.legend(fontsize=8, loc="upper right")
-        fig.suptitle(title, fontsize=12)
+                ref_peak = float(ref.max())
+                ref_norm = ref_peak if ref_peak > 0 else 1.0
+                top_ax.plot(x, ref[iy] / ref_norm, color="#0087a5",
+                            linestyle="--", linewidth=1)
+                side_ax.plot(ref[:, ix] / ref_norm, y, color="#0087a5",
+                             linestyle="--", linewidth=1)
+            image_ax.set_xlim(-2, 2)
+            image_ax.set_ylim(-2, 2)
+            image_ax.set_aspect("equal")
+            top_ax.set_ylim(0, 1.1)
+            side_ax.set_xlim(1.1, 0)
+            side_ax.set_xticks([])
+            top_ax.tick_params(axis="x", labelbottom=False)
+            side_ax.tick_params(axis="y", labelleft=False)
+            top_ax.grid(alpha=.2)
+            side_ax.grid(alpha=.2)
+        fig.suptitle(f"{title} · map {unit}; center cuts normalized", fontsize=12)
+        self._finish(name)
+
+    @staticmethod
+    def _footprint_contours(ax, beam, x, y):
+        beam = _array(beam)
+        peak = float(np.max(beam))
+        if peak > 0:
+            normalized = beam / peak
+            ax.contour(x, y, normalized, levels=(np.exp(-2), .5),
+                       colors=("white", "#ff5c4d"), linewidths=(1.8, 1.5))
+        return peak
+
+    def _beam_on_crystal(self, density, beam, x, y, unit):
+        """Show the calculated disk-entrance beam contours on the Yb map."""
+        name = "Beam on crystal"
+        fig = self.figures[name]
+        fig.clear()
+        density = _array(density)
+        beam = _array(beam)
+        if density.shape != beam.shape or density.shape != (len(y), len(x)):
+            raise ValueError("crystal and disk-entrance beam grids disagree")
+        active = density > 0
+        shown = np.ma.masked_where(~active, density)
+        cmap = matplotlib.colormaps["viridis"].copy()
+        cmap.set_bad("#111b2a")
+        dx, dy = float(x[1] - x[0]), float(y[1] - y[0])
+        extent = (x[0]-dx/2, x[-1]+dx/2, y[0]-dy/2, y[-1]+dy/2)
+        axes = fig.subplots(1, 2)
+        peak = float(np.max(beam))
+        if peak > 0:
+            footprint = beam >= .01 * peak
+            yy, xx = np.where(footprint)
+            radius = max(float(np.max(np.abs(x[xx]))),
+                         float(np.max(np.abs(y[yy])))) * 1.15
+            zoom_radius = min(5.5, max(1.5, radius))
+        else:
+            zoom_radius = 2.0
+        for ax, radius, title in zip(axes, (5.5, zoom_radius),
+                                     ("Full 10 mm crystal", "Beam footprint detail")):
+            image = ax.imshow(shown, origin="lower", extent=extent, cmap=cmap)
+            ax.add_patch(Circle((0, 0), 5, fill=False, color="white",
+                                linestyle="--", linewidth=1.5))
+            self._footprint_contours(ax, beam, x, y)
+            ax.set(xlim=(-radius, radius), ylim=(-radius, radius),
+                   xlabel="x (mm)", ylabel="y (mm)", title=title)
+            ax.set_aspect("equal")
+        fig.colorbar(image, ax=axes, shrink=.72, label="Yb density (10²⁶ ions/m³)")
+        handles = (Line2D([], [], color="white", linestyle="--", label="Crystal edge"),
+                   Line2D([], [], color="white", linewidth=2,
+                          label="Incident beam: 1/e² of peak"),
+                   Line2D([], [], color="#ff5c4d", linewidth=2,
+                          label="Incident beam: 50% of peak"))
+        fig.legend(handles=handles, loc="lower center", ncol=3, fontsize=9)
+        captured = float(np.sum(beam[active]) / np.sum(beam)) if np.sum(beam) > 0 else 0.0
+        fig.suptitle(f"Calculated disk-entrance {unit} contours on Yb concentration · "
+                     f"{captured:.1%} of sampled beam within crystal", fontsize=12)
         self._finish(name)
 
     def _phase_density(self, result, x, y, structured=False):
@@ -142,8 +221,8 @@ class YbResultPanel(ttk.Frame):
                        result["yb_density_middle_1e26_m3"],
                        result["yb_density_xz_1e26_m3"])
             mode = result["modes"][self.beam]
-            maps = ((result["target_phase_mask"], "Target SLM phase", "twilight"),
-                    (result["aberration_phase_mask"], "Added phase", "twilight"),
+            maps = ((result["target_phase_mask"], "Added phase for selected beam", "twilight"),
+                    (result["aberration_phase_mask"], "Optional correction phase", "twilight"),
                     (result["phase_mask"], "Applied phase", "twilight"),
                     (mode["output_phase"], "Output phase", "twilight"),
                     (density[0], "Yb entrance (10²⁶/m³)", "viridis"),
@@ -152,8 +231,8 @@ class YbResultPanel(ttk.Frame):
                     (result["pump_intensity_W_m2"], "Pump irradiance (W/m²)", "inferno"))
         else:
             density = _array(result["yb_density_m3"])[0] / 1e26
-            maps = ((result["target_phase_mask"], "Target SLM phase", "twilight"),
-                    (result["aberration_phase_mask"], "Added phase", "twilight"),
+            maps = ((result["target_phase_mask"], "Added phase for selected beam", "twilight"),
+                    (result["aberration_phase_mask"], "Optional correction phase", "twilight"),
                     (result["phase_mask"], "Applied phase", "twilight"),
                     (result["phase_residual_rad"] if result.get("thermal_feedback_applied")
                      else result.get("cold_density_phase_residual_rad", result["phase_residual_rad"]),
@@ -163,6 +242,8 @@ class YbResultPanel(ttk.Frame):
                     (result["input_phase"], "Source phase", "twilight"),
                     (result["disk_input_phase"], "Disk input phase", "twilight"),
                     (result["output_phase"], "Output phase", "twilight"))
+        incident = (result["modes"][self.beam]["disk_input_intensity"] if structured
+                    else result["disk_input_fluence_J_m2"])
         for ax, (data, title, cmap) in zip(axes, maps):
             if "phase" in title.lower():
                 values = _array(data)
@@ -180,6 +261,8 @@ class YbResultPanel(ttk.Frame):
             else:
                 image = self._map(ax, data, title, x, y, cmap=cmap,
                                   disk=title.startswith("Yb"))
+                if title.startswith("Yb entrance"):
+                    self._footprint_contours(ax, incident, x, y)
             fig.colorbar(image, ax=ax, shrink=.62)
         fig.suptitle("Phase-only shaping and synthetic Yb concentration", fontsize=12)
         self._finish(name)
@@ -262,17 +345,22 @@ class YbResultPanel(ttk.Frame):
         axes[2].legend()
         axes[2].grid(alpha=.2)
         screen = result.get("spectral_gain_screen", {})
-        if screen.get("status") == "small_signal_screen_only":
+        if screen.get("status") in ("small_signal_screen_only",
+                                    "spatial_small_signal_screen_only"):
             wl = screen["wavelength_nm"]
             axes[3].plot(wl, screen["input_spectral_weights"], label="source weight")
             axes[3].set(xlabel="wavelength (nm)", ylabel="normalized source weight",
-                        title="Shared-inversion small-signal screen")
+                        title=("Spatial small-signal screen" if
+                               screen["status"].startswith("spatial") else
+                               "Homogeneous small-signal screen"))
             other = axes[3].twinx()
             other.plot(wl, screen["unsaturated_gain"], color="tab:orange",
                        label="unsaturated gain")
             other.set_ylabel("unsaturated gain ceiling")
         else:
             axes[3].axis("off")
+            axes[3].text(.02, .65, screen.get("reason", "Spectral result unavailable"),
+                         transform=axes[3].transAxes, wrap=True)
             axes[3].text(.03, .95, screen.get("reason", "No spectral screen"),
                          transform=axes[3].transAxes, va="top", fontsize=10)
         fig.suptitle("Pulse gain and limited spectral diagnostics", fontsize=12)
@@ -373,6 +461,8 @@ class YbResultPanel(ttk.Frame):
         self._beams(mode["input_intensity"], mode["disk_input_intensity"],
                     mode["output_intensity"], r["uniform_reference_intensity"],
                     x, y, "W/m²", f"{self.beam} · {r['solver_mode']}")
+        self._beam_on_crystal(r["yb_density_entrance_1e26_m3"],
+                              mode["disk_input_intensity"], x, y, "irradiance")
         self._phase_density(r, x, y, structured=True)
         self._thermal_surfaces(thermal, x)
         fig = self.figures["Gain and pulse"]
@@ -461,6 +551,8 @@ class YbResultPanel(ttk.Frame):
                     r["uniform_isothermal_output_fluence_J_m2"],
                     x, y, "J/m²",
                     f"{self.beam} · output {r['output_distance_m']:.3f} m after extraction")
+        self._beam_on_crystal(_array(r["yb_density_m3"])[0] / 1e26,
+                              r["disk_input_fluence_J_m2"], x, y, "fluence")
         self._phase_density(r, x, y)
         self._pulse_gain(r)
         self._cooling(r)
