@@ -18,7 +18,11 @@ I5, I6, I7, I8 = 0, 1, 2, 3
 
 @dataclass(frozen=True)
 class HoYAGFourLevelParams:
-    """Rupp et al. 1.1 at.% Ho:YAG four-manifold baseline in SI units."""
+    """Rupp et al. 1.1 at.% Ho:YAG baseline in SI units.
+
+    Spectroscopic rates are fixed baseline values; a hot temperature field does
+    not by itself establish temperature-dependent cross sections or lifetimes.
+    """
 
     N_total_m3: float = 1.52e26
 

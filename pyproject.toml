@@ -17,3 +17,6 @@ viewer = ["pyvista>=0.43", "trame>=3", "trame-vtk>=2", "trame-vuetify>=2"]
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
+
+[tool.setuptools.package-data]
+ybluag = ["data/*.part*"]

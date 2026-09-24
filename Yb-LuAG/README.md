@@ -1,5 +1,108 @@
 # Yb:LuAG simulation material package
 
+## Local browser calculator
+
+On Windows, from the repository root in Command Prompt:
+
+    cd /d "F:\BAKALAUSKARAS\YbYag Studeis\Ho-YAG-crystal"
+    "C:\Users\Aidas\AppData\Local\Programs\Python\Python311\python.exe" examples\ybluag_app.py
+
+In PowerShell use `cd 'F:\BAKALAUSKARAS\YbYag Studeis\Ho-YAG-crystal'` and
+`& 'C:\Users\Aidas\AppData\Local\Programs\Python\Python311\python.exe' .\examples\ybluag_app.py`.
+
+Open <http://127.0.0.1:8781/>. This is a separate Yb:LuAG app from the
+Ho:YAG structured-beam calculator on port 8780. It provides the same six
+structured target shapes, phase-only SLM masks, synthetic clustered dopant maps,
+irradiance/phase/side-profile views, and output-plane diffraction. Three CW
+options are available: pump-only weak probe, a fixed Gaussian cavity-mode
+background with separate weak probes, and a signal-saturated single pass.
+The proposal pulse section defaults to 12 at.% Yb:LuAG, a 100 µm disk, a
+2 mm Gaussian pump diameter, ten alternating pump traversals, a 10 nJ seed,
+and 10 kHz repetition. The femtosecond laser seed is stretched before the
+disk: 300 fs at the source and 10 ps at the amplifier are editable assumptions,
+since the proposal only specifies a picosecond seed there. Forty watts incident
+pump, ten ideal relayed signal traversals, 938/1030 nm centers, and a 0.6 mm
+signal waist are also modeling assumptions. The 12 at.% lifetime (0.973 ms)
+is interpolated from the 10 and 15 at.% pinhole data; it is not a measured
+12 at.% value. The exact inputs and their status are in
+`config/ybslam_proposal_luag.json`.
+
+The source seed is always a Gaussian TEM00. The selected target determines a
+phase-only mask at an assumed SLM/phase-plate plane; an optional aberration or
+correction is added to that mask. The field propagates over an editable
+SLM-to-disk distance (default 0.25 m) before it enters the amplifier. Spiral
+phases make the two vortex targets, a quadrant phase makes the HG-like target,
+a converging axicon makes the finite-aperture Bessel-like needle, and a
+48-iteration scalar alternating-projection hologram makes the approximate
+flat-top target. A phase-only mask does not change intensity in its own plane;
+the disk-input and outgoing views show the structure formed by propagation.
+These targets are approximate spatial fields, not pure-mode guarantees. The
+coherent source is propagated at the 1030 nm center wavelength; chromatic SLM
+response and broadband shaping of the femtosecond seed remain unmodeled.
+The flat-top design follows the phase-only Gaussian reshaping approach of
+[Gerchberg–Saxton holograms](https://www.sciencedirect.com/science/article/pii/S0030401818308654);
+the needle uses the established [Gaussian-plus-axicon mechanism](https://opg.optica.org/josaa/abstract.cfm?uri=josaa-22-11-2542).
+
+The pulse solver evolves the two-manifold population over a periodic seed
+train, supports ideal relayed signal traversals, and reports a cycle-average
+first-law heat estimate using a fixed multipass pump profile and declared
+fluorescence escape yield. It applies the 1030 nm center cross sections to
+the pulse energy. It does not propagate femtosecond spectral bandwidth,
+chirp, gain narrowing, dispersion, or nonlinear phase, so its pulse energy
+and phase cannot verify the proposal's >100 µJ, >10,000 gain, or pattern
+fidelity targets. The uniform-dopant 40 W run gives about 39 nJ at the disk
+exit, well below the energy target; the UI's synthetic nonuniform map changes
+that result. The UI keeps the existing 10 at.% CW
+comparison separate from this proposal pulse setup. The enlarged pulse
+figures show the Gaussian source, shaped disk input, and outgoing transverse
+fluence with horizontal and vertical center cuts. Dashed output cuts come
+from a separate uniform-dopant, isothermal solve with the same pump, Gaussian
+source, and phase mask. The pulsed UI defaults to a
+synthetic 0.27 cluster contrast to expose that comparison. The temperature
+timeline advances one disk, contact and finite copper plate from a uniform
+20 °C start for the selected operating duration (30 s by default), then
+continues toward a constant-heat steady solution. A bounded water-side
+conductance controller can increase an assumed coolant-flow proxy from
+10 to at most 100 kW/m²K when disk temperature exceeds a selected target;
+fixed conductance is also available. The controller slope (3 kW/m²K per K),
+instantaneous response, and constant-temperature coolant bath are assumptions,
+not a measured cooling-system design. Short pulses at 10 kHz deposit average
+heat continuously, while the finite coolant conductance removes increasing
+power as the plate warms, so this model approaches a steady temperature.
+Each sampled temperature drives a
+bonded elastic solve and round-trip OPD. The first pump/population startup
+interval is approximated. Under ideal image relays, the thermal phase is
+accumulated over the signal traversals and propagated to the output plane
+only if the requested-time state remains inside the available room-temperature
+thermomechanical parameter range. The output phase residual is the wrapped,
+fluence-weighted piston-removed difference from an otherwise identical
+uniform-Yb, isothermal run. Beam-reshaping feedback into gain, photoelastic
+birefringence, and an actual relay geometry are omitted.
+The app simulates one selected pulse shape at a time.
+Every CW and pulsed shape can overlay a dashed uniform-Yb output profile
+computed with the same pump and seed settings. Yb concentration maps use a
+dark-blue/teal/yellow scale. Thermal heat interpolation is normalized to
+preserve integrated deposited power. For a selected heat load above the
+measured 293.15–300 K material range, the copper-cooler view reports the
+out-of-range constant-property temperature and OPD timeline only as an
+explicitly dashed extrapolation, not an operational prediction. It
+then shows front/rear disk displacement and optical-path maps for the same
+heat pattern scaled to the proposal's 5 K design rise. Those maps are a
+separate in-range design reference, not a deformation prediction for the
+selected pump case. The generic C10100 copper plate, indium-contact and
+coolant conductances remain assumed hardware parameters in
+`config/ybluag_10at_assembly.json`.
+The 26.85 °C cutoff is a parameter-calibration limit, not crystal failure.
+Published [Yb:LuAG absorption/emission spectra](https://opg.optica.org/josab/abstract.cfm?uri=josab-29-9-2493) reach 200 °C, while the current
+high-doping conductivity and thermo-optic/elastic inputs do not support an
+accurate 250 °C coupled calculation. The UI marks 250 °C as a user-supplied
+crystal reference. The modeled indium interface would also cease to be solid
+near [156.6 °C](https://www.nist.gov/publications/standard-reference-material-1745-indium-freezing-point-standard-and-standard-0); a 250 °C assembly requires a different bond/contact design.
+The separate CW comparison retains the reconstructed cross-section plot and approximate
+output-coupler design screen. All spectra are figure-guided reconstructions,
+and cavity geometry and cooling boundary values are assumptions, not a
+validated device prediction. This is a Yb:LuAG, not a Yb:YAG, material model.
+
 Physics-based Yb:LuAG material data for thin-disk laser, amplifier, resonator, thermal, elastic-deformation, and phase-propagation simulations.
 
 ## Included
@@ -29,6 +132,12 @@ The compact spectral NPZ was split into five binary parts only to fit the GitHub
 models/yb_luag_model.py concatenates these parts in memory automatically. tools/export_spectra.py can reconstruct a normal NPZ and export human-readable CSV tables.
 
 The stored arrays contain every one of the 541 wavelength samples at each of the four temperatures. Arrays are float32; this changes only numerical storage precision, not the wavelength sampling or curve structure used by the simulation.
+
+`spectra/yb_luag_model_spectra_20_200C.csv` exposes the current reconstructed
+absorption/emission arrays, the McCumber-consistent emission used by `ybluag`,
+and its inferred normalized fluorescence photon spectrum. Regenerate it with
+`PYTHONPATH=src python Yb-LuAG/tools/export_model_spectra.py`. This is a model
+export from the existing reconstruction, not an independently retraced figure.
 
 ## Critical spectroscopy warning
 
