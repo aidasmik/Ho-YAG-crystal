@@ -16,11 +16,17 @@
   #status{min-height:1.5em;color:#a9e5bf}.error{color:#ffaaaa!important}
   .beam-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
   .beam-grid figure{margin:0;min-width:0}.beam-grid canvas{width:100%;aspect-ratio:1;background:#101927;image-rendering:pixelated}
+  .pulse-beam-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+  .pulse-beam-grid figure{margin:0;min-width:0}.pulse-beam-grid canvas{display:block;width:100%;aspect-ratio:1;background:#101927;image-rendering:pixelated}
+  .pulse-beam-grid figcaption{font-size:13px;color:#c5d6ea;margin-top:5px}
+  .pulse-beam-card{min-width:0;padding:14px;background:#111b2a;border:1px solid #36465c;border-radius:8px}.pulse-beam-card h3{margin:0 0 12px}
+  .spatial-profile{display:block;width:100%;height:auto;margin-top:10px;background:#111b2a;border-radius:7px}
+  .beam-row .beam-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .beam-grid figcaption{font-size:12px;color:#b8c9df}.beam-row{border-top:1px solid #36465c;padding-top:14px;margin-top:16px}
   .beam-row h3{margin:0 0 6px}.profile{width:100%;height:115px}
   [hidden]{display:none!important}
   @media(max-width:700px){.beam-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-  @media(max-width:760px){.layout{grid-template-columns:1fr}}
+  @media(max-width:760px){.layout,.pulse-beam-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -51,7 +57,7 @@
 </form><main class="cards">
   <section class="card"><h2>Pulse energy and inversion</h2><div id="pulseMetrics" class="metrics"></div></section>
   <section class="card"><h2>Cycle-average heat and copper cooler</h2><div id="pulseHeatMetrics" class="metrics"></div><p id="pulseThermalText"></p><div id="pulseThermalMaps" class="beam-grid" hidden><figure><canvas id="pulseOpdCanvas"></canvas><figcaption>Scalar round-trip optical path change</figcaption></figure><figure><canvas id="pulseDisplacementCanvas"></canvas><figcaption>Front surface displacement</figcaption></figure></div></section>
-  <section class="card"><h2>Input and output fluence and phase</h2><div id="pulseMaps" class="beam-grid"></div></section>
+  <section class="card"><h2>Incoming and outgoing beam</h2><p>Top views show shape-normalized fluence and phase. Side profiles show absolute fluence along horizontal and vertical center cuts, in J/m². Solid orange is the selected crystal; dashed cyan is a uniform-dopant, isothermal reference. At the default zero cluster contrast they overlap. The pulse solver has no thermal optical feedback, so the curves do not show a temperature-induced difference.</p><div id="pulseMaps" class="pulse-beam-grid"></div></section>
   <section class="card"><h2>Temporal power</h2><svg id="pulseTrace" viewBox="0 0 560 115" class="profile"></svg><small>Blue input; orange output. Time window spans ±3 seed FWHM.</small></section>
   <section class="card"><h2>Proposal targets and model scope</h2><p>Target: &gt;100 µJ output, gain &gt;10,000, pattern fidelity &gt;0.8, phase distortion &lt;0.5 rad. Coating requirements: front AR reflection &lt;0.1% at 1030 nm, rear HR &gt;99.9% over 940–1090 nm, damage threshold &gt;10 J/cm². These are specifications, not measured coating performance.</p><p id="pulseScope"></p></section>
 </main></div>
@@ -149,6 +155,26 @@ function drawProfile(svg,input,output){
  const W=560,H=115,max=Math.max(...input,...output,1e-30),path=a=>a.map((v,i)=>`${i?'L':'M'}${(i/(a.length-1)*W).toFixed(1)},${(H-8-v/max*(H-20)).toFixed(1)}`).join(' ');
  svg.innerHTML=`<path d="${path(input)}" stroke="#73bcff" stroke-width="2" fill="none"/><path d="${path(output)}" stroke="#ffad62" stroke-width="2" fill="none"/><text x="8" y="16" fill="#73bcff" font-size="12">Input</text><text x="65" y="16" fill="#ffad62" font-size="12">Output</text>`;
 }
+function drawSpatialProfile(svg,coordinates,actual,reference,axis){
+ const W=560,H=160,L=58,R=12,T=18,B=30,max=Math.max(...actual,...reference,1e-30)*1.08;
+ const xp=i=>L+i/(actual.length-1)*(W-L-R),yp=v=>H-B-v/max*(H-T-B);
+ const path=a=>a.map((v,i)=>`${i?'L':'M'}${xp(i).toFixed(1)},${yp(v).toFixed(1)}`).join(' ');
+ svg.setAttribute('viewBox',`0 0 ${W} ${H}`);svg.classList.add('spatial-profile');
+ svg.innerHTML=`<line x1="${L}" x2="${W-R}" y1="${H-B}" y2="${H-B}" stroke="#71839c"/><line x1="${L}" x2="${L}" y1="${T}" y2="${H-B}" stroke="#71839c"/><path d="${path(reference)}" stroke="#74d5ee" stroke-width="4" stroke-dasharray="8 5" fill="none"/><path d="${path(actual)}" stroke="#ffad62" stroke-width="2" fill="none"/><text x="${L-5}" y="${T+4}" text-anchor="end" fill="#c5d6ea" font-size="11">${max.toPrecision(2)}</text><text x="${L-5}" y="${H-B+3}" text-anchor="end" fill="#c5d6ea" font-size="11">0</text><text x="${L}" y="${H-8}" fill="#c5d6ea" font-size="11">${coordinates[0].toFixed(1)}</text><text x="${W-R}" y="${H-8}" text-anchor="end" fill="#c5d6ea" font-size="11">${coordinates.at(-1).toFixed(1)}</text><text x="${W/2}" y="${H-8}" text-anchor="middle" fill="#c5d6ea" font-size="11">${axis} (mm)</text><text x="${L+7}" y="${T+13}" fill="#c5d6ea" font-size="11">J/m²</text>`;
+}
+function renderPulseBeam(container,title,fluence,phase,reference,x,y){
+ const card=document.createElement('article');card.className='pulse-beam-card';const heading=document.createElement('h3');heading.textContent=title;card.append(heading);
+ const top=document.createElement('figure'),topCanvas=document.createElement('canvas'),topCaption=document.createElement('figcaption');topCaption.textContent='Top fluence (shape-normalized)';top.append(topCanvas,topCaption);card.append(top);drawMap(topCanvas,fluence);
+ const cy=Math.floor(fluence.length/2),cx=Math.floor(fluence[0].length/2);
+ for(const [label,coords,values,ideal,axis] of [
+  ['Horizontal side profile (y ≈ 0)',x,fluence[cy],reference[cy],'x'],
+  ['Vertical side profile (x ≈ 0)',y,fluence.map(row=>row[cx]),reference.map(row=>row[cx]),'y']]){
+  const heading=document.createElement('h4');heading.textContent=label;card.append(heading);
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');card.append(svg);drawSpatialProfile(svg,coords,values,ideal,axis);
+ }
+ const phaseFigure=document.createElement('figure'),phaseCanvas=document.createElement('canvas'),phaseCaption=document.createElement('figcaption');phaseCaption.textContent='Phase (rad)';phaseFigure.append(phaseCanvas,phaseCaption);card.append(phaseFigure);drawMap(phaseCanvas,phase,'phase');
+ container.append(card);
+}
 async function calculateStructured(){
  structuredStatus.textContent='Calculating six Yb:LuAG beams…';structuredStatus.classList.remove('error');
  try{
@@ -201,11 +227,10 @@ async function calculatePulsed(){
    drawMap(document.getElementById('pulseDisplacementCanvas'),pulseThermal.front_displacement_nm);
   }
   const maps=document.getElementById('pulseMaps');maps.replaceChildren();
-  for(const [key,label,kind] of [['input_fluence_J_m2','Input fluence','intensity'],['output_fluence_J_m2','Output fluence','intensity'],['input_phase','Input phase','phase'],['output_phase','Output phase','phase']]){
-   const figure=document.createElement('figure'),canvas=document.createElement('canvas'),caption=document.createElement('figcaption');caption.textContent=label;figure.append(canvas,caption);maps.append(figure);drawMap(canvas,r[key],kind);
-  }
+  renderPulseBeam(maps,'Incoming beam at disk',r.input_fluence_J_m2,r.input_phase,r.input_fluence_J_m2,r.x_mm,r.y_mm);
+  renderPulseBeam(maps,'Outgoing beam at observation plane',r.output_fluence_J_m2,r.output_phase,r.uniform_isothermal_output_fluence_J_m2,r.x_mm,r.y_mm);
   drawProfile(document.getElementById('pulseTrace'),r.input_power_trace_W,r.output_power_trace_W);
-  document.getElementById('pulseScope').textContent=`${r.source_fwhm_fs_assumed} fs source: approximately ${r.transform_limited_seed_spectral_fwhm_nm.toFixed(2)} nm transform-limited Gaussian bandwidth at 1030 nm. Assumed 12 at.% lifetime ${(r.lifetime_s_assumed*1e3).toFixed(3)} ms is interpolated, not measured at 12 at.%. ${r.spectral_scope} ${r.scope}`;
+  document.getElementById('pulseScope').textContent=`${r.reference_scope} ${r.source_fwhm_fs_assumed} fs source: approximately ${r.transform_limited_seed_spectral_fwhm_nm.toFixed(2)} nm transform-limited Gaussian bandwidth at 1030 nm. Assumed 12 at.% lifetime ${(r.lifetime_s_assumed*1e3).toFixed(3)} ms is interpolated, not measured at 12 at.%. ${r.spectral_scope} ${r.scope}`;
   pulsedStatus.textContent='Periodic pulse calculation complete.';
  }catch(e){pulsedStatus.textContent=e.message;pulsedStatus.classList.add('error')}
 }

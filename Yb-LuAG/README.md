@@ -36,7 +36,12 @@ chirp, gain narrowing, dispersion, or nonlinear phase, so its pulse energy
 and phase cannot verify the proposal's >100 µJ, >10,000 gain, or pattern
 fidelity targets. The proposal-default 40 W run gives about 39 nJ at the disk
 exit, well below the energy target. The UI keeps the existing 10 at.% CW
-comparison separate from this proposal pulse setup. A separate room-temperature copper-cooler and scalar
+comparison separate from this proposal pulse setup. The enlarged pulse
+figures show input and output transverse fluence and horizontal and vertical
+center cuts. Dashed cuts come from a separate uniform-dopant solve with the
+same pump and seed. Both curves omit temperature-dependent optical feedback;
+they coincide at the default zero cluster contrast and do not measure thermal
+distortion. A separate room-temperature copper-cooler and scalar
 thermoelastic reference is calculated for CW or pulsed heat only when the disk
 stays within the material data's 293.15–300 K range. It omits LuAG
 photoelastic birefringence, which lacks a verified tensor.

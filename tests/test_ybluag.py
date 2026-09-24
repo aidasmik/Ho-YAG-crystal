@@ -31,6 +31,10 @@ class YbLuAGPhysicsTests(unittest.TestCase):
         self.assertAlmostEqual(result["input_energy_J"], 10e-9)
         self.assertAlmostEqual(result["stretch_factor"], 10_000 / 300)
         self.assertLess(result["peak_pump_intensity_kW_cm2"], 10)
+        np.testing.assert_allclose(result["uniform_isothermal_output_fluence_J_m2"],
+                                   result["output_fluence_J_m2"])
+        self.assertEqual(len(result["x_mm"]), len(result["output_fluence_J_m2"][0]))
+        self.assertEqual(len(result["y_mm"]), len(result["output_fluence_J_m2"]))
         with self.assertRaisesRegex(ValueError, "at least as long"):
             calculate_pulsed({"source_fwhm_fs": 500, "seed_fwhm_ps": 0.3})
 
@@ -49,6 +53,15 @@ class YbLuAGPhysicsTests(unittest.TestCase):
         self.assertTrue(np.all(midpoint > 0))
         np.testing.assert_allclose(np.sum(absorbed, axis=0) + final, pump,
                                    rtol=1e-12)
+
+    def test_nonuniform_pulse_reference_changes_output(self):
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "examples"))
+        from ybluag_app import calculate_pulsed
+        result = calculate_pulsed({"cluster_contrast": 0.1})
+        actual = np.asarray(result["output_fluence_J_m2"])
+        uniform = np.asarray(result["uniform_isothermal_output_fluence_J_m2"])
+        self.assertEqual(actual.shape, uniform.shape)
+        self.assertGreater(float(np.max(abs(actual - uniform))), 0)
 
     def test_yb_gallery_phase_power_and_saturation(self):
         material = YbLuAGMaterial()
