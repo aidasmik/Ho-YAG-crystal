@@ -10,7 +10,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from .model import C, H, YbLuAGMaterial, _spectra
+from .model import C, H, YbLuAGMaterial, _spectra, trapezoid
 
 
 @dataclass(frozen=True)
@@ -33,12 +33,12 @@ def fluorescence_spectrum(material: YbLuAGMaterial) -> FluorescenceSpectrum:
     wavelength, _, _, _ = _spectra()
     emission = np.array([material.cross_sections_m2(float(w))[1] for w in wavelength])
     photon_weight = emission / wavelength**4
-    norm = float(np.trapezoid(photon_weight, wavelength))
+    norm = float(trapezoid(photon_weight, wavelength))
     if not np.isfinite(norm) or norm <= 0:
         raise ValueError("fluorescence spectrum has no positive integral")
     probability = photon_weight / norm
     mean_energy = float(H * C / 1e-9 *
-                        np.trapezoid(probability / wavelength, wavelength))
+                        trapezoid(probability / wavelength, wavelength))
     return FluorescenceSpectrum(wavelength.copy(), probability,
                                 H * C / mean_energy / 1e-9,
                                 mean_energy)

@@ -17,6 +17,7 @@ from ybluag import (YbLuAGMaterial, propagate_cw,
                     periodic_pump_state, periodic_pulse_heat,
                     fluorescence_spectrum, scan_output_coupler)
 from ybluag import solve_yb_assembly
+from ybluag.model import trapezoid
 from ybluag import YbGallerySettings, simulate_structured_gallery, simulate_pulsed_seed
 from ybluag.multipass_pump import steady_multipass_pump, transport_multipass_pump
 from ybluag.beam_shaping import gaussian_seed_and_target_mask
@@ -179,7 +180,7 @@ class YbLuAGPhysicsTests(unittest.TestCase):
                                         cluster_count=4, z_steps=2),
             "Gaussian TEM00", 10e-9, 10e-12, 10_000, 1)
         self.assertAlmostEqual(
-            float(np.trapezoid(result["output_power_trace_W"], result["time_ps"] * 1e-12)) /
+            float(trapezoid(result["output_power_trace_W"], result["time_ps"] * 1e-12)) /
             result["disk_output_energy_J"], 1, places=10)
         self.assertAlmostEqual(result["output_energy_J"] / result["disk_output_energy_J"],
                                1, places=10)
@@ -231,8 +232,8 @@ class YbLuAGPhysicsTests(unittest.TestCase):
         dilute = propagate_pulse(material, time, np.zeros_like(signal), signal,
                                  150e-6, 2, initial_excited_fraction=beta,
                                  density_scale_by_slice=np.array([0.5, 0.5]))
-        self.assertGreater(float(np.trapezoid(full.signal_out_W_m2, time)),
-                           float(np.trapezoid(dilute.signal_out_W_m2, time)))
+        self.assertGreater(float(trapezoid(full.signal_out_W_m2, time)),
+                           float(trapezoid(dilute.signal_out_W_m2, time)))
 
     def test_material_anchors_and_units(self):
         material = YbLuAGMaterial()
@@ -305,7 +306,7 @@ class YbLuAGPhysicsTests(unittest.TestCase):
     def test_derived_fluorescence_spectrum_and_heat(self):
         material = YbLuAGMaterial()
         spectrum = fluorescence_spectrum(material)
-        self.assertAlmostEqual(float(np.trapezoid(
+        self.assertAlmostEqual(float(trapezoid(
             spectrum.photon_probability_per_nm, spectrum.wavelength_nm)), 1.0)
         self.assertAlmostEqual(spectrum.energy_equivalent_wavelength_nm,
                                1012.5969786847127, places=6)
@@ -382,7 +383,8 @@ class YbLuAGPhysicsTests(unittest.TestCase):
             self.assertTrue(np.allclose(actual, expected, rtol=1e-13, atol=1e-13))
             repeat = angular_spectrum_propagate(field, grid, wavelength,
                                                 150e-6, refractive_index=index)
-            self.assertTrue(np.array_equal(repeat, actual))
+            # NumPy 1.x FFTs can differ by one ulp between identical calls.
+            self.assertTrue(np.allclose(repeat, actual, rtol=1e-14, atol=1e-14))
         self.assertEqual(_cached_angular_spectrum_transfer.cache_info().hits, 2)
         self.assertEqual(_cached_angular_spectrum_transfer.cache_info().currsize, 2)
 

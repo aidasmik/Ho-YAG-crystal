@@ -22,7 +22,7 @@ from hoyag.structured_beam_gallery import (BEAM_NAMES, PHASE_MASKS, GallerySetti
 from hoyag.thermal import DiskThermalMesh
 
 from .fluorescence import fluorescence_spectrum
-from .model import YbLuAGMaterial
+from .model import YbLuAGMaterial, trapezoid
 from .assembly import (solve_yb_assembly, solve_yb_cooler_temperature,
                        yb_cooler_solver)
 from .pulsed import propagate_pulse
@@ -546,7 +546,7 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
     dz = settings.thickness_m / settings.z_steps
     time = np.linspace(-3 * seed_fwhm_s, 3 * seed_fwhm_s, 41)
     pulse_shape = np.exp(-4 * np.log(2) * (time / seed_fwhm_s)**2)
-    pulse_shape /= np.trapezoid(pulse_shape, time)
+    pulse_shape /= trapezoid(pulse_shape, time)
     input_fluence = seed_energy_J * abs(source)**2
     disk_input_fluence = seed_energy_J * abs(seed)**2
     initial_signal = pulse_shape[:, None, None] * disk_input_fluence[None]
@@ -611,7 +611,7 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
                         fluorescence_spectrum(material).mean_photon_energy_J * dz)
         signal_gain = signal_gain_fluence * repetition_rate_Hz
         heat_slices = (pump_absorbed - signal_gain - fluorescence) / dz
-        fluence_out = np.trapezoid(signal, time, axis=0)
+        fluence_out = trapezoid(signal, time, axis=0)
         disk_output_J = float(np.sum(fluence_out) * grid.dx * grid.dy)
         gain_amplitude = np.sqrt(np.maximum(fluence_out, 0) / np.maximum(disk_input_fluence, 1e-30))
         field_out = seed * gain_amplitude

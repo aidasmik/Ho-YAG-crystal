@@ -14,6 +14,9 @@ import io
 
 import numpy as np
 
+# NumPy 2 renamed trapz to trapezoid; keep NumPy 1.x working.
+trapezoid = getattr(np, "trapezoid", None) or np.trapz
+
 H = 6.62607015e-34
 C = 299792458.0
 SITE_DENSITY_M3 = 1.42e28  # Lu sites, Beil et al. 2010
