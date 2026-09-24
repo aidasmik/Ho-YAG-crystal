@@ -48,8 +48,9 @@ mesh and reuses the conservative disk/plate thermal and elastic solvers.
 `config/ybluag_10at_assembly.json` supplies a 10 at.% room-temperature
 component example: measured 7.4 W/(m K) conductivity and 7.6×10⁻⁶ K⁻¹
 expansion, with host heat capacity, density, isotropic elastic constants and
-thermo-optic coefficient identified as proxies. Plate geometry, bond and
-coolant settings are illustrative. The screen includes temperature-driven
+thermo-optic coefficient identified as proxies. Plate and coolant geometry
+remain illustrative, with published C10100 copper properties and a generic
+indium-contact conductance. The screen includes temperature-driven
 scalar phase and FEM surface displacement. LuAG photoelasticity is absent;
 the reported zero retardance means **not modeled**, not a prediction of no
 stress birefringence. The solve rejects disk temperatures outside 293.15–300 K
@@ -92,15 +93,17 @@ Optional steady-state heat per area is
 
     Q/A = absorbed pump - signal power increase - escaping fluorescence.
 
-Fluorescence requires a supplied quantum yield and mean photon wavelength for
-the particular sample. If either is unknown, heat is returned as `None`.
-With both inputs, `heat_W_m3_by_step` gives the axial source density for a
+Fluorescence heat requires an effective escaping-photon yield for the sample.
+If it is unknown, heat is returned as `None`. The photon energy can be derived
+from the reconstructed emission spectrum or overridden by a measured mean.
+With the yield supplied, `heat_W_m3_by_step` gives the axial source density for a
 uniform-step disk mesh; its depth integral equals `heat_W_m2`. For a mesh with
 transverse cells, supply pump and signal arrays matching `(nr, nphi)` and use
 `steps=mesh.nz`; the returned heat then has the `(nz, nr, nphi)` shape accepted
 by `solve_yb_assembly`. The disk mesh must have uniformly spaced z cells for
 this direct coupling. The same shape convention applies to
 `periodic_pulse_heat.heat_W_m3_by_slice`.
+
 This estimate does not resolve spectral fluorescence transport, reabsorption,
 or nonradiative concentration quenching beyond the supplied measured lifetime
 and yield. The mean fluorescence wavelength is an effective input, not simply
@@ -124,3 +127,7 @@ Both material paths use `hoyag.propagation` for passive diffraction. Its bounded
 private transfer-function cache avoids rebuilding the same FFT multiplier on
 repeated equal steps, without changing the transfer formula or either material
 model. The public transfer builder still returns a fresh array.
+
+The numerical spectrum export, inferred fluorescence shape, output-coupler
+screen, and generic copper inputs are detailed in
+[`YBLUAG_SPECTRA_COOLING_COATINGS.md`](YBLUAG_SPECTRA_COOLING_COATINGS.md).

@@ -1,6 +1,6 @@
 {
   "material": "10 at.% Yb:LuAG single crystal, room-temperature component model",
-  "status": "illustrative mounting; no calibrated LuAG photoelastic tensor",
+  "status": "generic water-cooled C10100 copper plate and indium contact; no calibrated LuAG photoelastic tensor",
   "geometry": {
     "disk_radius_m": 0.005,
     "disk_thickness_m": 0.00015,
@@ -10,16 +10,16 @@
   "thermal": {
     "coolant_temperature_K": 293.15,
     "coolant_conductance_W_m2K": 10000.0,
-    "interface_conductance_W_m2K": 100000.0,
+    "interface_conductance_W_m2K": 15000.0,
     "disk": {
       "conductivity_W_mK": 7.4,
       "density_kg_m3": 6710.0,
       "heat_capacity_J_kgK": 418.8
     },
     "plate": {
-      "conductivity_W_mK": 391.16,
-      "density_kg_m3": 8940.0,
-      "heat_capacity_J_kgK": 385.2
+      "conductivity_W_mK": 394.0,
+      "density_kg_m3": 8930.0,
+      "heat_capacity_J_kgK": 390.0
     }
   },
   "mechanical": {
@@ -37,11 +37,11 @@
       "name": "Yb:LuAG 10 at.% expansion; LuAG host isotropic elastic approximation"
     },
     "plate": {
-      "young_Pa": 117210873000.0,
+      "young_Pa": 130000000000.0,
       "poisson": 0.328125,
-      "expansion_K1": 16.92e-6,
+      "expansion_K1": 17.7e-6,
       "stress_free_temperature_K": 293.15,
-      "name": "C10100 copper room-temperature approximation"
+      "name": "C10100 oxygen-free copper; Poisson ratio proxy"
     }
   },
   "optics": {
@@ -72,6 +72,9 @@
     "expansion": "Lang et al. 2025 10 at.% at room temperature DOI 10.1016/j.infrared.2025.105798",
     "host_index": "Hrabovsky et al. 2021 Opt. Mater. Express 11, 1218",
     "thermooptic": "Aggarwal et al. 2005 DOI 10.1063/1.2128696",
-    "hardware": "disk radius, plate geometry, contact conductance and support are illustrative assumptions"
+    "copper": "KME C10100 Cu-OFE datasheet at 20 C: https://www.kme.com/fileadmin/DOWNLOADCENTER/COPPER%20DIVISON/4%20Industrial%20Rolled/3_Datasheets/Datasheets_NEW_2021/Cu-OFE_01_2021_e.pdf",
+    "interface": "15 kW/m2K generic clamped indium-foil starting value from 10-20 kW/m2K silicon-copper guidance; LuAG interface requires measurement: https://medsi.lbl.gov/engineering-design-guide/heat-transfer",
+    "coolant": "10 kW/m2K generic forced-water channel assumption, not a measured cooler property; evaluate sensitivity and calibrate to flow/geometry",
+    "hardware": "disk radius, plate geometry, contact mechanics and support are illustrative assumptions"
   }
 }

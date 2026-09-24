@@ -114,13 +114,14 @@ class PeriodicHeatResult:
     excited_fraction_before_pulse: np.ndarray
     cycles: int
     residual: float
+    fluorescence_wavelength_nm_used: float
 
 
 def periodic_pulse_heat(material: YbLuAGMaterial, time_s, pump_in_W_m2,
                         signal_in_W_m2, thickness_m: float, steps: int,
                         repetition_rate_Hz: float, *,
                         fluorescence_quantum_yield: float,
-                        mean_fluorescence_wavelength_nm: float,
+                        mean_fluorescence_wavelength_nm: float | None = None,
                         tolerance=1e-8, max_cycles=1000) -> PeriodicHeatResult:
     """Cycle-average local lattice heat after a periodic two-manifold state.
 
@@ -140,7 +141,11 @@ def periodic_pulse_heat(material: YbLuAGMaterial, time_s, pump_in_W_m2,
     if (not np.isfinite(fluorescence_quantum_yield) or
             not 0 <= fluorescence_quantum_yield <= 1):
         raise ValueError("fluorescence_quantum_yield must be in [0, 1]")
-    if not np.isfinite(mean_fluorescence_wavelength_nm) or mean_fluorescence_wavelength_nm <= 0:
+    if mean_fluorescence_wavelength_nm is None:
+        from .fluorescence import fluorescence_spectrum
+        mean_fluorescence_wavelength_nm = fluorescence_spectrum(
+            material).energy_equivalent_wavelength_nm
+    elif not np.isfinite(mean_fluorescence_wavelength_nm) or mean_fluorescence_wavelength_nm <= 0:
         raise ValueError("mean_fluorescence_wavelength_nm must be positive")
     if (not np.isfinite(tolerance) or tolerance <= 0 or isinstance(max_cycles, bool)
             or not isinstance(max_cycles, int) or max_cycles < 1):
@@ -174,7 +179,7 @@ def periodic_pulse_heat(material: YbLuAGMaterial, time_s, pump_in_W_m2,
     signal_power = pulse.signal_fluence_change_J_m2_by_slice * repetition_rate_Hz
     heat = (pump_power - signal_power - fluorescence) / (thickness_m / steps)
     return PeriodicHeatResult(heat, pump_power, signal_power, fluorescence,
-                              beta, cycle, error)
+                              beta, cycle, error, mean_fluorescence_wavelength_nm)
 
 
 def periodic_pump_state(material: YbLuAGMaterial, time_s, pump_in_W_m2,

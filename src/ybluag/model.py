@@ -162,6 +162,7 @@ class CWResult:
     fluorescence_W_m2: np.ndarray | None
     heat_W_m2: np.ndarray | None
     heat_W_m3_by_step: np.ndarray | None
+    fluorescence_wavelength_nm_used: float | None
     scope: str = "collinear monochromatic CW, fixed-temperature, no diffraction or cavity feedback"
 
 
@@ -179,12 +180,17 @@ def propagate_cw(material: YbLuAGMaterial, thickness_m: float, steps: int,
     _positive("thickness_m", thickness_m)
     if isinstance(steps, bool) or not isinstance(steps, int) or steps < 1:
         raise ValueError("steps must be a positive integer")
-    if (fluorescence_quantum_yield is None) != (mean_fluorescence_wavelength_nm is None):
-        raise ValueError("supply both fluorescence inputs or neither")
+    if fluorescence_quantum_yield is None and mean_fluorescence_wavelength_nm is not None:
+        raise ValueError("supply fluorescence_quantum_yield with the wavelength")
     if fluorescence_quantum_yield is not None:
         if not np.isfinite(fluorescence_quantum_yield) or not 0 <= fluorescence_quantum_yield <= 1:
             raise ValueError("fluorescence_quantum_yield must be in [0, 1]")
-        _positive("mean_fluorescence_wavelength_nm", mean_fluorescence_wavelength_nm)
+        if mean_fluorescence_wavelength_nm is None:
+            from .fluorescence import fluorescence_spectrum
+            mean_fluorescence_wavelength_nm = fluorescence_spectrum(
+                material).energy_equivalent_wavelength_nm
+        else:
+            _positive("mean_fluorescence_wavelength_nm", mean_fluorescence_wavelength_nm)
     pump = np.asarray(pump_in_W_m2, dtype=float)
     signal = np.asarray(signal_in_W_m2, dtype=float)
     if pump.shape != signal.shape or np.any(~np.isfinite(pump)) or np.any(~np.isfinite(signal)) or np.any(pump < 0) or np.any(signal < 0):
@@ -220,4 +226,5 @@ def propagate_cw(material: YbLuAGMaterial, thickness_m: float, steps: int,
     heat = absorbed - signal_change - fluorescence if fluorescence is not None else None
     return CWResult(pump, signal, absorbed, signal_change,
                     np.stack(fractions, axis=0), fluorescence, heat,
-                    np.stack(heat_by_step, axis=0) if heat_by_step is not None else None)
+                    np.stack(heat_by_step, axis=0) if heat_by_step is not None else None,
+                    mean_fluorescence_wavelength_nm)

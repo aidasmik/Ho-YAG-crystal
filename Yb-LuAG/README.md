@@ -30,6 +30,12 @@ models/yb_luag_model.py concatenates these parts in memory automatically. tools/
 
 The stored arrays contain every one of the 541 wavelength samples at each of the four temperatures. Arrays are float32; this changes only numerical storage precision, not the wavelength sampling or curve structure used by the simulation.
 
+`spectra/yb_luag_model_spectra_20_200C.csv` exposes the current reconstructed
+absorption/emission arrays, the McCumber-consistent emission used by `ybluag`,
+and its inferred normalized fluorescence photon spectrum. Regenerate it with
+`PYTHONPATH=src python Yb-LuAG/tools/export_model_spectra.py`. This is a model
+export from the existing reconstruction, not an independently retraced figure.
+
 ## Critical spectroscopy warning
 
 The temperature-dependent absorption/emission curves are a figure-guided engineering reconstruction of Körner et al. (2012), not raw numerical arrays supplied by the authors. They are appropriate for model development, sensitivity studies, and integration. For publication-grade quantitative spectroscopy, replace them with raw measured arrays if those become available.

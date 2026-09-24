@@ -1,0 +1,38 @@
+{
+  "material": "10 at.% Yb:LuAG thin disk",
+  "status": "optical coating design targets and output-coupler screening, not measured coating curves",
+  "wavelengths_nm": {
+    "pump": 938.0,
+    "laser": 1030.0
+  },
+  "disk_front": {
+    "type": "dual-band antireflection",
+    "target_max_reflectance_pump": 0.002,
+    "target_max_reflectance_laser": 0.002,
+    "angle_of_incidence_deg": 0.0,
+    "status": "procurement target; verify pump-pass angle and polarization"
+  },
+  "disk_rear": {
+    "type": "dual-band high reflection",
+    "target_min_reflectance_pump": 0.999,
+    "target_min_reflectance_laser": 0.9995,
+    "angle_of_incidence_deg": 0.0,
+    "status": "procurement target; coating absorption, phase and group-delay dispersion unmeasured"
+  },
+  "output_coupler": {
+    "experimental_reference_transmission": 0.022,
+    "experimental_good_range": [0.015, 0.035],
+    "reference_geometry": "10 at.% 220 um disk, 1.2 mm pump spot, 40 W incident pump, 24 pump passes",
+    "screening_candidates": [0.004, 0.01, 0.015, 0.022, 0.03, 0.035, 0.04],
+    "screening_assumed_pump_W": 40.0,
+    "screening_assumed_pump_radius_m": 0.0006,
+    "screening_disk_thickness_m": 0.00015,
+    "screening_other_roundtrip_survival": 0.995,
+    "screening_selected_transmission": 0.015,
+    "status": "1.5% maximizes the simplified 150 um CW gain screen; 2.2% is the best measured 220 um reference point; final OC requires device calibration"
+  },
+  "sources": {
+    "yb_luag_thin_disk": "Beil et al. 2010, DOI 10.1364/OE.18.020712; front AR and rear HR at pump/laser bands; 2.2% best measured OC under reference conditions",
+    "target_reflectances": "engineering design requirements, not published measured coating performance"
+  }
+}

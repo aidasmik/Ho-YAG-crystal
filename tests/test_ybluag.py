@@ -2,6 +2,7 @@
 
 import unittest
 import json
+import csv
 from pathlib import Path
 
 import numpy as np
@@ -12,7 +13,8 @@ from hoyag.propagation import (Grid2D, angular_spectrum_propagate,
 from hoyag.thermal import DiskThermalMesh
 from ybluag import (YbLuAGMaterial, propagate_cw,
                     propagate_structured_small_signal, propagate_pulse,
-                    periodic_pump_state, periodic_pulse_heat)
+                    periodic_pump_state, periodic_pulse_heat,
+                    fluorescence_spectrum, scan_output_coupler)
 from ybluag import solve_yb_assembly
 
 
@@ -81,8 +83,59 @@ class YbLuAGPhysicsTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "wavelength"):
             YbLuAGMaterial(pump_wavelength_nm=1907.7)
         material = YbLuAGMaterial(yb_at_percent=15, lifetime_s=0.985e-3)
-        with self.assertRaisesRegex(ValueError, "both"):
-            propagate_cw(material, 150e-6, 10, 1e8, fluorescence_quantum_yield=0.9)
+        with self.assertRaisesRegex(ValueError, "fluorescence_quantum_yield"):
+            propagate_cw(material, 150e-6, 10, 1e8,
+                         mean_fluorescence_wavelength_nm=1030)
+
+    def test_derived_fluorescence_spectrum_and_heat(self):
+        material = YbLuAGMaterial()
+        spectrum = fluorescence_spectrum(material)
+        self.assertAlmostEqual(float(np.trapezoid(
+            spectrum.photon_probability_per_nm, spectrum.wavelength_nm)), 1.0)
+        self.assertAlmostEqual(spectrum.energy_equivalent_wavelength_nm,
+                               1012.5969786847127, places=6)
+        inferred = propagate_cw(material, 150e-6, 16, 1e7,
+                                fluorescence_quantum_yield=0.9)
+        explicit = propagate_cw(
+            material, 150e-6, 16, 1e7,
+            fluorescence_quantum_yield=0.9,
+            mean_fluorescence_wavelength_nm=spectrum.energy_equivalent_wavelength_nm)
+        np.testing.assert_allclose(inferred.heat_W_m3_by_step,
+                                   explicit.heat_W_m3_by_step, rtol=0, atol=0)
+        self.assertEqual(inferred.fluorescence_wavelength_nm_used,
+                         spectrum.energy_equivalent_wavelength_nm)
+
+    def test_spectral_export_is_numeric_and_traceable(self):
+        path = (Path(__file__).resolve().parents[1] / "Yb-LuAG" / "spectra" /
+                "yb_luag_model_spectra_20_200C.csv")
+        with path.open(newline="", encoding="utf-8") as stream:
+            rows = list(csv.DictReader(stream))
+        self.assertEqual(len(rows), 4 * 541)
+        row = next(r for r in rows if float(r["temperature_C"]) == 20 and
+                   float(r["wavelength_nm"]) == 1030)
+        material = YbLuAGMaterial()
+        absorption, emission = material.cross_sections_m2(1030)
+        self.assertAlmostEqual(float(row["absorption_cm2"]) / (absorption * 1e4), 1)
+        self.assertAlmostEqual(float(row["mccumber_emission_cm2"]) / (emission * 1e4), 1)
+
+    def test_output_coupler_screen_and_copper_source_config(self):
+        root = Path(__file__).resolve().parents[1]
+        coatings = json.loads((root / "config/ybluag_10at_coatings.json").read_text())
+        oc = coatings["output_coupler"]
+        pump_intensity = oc["screening_assumed_pump_W"] / (
+            np.pi * oc["screening_assumed_pump_radius_m"]**2)
+        result = scan_output_coupler(
+            YbLuAGMaterial(pump_wavelength_nm=coatings["wavelengths_nm"]["pump"]),
+            pump_intensity,
+            oc["screening_disk_thickness_m"], 8,
+            oc["screening_candidates"],
+            disk_hr_reflectivity=coatings["disk_rear"]["target_min_reflectance_laser"],
+            other_roundtrip_survival=oc["screening_other_roundtrip_survival"])
+        self.assertEqual(result.selected_transmission,
+                         oc["screening_selected_transmission"])
+        self.assertGreater(result.selected_output_intensity_W_m2, 0)
+        assembly = json.loads((root / "config/ybluag_10at_assembly.json").read_text())
+        self.assertEqual(assembly["thermal"]["plate"]["conductivity_W_mK"], 394)
 
     def test_structured_field_gain_and_phase(self):
         material = YbLuAGMaterial()
