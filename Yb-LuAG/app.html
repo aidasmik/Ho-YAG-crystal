@@ -25,7 +25,37 @@
 </head>
 <body>
 <h1>Yb:LuAG local calculator</h1>
-<p>Ytterbium-doped <strong>lutetium aluminum garnet</strong>. Separate 10 at.% room-temperature CW, structured-beam, cavity-screen, and periodic-seed calculations. <a href="http://127.0.0.1:8780/results/structured_beams/index.html">Ho:YAG structured-beam app</a></p>
+<p>Ytterbium-doped <strong>lutetium aluminum garnet</strong>. The proposal setup is a femtosecond laser seed stretched to a picosecond pulse before the 12 at.% Yb:LuAG disk. <a href="#proposal-pulse">Go to pulsed proposal setup</a> · <a href="http://127.0.0.1:8780/results/structured_beams/index.html">Ho:YAG structured-beam app</a></p>
+<h2 id="proposal-pulse">12 at.% Yb:LuAG pulsed proposal setup</h2>
+<p>10 nJ, 10 kHz seed from a femtosecond laser, stretched before amplification. A 100 µm disk receives ten alternating pump passes; ten ideal signal traversals are an exploratory optical layout. The proposal gives the seed energy, rate, disk, pump diameter, and pump-pass count. The 300 fs source, 10 ps stretched duration, 40 W pump, beam waist, and 938/1030 nm centers are editable modeling assumptions.</p>
+<div class="layout"><form id="pulsedForm">
+  <label>Seed beam<select name="selected_beam"><option>Gaussian TEM00</option><option>Helical LG(0,+1)</option><option>Double helix LG(0,+2)</option><option>Hermite-Gaussian HG(1,1)</option><option>Needle Bessel-Gaussian</option><option>Flattop super-Gaussian</option></select></label>
+  <label>Assumed incident pump power (W)<input name="pump_W" type="number" min="0.001" max="1000" step="any" value="40" required></label>
+  <label>Pump radius (mm), 2 mm diameter<input name="radius_mm" type="number" min="0.1" max="5" step="any" value="1" required></label>
+  <label>Disk thickness (µm)<input name="thickness_um" type="number" min="1" max="2000" step="any" value="100" required></label>
+  <label>Assumed signal waist (mm)<input name="waist_mm" type="number" min="0.1" max="2" step="any" value="0.6" required></label>
+  <label>Output distance (m)<input name="distance_m" type="number" min="0" max="2" step="any" value="0.25" required></label>
+  <label>Phase mask<select name="phase_mask"><option value="none">None</option><option value="vortex+1">Vortex +1</option><option value="vortex-1">Vortex −1</option><option value="vortex+2">Vortex +2</option><option value="defocus">Defocus</option><option value="astigmatic">Astigmatic</option><option value="axicon">Axicon</option></select></label>
+  <label>Phase strength (rad)<input name="phase_strength_rad" type="number" min="-50" max="50" step="any" value="3.14159265" required></label>
+  <label>Yb cluster seed<input name="density_seed" type="number" min="-2000000000" max="2000000000" step="1" value="17" required></label>
+  <label>Cluster count<input name="cluster_count" type="number" min="2" max="64" step="1" value="24" required></label>
+  <label>Cluster contrast<input name="cluster_contrast" type="number" min="0" max="1" step="any" value="0" required></label>
+  <label>Assumed escaping fluorescence yield<input name="escape_yield" type="number" min="0" max="1" step="any" value="0" required></label>
+  <label>Seed energy (nJ)<input name="seed_energy_nj" type="number" min="0.001" max="100000" step="any" value="10" required></label>
+  <label>Assumed femtosecond source FWHM (fs)<input name="source_fwhm_fs" type="number" min="50" max="10000" step="any" value="300" required></label>
+  <label>Assumed stretched FWHM at disk (ps)<input name="seed_fwhm_ps" type="number" min="0.1" max="1000" step="any" value="10" required></label>
+  <label>Repetition rate (kHz)<input name="repetition_rate_kHz" type="number" min="0.01" max="100" step="any" value="10" required></label>
+  <label>Pump passes<input name="pump_passes" type="number" min="1" max="48" step="1" value="10" required></label>
+  <label>Signal traversals<input name="signal_traversals" type="number" min="1" max="10" step="1" value="10" required></label>
+  <button type="submit">Calculate Yb pulse</button><p id="pulsedStatus">Ready.</p>
+</form><main class="cards">
+  <section class="card"><h2>Pulse energy and inversion</h2><div id="pulseMetrics" class="metrics"></div></section>
+  <section class="card"><h2>Cycle-average heat and copper cooler</h2><div id="pulseHeatMetrics" class="metrics"></div><p id="pulseThermalText"></p><div id="pulseThermalMaps" class="beam-grid" hidden><figure><canvas id="pulseOpdCanvas"></canvas><figcaption>Scalar round-trip optical path change</figcaption></figure><figure><canvas id="pulseDisplacementCanvas"></canvas><figcaption>Front surface displacement</figcaption></figure></div></section>
+  <section class="card"><h2>Input and output fluence and phase</h2><div id="pulseMaps" class="beam-grid"></div></section>
+  <section class="card"><h2>Temporal power</h2><svg id="pulseTrace" viewBox="0 0 560 115" class="profile"></svg><small>Blue input; orange output. Time window spans ±3 seed FWHM.</small></section>
+  <section class="card"><h2>Proposal targets and model scope</h2><p>Target: &gt;100 µJ output, gain &gt;10,000, pattern fidelity &gt;0.8, phase distortion &lt;0.5 rad. Coating requirements: front AR reflection &lt;0.1% at 1030 nm, rear HR &gt;99.9% over 940–1090 nm, damage threshold &gt;10 J/cm². These are specifications, not measured coating performance.</p><p id="pulseScope"></p></section>
+</main></div>
+<h2>10 at.% CW comparison and coating screen</h2>
 <div class="layout">
 <form id="form">
   <label>Pump wavelength (nm)<input name="pump_nm" type="number" min="880" max="1150" step="0.5" value="938" required></label>
@@ -43,7 +73,7 @@
   <section class="card"><h2>Output-coupler design screen</h2><svg id="coating" viewBox="0 0 760 280" role="img" aria-label="Output coupler candidate screen"></svg><p id="selected"></p><small>Equal counterpropagating intensity approximation. The plot uses relative screened output intensity; it is not a predicted device output power. Rear reflectance and round-trip survival come from the Yb:LuAG coating configuration.</small></section>
   <section class="card"><h2>Model scope</h2><p id="scope"></p><small>The 20 °C 10 at.% lifetime is 0.965 ms. The inferred fluorescence spectral mean is shown for context; no heat result is claimed because the effective escaping fluorescence yield is unmeasured for this geometry.</small></section>
 </main></div>
-<h2>Structured-beam calculations</h2>
+<h2>10 at.% CW structured-beam comparison</h2>
 <p>The six shapes, phase masks, clustered dopant map, irradiance, phase, and side profiles use Yb:LuAG gain and population equations. Select a CW solver and calculate a new set of fields.</p>
 <div class="layout">
 <form id="structuredForm">
@@ -68,33 +98,6 @@
   <section class="card"><h2>Six calculated beam shapes</h2><p id="resonatorText"></p><div id="beamResults"></div></section>
   <section class="card"><h2>Copper-cooled thermoelastic reference</h2><p id="thermalText">Select saturated CW to calculate a Gaussian reference thermal load.</p><div class="beam-grid" id="thermalMaps" hidden><figure><canvas id="opdCanvas"></canvas><figcaption>Scalar round-trip optical path change</figcaption></figure><figure><canvas id="displacementCanvas"></canvas><figcaption>Front surface displacement</figcaption></figure></div><small>The thermal assembly is limited to a 150 µm disk and 20–26.85 °C. Photoelastic birefringence is omitted because the LuAG tensor is unavailable.</small></section>
   <section class="card"><h2>Scope</h2><p id="structuredScope"></p></section>
-</main></div>
-<h2>Periodic seeded pulse</h2>
-<p>A separate Yb:LuAG pulse calculation for one selected shape. It iterates the two-manifold population between seed pulses, with an ideal image relay between traversals.</p>
-<div class="layout"><form id="pulsedForm">
-  <label>Seed beam<select name="selected_beam"><option>Gaussian TEM00</option><option>Helical LG(0,+1)</option><option>Double helix LG(0,+2)</option><option>Hermite-Gaussian HG(1,1)</option><option>Needle Bessel-Gaussian</option><option>Flattop super-Gaussian</option></select></label>
-  <label>Pump power (W)<input name="pump_W" type="number" min="0.001" max="1000" step="any" value="40" required></label>
-  <label>Pump radius (mm)<input name="radius_mm" type="number" min="0.1" max="5" step="any" value="0.6" required></label>
-  <label>Disk thickness (µm)<input name="thickness_um" type="number" min="1" max="2000" step="any" value="150" required></label>
-  <label>Signal waist (mm)<input name="waist_mm" type="number" min="0.1" max="2" step="any" value="0.408" required></label>
-  <label>Output distance (m)<input name="distance_m" type="number" min="0" max="2" step="any" value="0.25" required></label>
-  <label>Phase mask<select name="phase_mask"><option value="none">None</option><option value="vortex+1">Vortex +1</option><option value="vortex-1">Vortex −1</option><option value="vortex+2">Vortex +2</option><option value="defocus">Defocus</option><option value="astigmatic">Astigmatic</option><option value="axicon">Axicon</option></select></label>
-  <label>Phase strength (rad)<input name="phase_strength_rad" type="number" min="-50" max="50" step="any" value="3.14159265" required></label>
-  <label>Yb cluster seed<input name="density_seed" type="number" min="-2000000000" max="2000000000" step="1" value="17" required></label>
-  <label>Cluster count<input name="cluster_count" type="number" min="2" max="64" step="1" value="24" required></label>
-  <label>Cluster contrast<input name="cluster_contrast" type="number" min="0" max="1" step="any" value="0.27" required></label>
-  <label>Assumed escaping fluorescence yield<input name="escape_yield" type="number" min="0" max="1" step="any" value="0" required></label>
-  <label>Seed energy (nJ)<input name="seed_energy_nj" type="number" min="0.001" max="100000" step="any" value="10" required></label>
-  <label>Seed FWHM (ps)<input name="seed_fwhm_ps" type="number" min="0.1" max="1000" step="any" value="10" required></label>
-  <label>Repetition rate (kHz)<input name="repetition_rate_kHz" type="number" min="0.01" max="100" step="any" value="10" required></label>
-  <label>Signal traversals<input name="signal_traversals" type="number" min="1" max="10" step="1" value="10" required></label>
-  <button type="submit">Calculate Yb pulse</button><p id="pulsedStatus">Ready.</p>
-</form><main class="cards">
-  <section class="card"><h2>Pulse energy and inversion</h2><div id="pulseMetrics" class="metrics"></div></section>
-  <section class="card"><h2>Cycle-average heat and copper cooler</h2><div id="pulseHeatMetrics" class="metrics"></div><p id="pulseThermalText"></p><div id="pulseThermalMaps" class="beam-grid" hidden><figure><canvas id="pulseOpdCanvas"></canvas><figcaption>Scalar round-trip optical path change</figcaption></figure><figure><canvas id="pulseDisplacementCanvas"></canvas><figcaption>Front surface displacement</figcaption></figure></div></section>
-  <section class="card"><h2>Input and output fluence and phase</h2><div id="pulseMaps" class="beam-grid"></div></section>
-  <section class="card"><h2>Temporal power</h2><svg id="pulseTrace" viewBox="0 0 560 115" class="profile"></svg><small>Blue input; orange output. Time window spans ±3 seed FWHM.</small></section>
-  <section class="card"><h2>Scope</h2><p id="pulseScope"></p></section>
 </main></div>
 <script>
 const form=document.getElementById('form'), status=document.getElementById('status');
@@ -189,8 +192,8 @@ async function calculatePulsed(){
   const data=Object.fromEntries(new FormData(pulsedForm).entries());
   const response=await fetch('/api/pulsed',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
   const r=await response.json();if(!response.ok)throw Error(r.error||'Pulse calculation failed');
-  document.getElementById('pulseMetrics').innerHTML=metric('Input energy',(r.input_energy_J*1e9).toFixed(3)+' nJ')+metric('Disk exit energy',(r.disk_output_energy_J*1e9).toFixed(3)+' nJ')+metric('Output plane energy',(r.output_energy_J*1e9).toFixed(3)+' nJ')+metric('Grid-mean pre-pulse excitation',(100*r.mean_excited_fraction_before_pulse).toFixed(2)+'%')+metric('Convergence',r.cycles+' cycles');
-  document.getElementById('pulseHeatMetrics').innerHTML=metric('Pump absorbed',r.cycle_average_pump_absorbed_W.toFixed(3)+' W')+metric('Signal gain',r.cycle_average_signal_gain_W.toFixed(6)+' W')+metric('Escaping fluorescence',r.cycle_average_escaping_fluorescence_W.toFixed(3)+' W')+metric('Deposited heat',r.cycle_average_heat_W_upper_or_assumed.toFixed(3)+' W');
+  document.getElementById('pulseMetrics').innerHTML=metric('Yb doping',r.yb_at_percent.toFixed(0)+' at.%')+metric('Input energy',(r.input_energy_J*1e9).toFixed(3)+' nJ')+metric('Disk exit energy',(r.disk_output_energy_J*1e9).toFixed(3)+' nJ')+metric('Energy gain',(r.disk_output_energy_J/r.input_energy_J).toFixed(2)+'×')+metric('Stretched pulse',r.amplifier_fwhm_ps_assumed.toFixed(2)+' ps')+metric('Stretch factor',r.stretch_factor.toFixed(1)+'×')+metric('Pump passes',String(r.pump_passes))+metric('Peak pump intensity',r.peak_pump_intensity_kW_cm2.toFixed(2)+' kW/cm²')+metric('Grid-mean pre-pulse excitation',(100*r.mean_excited_fraction_before_pulse).toFixed(2)+'%')+metric('Convergence',r.cycles+' cycles');
+  document.getElementById('pulseHeatMetrics').innerHTML=metric('Pump absorbed',r.cycle_average_pump_absorbed_W.toFixed(3)+' W')+metric('Signal gain',r.cycle_average_signal_gain_W.toFixed(6)+' W')+metric('Escaping fluorescence',r.cycle_average_escaping_fluorescence_W.toFixed(3)+' W')+metric('Heat upper bound / assumption',r.cycle_average_heat_W_upper_or_assumed.toFixed(3)+' W');
   const pulseThermal=r.thermal,pulseThermalMaps=document.getElementById('pulseThermalMaps');pulseThermalMaps.hidden=pulseThermal.status!=='computed';
   document.getElementById('pulseThermalText').textContent=pulseThermal.status==='computed'?`Disk ${pulseThermal.disk_temperature_min_C.toFixed(2)}–${pulseThermal.disk_temperature_max_C.toFixed(2)} °C. ${pulseThermal.scope}`:`Thermal assembly outside supported range: ${pulseThermal.reason}`;
   if(pulseThermal.status==='computed'){
@@ -202,7 +205,7 @@ async function calculatePulsed(){
    const figure=document.createElement('figure'),canvas=document.createElement('canvas'),caption=document.createElement('figcaption');caption.textContent=label;figure.append(canvas,caption);maps.append(figure);drawMap(canvas,r[key],kind);
   }
   drawProfile(document.getElementById('pulseTrace'),r.input_power_trace_W,r.output_power_trace_W);
-  document.getElementById('pulseScope').textContent=r.scope;
+  document.getElementById('pulseScope').textContent=`${r.source_fwhm_fs_assumed} fs source: approximately ${r.transform_limited_seed_spectral_fwhm_nm.toFixed(2)} nm transform-limited Gaussian bandwidth at 1030 nm. Assumed 12 at.% lifetime ${(r.lifetime_s_assumed*1e3).toFixed(3)} ms is interpolated, not measured at 12 at.%. ${r.spectral_scope} ${r.scope}`;
   pulsedStatus.textContent='Periodic pulse calculation complete.';
  }catch(e){pulsedStatus.textContent=e.message;pulsedStatus.classList.add('error')}
 }

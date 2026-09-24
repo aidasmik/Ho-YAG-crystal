@@ -7,16 +7,36 @@ On Windows, from the repository root in Command Prompt:
     cd /d "F:\BAKALAUSKARAS\YbYag Studeis\Ho-YAG-crystal"
     "C:\Users\Aidas\AppData\Local\Programs\Python\Python311\python.exe" examples\ybluag_app.py
 
+In PowerShell use `cd 'F:\BAKALAUSKARAS\YbYag Studeis\Ho-YAG-crystal'` and
+`& 'C:\Users\Aidas\AppData\Local\Programs\Python\Python311\python.exe' .\examples\ybluag_app.py`.
+
 Open <http://127.0.0.1:8781/>. This is a separate Yb:LuAG app from the
 Ho:YAG structured-beam calculator on port 8780. It provides the same six
 structured seed shapes, ideal phase masks, synthetic clustered dopant maps,
 irradiance/phase/side-profile views, and output-plane diffraction. Three CW
 options are available: pump-only weak probe, a fixed Gaussian cavity-mode
 background with separate weak probes, and a signal-saturated single pass.
-The pulse section evolves the two-manifold population over a periodic seed
+The proposal pulse section defaults to 12 at.% Yb:LuAG, a 100 µm disk, a
+2 mm Gaussian pump diameter, ten alternating pump traversals, a 10 nJ seed,
+and 10 kHz repetition. The femtosecond laser seed is stretched before the
+disk: 300 fs at the source and 10 ps at the amplifier are editable assumptions,
+since the proposal only specifies a picosecond seed there. Forty watts incident
+pump, ten ideal relayed signal traversals, 938/1030 nm centers, and a 0.6 mm
+signal waist are also modeling assumptions. The 12 at.% lifetime (0.973 ms)
+is interpolated from the 10 and 15 at.% pinhole data; it is not a measured
+12 at.% value. The exact inputs and their status are in
+`config/ybslam_proposal_luag.json`.
+
+The pulse solver evolves the two-manifold population over a periodic seed
 train, supports ideal relayed signal traversals, and reports a cycle-average
-first-law heat estimate using a fixed pump profile and declared fluorescence
-escape yield. A separate room-temperature copper-cooler and scalar
+first-law heat estimate using a fixed multipass pump profile and declared
+fluorescence escape yield. It applies the 1030 nm center cross sections to
+the pulse energy. It does not propagate femtosecond spectral bandwidth,
+chirp, gain narrowing, dispersion, or nonlinear phase, so its pulse energy
+and phase cannot verify the proposal's >100 µJ, >10,000 gain, or pattern
+fidelity targets. The proposal-default 40 W run gives about 39 nJ at the disk
+exit, well below the energy target. The UI keeps the existing 10 at.% CW
+comparison separate from this proposal pulse setup. A separate room-temperature copper-cooler and scalar
 thermoelastic reference is calculated for CW or pulsed heat only when the disk
 stays within the material data's 293.15–300 K range. It omits LuAG
 photoelastic birefringence, which lacks a verified tensor.

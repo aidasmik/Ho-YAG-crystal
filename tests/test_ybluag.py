@@ -3,6 +3,7 @@
 import unittest
 import json
 import csv
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -17,9 +18,38 @@ from ybluag import (YbLuAGMaterial, propagate_cw,
                     fluorescence_spectrum, scan_output_coupler)
 from ybluag import solve_yb_assembly
 from ybluag import YbGallerySettings, simulate_structured_gallery, simulate_pulsed_seed
+from ybluag.multipass_pump import steady_multipass_pump, transport_multipass_pump
 
 
 class YbLuAGPhysicsTests(unittest.TestCase):
+    def test_proposal_pulse_defaults_and_stretch_validation(self):
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "examples"))
+        from ybluag_app import calculate_pulsed
+        result = calculate_pulsed({})
+        self.assertEqual(result["yb_at_percent"], 12)
+        self.assertEqual(result["pump_passes"], 10)
+        self.assertAlmostEqual(result["input_energy_J"], 10e-9)
+        self.assertAlmostEqual(result["stretch_factor"], 10_000 / 300)
+        self.assertLess(result["peak_pump_intensity_kW_cm2"], 10)
+        with self.assertRaisesRegex(ValueError, "at least as long"):
+            calculate_pulsed({"source_fwhm_fs": 500, "seed_fwhm_ps": 0.3})
+
+    def test_multipass_pump_conserves_energy_and_saturates(self):
+        material = YbLuAGMaterial(yb_at_percent=12, lifetime_s=0.000973)
+        pump = np.full((2, 2), 2e7)
+        density = np.ones((4, 2, 2))
+        one = steady_multipass_pump(material, pump, density, 100e-6, 1)
+        ten = steady_multipass_pump(material, pump, density, 100e-6, 10)
+        self.assertGreater(float(np.mean(ten.excited_fraction_by_slice)),
+                           float(np.mean(one.excited_fraction_by_slice)))
+        self.assertTrue(np.all((ten.excited_fraction_by_slice >= 0) &
+                               (ten.excited_fraction_by_slice <= 1)))
+        midpoint, absorbed, final = transport_multipass_pump(
+            material, pump, density, 100e-6, 10, ten.excited_fraction_by_slice)
+        self.assertTrue(np.all(midpoint > 0))
+        np.testing.assert_allclose(np.sum(absorbed, axis=0) + final, pump,
+                                   rtol=1e-12)
+
     def test_yb_gallery_phase_power_and_saturation(self):
         material = YbLuAGMaterial()
         base = dict(pump_power_W=40, input_power_W=1, grid_n=64,

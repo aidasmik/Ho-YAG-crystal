@@ -26,6 +26,7 @@ from ybluag.model import _spectra
 
 PAGE = ROOT / "Yb-LuAG" / "app.html"
 COATINGS = ROOT / "config" / "ybluag_10at_coatings.json"
+PROPOSAL = ROOT / "config" / "ybslam_proposal_luag.json"
 
 
 def number(data, key, low, high):
@@ -162,6 +163,30 @@ def calculate_pulsed(data):
     beam = data.get("selected_beam", "Gaussian TEM00")
     if mask not in PHASE_MASKS or beam not in BEAM_NAMES:
         raise ValueError("unknown phase mask or seed beam")
+    proposal = json.loads(PROPOSAL.read_text(encoding="utf-8"))
+    data = {
+        "pump_W": proposal["pump"]["incident_average_power_W"],
+        "radius_mm": proposal["geometry"]["pump_beam_diameter_mm"] / 2,
+        "thickness_um": proposal["geometry"]["disk_thickness_um"],
+        "seed_energy_nj": proposal["seed"]["energy_nJ"],
+        "seed_fwhm_ps": proposal["seed"]["amplifier_intensity_fwhm_ps"],
+        "source_fwhm_fs": proposal["seed"]["source_intensity_fwhm_fs"],
+        "repetition_rate_kHz": proposal["seed"]["repetition_rate_kHz"],
+        "signal_traversals": proposal["seed"]["signal_traversals"],
+        "pump_passes": proposal["pump"]["passes"],
+        "waist_mm": 0.6,
+        "distance_m": 0.25,
+        "phase_strength_rad": math.pi,
+        "density_seed": 17,
+        "cluster_count": 24,
+        "cluster_contrast": 0.0,
+        "escape_yield": 0.0,
+        **data,
+    }
+    source_fwhm_fs = number(data, "source_fwhm_fs", 50, 10000)
+    amplifier_fwhm_ps = number(data, "seed_fwhm_ps", 0.1, 1000)
+    if amplifier_fwhm_ps * 1000 < source_fwhm_fs:
+        raise ValueError("amplifier pulse must be at least as long as the femtosecond source pulse")
     settings = YbGallerySettings(
         pump_power_W=number(data, "pump_W", 0.001, 1000),
         pump_radius_m=number(data, "radius_mm", 0.1, 5) * 1e-3,
@@ -175,12 +200,35 @@ def calculate_pulsed(data):
         cluster_contrast=number(data, "cluster_contrast", 0, 1),
         fluorescence_escape_yield=number(data, "escape_yield", 0, 1))
     result = simulate_pulsed_seed(
-        YbLuAGMaterial(), settings, beam,
+        YbLuAGMaterial(
+            yb_at_percent=proposal["material"]["yb_at_percent"],
+            lifetime_s=proposal["material"]["lifetime_s"],
+            pump_wavelength_nm=proposal["optics"]["pump_wavelength_nm"],
+            signal_wavelength_nm=proposal["optics"]["signal_wavelength_nm"]),
+        settings, beam,
         number(data, "seed_energy_nj", 0.001, 100000) * 1e-9,
-        number(data, "seed_fwhm_ps", 0.1, 1000) * 1e-12,
+        amplifier_fwhm_ps * 1e-12,
         number(data, "repetition_rate_kHz", 0.01, 100) * 1e3,
-        integer(data, "signal_traversals", 1, 10))
-    return {key: jsonable(value) for key, value in result.items() if key != "grid"}
+        integer(data, "signal_traversals", 1, 10),
+        pump_passes=integer(data, "pump_passes", 1, 48))
+    wavelength_nm = proposal["optics"]["signal_wavelength_nm"]
+    spectral_fwhm_nm = (wavelength_nm * 1e-9)**2 / 299792458.0 * (
+        0.441 / (source_fwhm_fs * 1e-15)) * 1e9
+    peak_pump_kW_cm2 = 2 * settings.pump_power_W / (
+        math.pi * settings.pump_radius_m**2) / 1e7
+    return {
+        **{key: jsonable(value) for key, value in result.items() if key != "grid"},
+        "yb_at_percent": proposal["material"]["yb_at_percent"],
+        "lifetime_s_assumed": proposal["material"]["lifetime_s"],
+        "lifetime_status": proposal["material"]["lifetime_status"],
+        "source_fwhm_fs_assumed": source_fwhm_fs,
+        "amplifier_fwhm_ps_assumed": amplifier_fwhm_ps,
+        "stretch_factor": amplifier_fwhm_ps * 1000 / source_fwhm_fs,
+        "transform_limited_seed_spectral_fwhm_nm": spectral_fwhm_nm,
+        "peak_pump_intensity_kW_cm2": peak_pump_kW_cm2,
+        "proposal_targets": proposal["targets"],
+        "spectral_scope": "Pulse gain uses the 1030 nm center cross sections. The femtosecond source bandwidth, chirp, gain narrowing, dispersion and nonlinear phase are not propagated spectrally; pulse energy is a monochromatic engineering estimate.",
+    }
 
 
 class Handler(BaseHTTPRequestHandler):

@@ -24,6 +24,7 @@ from .fluorescence import fluorescence_spectrum
 from .model import YbLuAGMaterial
 from .assembly import solve_yb_assembly
 from .pulsed import propagate_pulse
+from .multipass_pump import steady_multipass_pump, transport_multipass_pump
 
 
 @dataclass(frozen=True)
@@ -64,6 +65,17 @@ class YbGallerySettings:
                 self.cluster_radius_max_m < self.cluster_radius_min_m or
                 self.grid_n not in (64, 96) or not 1 <= self.z_steps <= 16):
             raise ValueError("invalid structured-gallery settings")
+
+
+def _assembly_configuration(material: YbLuAGMaterial, thickness_m: float):
+    config_path = Path(__file__).resolve().parents[2] / "config" / "ybluag_10at_assembly.json"
+    configuration = json.loads(config_path.read_text(encoding="utf-8"))
+    if material.yb_at_percent == 12.0:
+        configuration["material"] = "12 at.% Yb:LuAG proposal crystal on generic copper"
+        configuration["geometry"]["disk_thickness_m"] = thickness_m
+        configuration["thermal"]["disk"]["conductivity_W_mK"] = 7.2
+        configuration["sources"]["conductivity"] = "Korner et al. 2012 12 at.% crystal parameter"
+    return configuration
 
 
 def _modal_cw_background(material, settings, grid, density_scale, pump):
@@ -237,11 +249,11 @@ def simulate_structured_gallery(material: YbLuAGMaterial,
                                      else np.stack(heat_slices))
     thermal = {"status": "not_requested", "reason": "Select saturated or modal CW to calculate the copper cooler and scalar thermoelastic screen."}
     if settings.solver_mode in ("saturated_cw", "modal_cw"):
-        if not np.isclose(settings.thickness_m, 150e-6, atol=1e-12):
-            thermal = {"status": "out_of_scope", "reason": "The assembly configuration is for a 150 µm disk. Select 150 µm for the thermal solve."}
+        nominal_thickness = 100e-6 if material.yb_at_percent == 12 else 150e-6
+        if not np.isclose(settings.thickness_m, nominal_thickness, atol=1e-12):
+            thermal = {"status": "out_of_scope", "reason": f"The assembly configuration is for a {nominal_thickness * 1e6:g} µm disk."}
         else:
-            config_path = Path(__file__).resolve().parents[2] / "config" / "ybluag_10at_assembly.json"
-            configuration = json.loads(config_path.read_text(encoding="utf-8"))
+            configuration = _assembly_configuration(material, settings.thickness_m)
             mesh = DiskThermalMesh.disk(nr=8, nz=settings.z_steps, nphi=12,
                                         radius_m=5e-3, thickness_m=settings.thickness_m)
             heat_polar = _cartesian_to_polar(reference_heat_slices, grid, mesh)
@@ -280,7 +292,7 @@ def simulate_structured_gallery(material: YbLuAGMaterial,
 def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
                          selected_beam: str, seed_energy_J: float,
                          seed_fwhm_s: float, repetition_rate_Hz: float,
-                         signal_traversals: int):
+                         signal_traversals: int, pump_passes: int = 10):
     """Periodic pulsed seed with fixed pump-only CW profile and ideal relays.
 
     The population is iterated from pulse to pulse. During the short seed the
@@ -292,7 +304,9 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
     if (not np.isfinite(seed_energy_J) or seed_energy_J <= 0 or
             not np.isfinite(seed_fwhm_s) or seed_fwhm_s <= 0 or
             not np.isfinite(repetition_rate_Hz) or repetition_rate_Hz <= 0 or
-            isinstance(signal_traversals, bool) or not 1 <= signal_traversals <= 10):
+            isinstance(signal_traversals, bool) or not 1 <= signal_traversals <= 10 or
+            isinstance(pump_passes, bool) or not isinstance(pump_passes, int) or
+            not 1 <= pump_passes <= 48):
         raise ValueError("invalid pulsed seed settings")
     grid = Grid2D.square(settings.grid_n, 8e-3)
     common = GallerySettings(mean_ho_density_m3=material.number_density_m3,
@@ -313,22 +327,11 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
     pump = np.exp(-2 * (x*x + y*y) / settings.pump_radius_m**2)
     pump *= settings.pump_power_W / (float(pump.sum()) * grid.dx * grid.dy)
     dz = settings.thickness_m / settings.z_steps
-    beta_steady = []
-    recovery_rate = []
-    pump_by_slice = []
-    pump_step = pump.copy()
-    for local_scale in scale:
-        pump_by_slice.append(pump_step.copy())
-        beta = material.excited_fraction_cw(pump_step)
-        alpha, _ = material.coefficients_m1(beta)
-        pump_next = pump_step * np.exp(-alpha * local_scale * dz)
-        pump_mid = 0.5 * (pump_step + pump_next)
-        beta_steady.append(material.excited_fraction_cw(pump_mid))
-        up, down = material.rates_s1(pump_mid, 0)
-        recovery_rate.append(up + down + 1 / material.lifetime_s)
-        pump_step = pump_next
-    beta_steady = np.stack(beta_steady)
-    recovery_rate = np.stack(recovery_rate)
+    pump_state = steady_multipass_pump(
+        material, pump, scale, settings.thickness_m, pump_passes)
+    beta_steady = pump_state.excited_fraction_by_slice
+    up, down = material.rates_s1(pump_state.total_midpoint_intensity_W_m2_by_slice, 0)
+    recovery_rate = up + down + 1 / material.lifetime_s
     time = np.linspace(-3 * seed_fwhm_s, 3 * seed_fwhm_s, 41)
     pulse_shape = np.exp(-4 * np.log(2) * (time / seed_fwhm_s)**2)
     pulse_shape /= np.trapezoid(pulse_shape, time)
@@ -363,10 +366,8 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
                           (beta - beta_steady) *
                           (-np.expm1(-recovery_rate * dark_time)) / recovery_rate)
     beta_average = beta_dark_integral * repetition_rate_Hz
-    pump_absorbed = np.empty_like(beta_average)
-    for iz, (p_in, local_scale) in enumerate(zip(pump_by_slice, scale)):
-        alpha, _ = material.coefficients_m1(beta_average[iz])
-        pump_absorbed[iz] = p_in * (1 - np.exp(-alpha * local_scale * dz))
+    _, pump_absorbed, _ = transport_multipass_pump(
+        material, pump, scale, settings.thickness_m, pump_passes, beta_average)
     fluorescence = (density * beta_average / material.lifetime_s *
                     settings.fluorescence_escape_yield *
                     fluorescence_spectrum(material).mean_photon_energy_J * dz)
@@ -377,10 +378,10 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
     absorbed_W = float(np.sum(pump_absorbed) * pixel_area)
     signal_gain_W = float(np.sum(signal_gain) * pixel_area)
     fluorescence_W = float(np.sum(fluorescence) * pixel_area)
-    thermal = {"status": "out_of_scope", "reason": "The assembly configuration is for a 150 µm disk."}
-    if np.isclose(settings.thickness_m, 150e-6, atol=1e-12):
-        config_path = Path(__file__).resolve().parents[2] / "config" / "ybluag_10at_assembly.json"
-        configuration = json.loads(config_path.read_text(encoding="utf-8"))
+    nominal_thickness = 100e-6 if material.yb_at_percent == 12 else 150e-6
+    thermal = {"status": "out_of_scope", "reason": f"The assembly configuration is for a {nominal_thickness * 1e6:g} µm disk."}
+    if np.isclose(settings.thickness_m, nominal_thickness, atol=1e-12):
+        configuration = _assembly_configuration(material, settings.thickness_m)
         mesh = DiskThermalMesh.disk(nr=8, nz=settings.z_steps, nphi=12,
                                     radius_m=5e-3, thickness_m=settings.thickness_m)
         try:
@@ -417,6 +418,8 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
         "input_energy_J": seed_energy_J, "disk_output_energy_J": disk_output_J,
         "output_energy_J": optical_power(field_out, grid) * seed_energy_J,
         "cycles": cycles, "residual": residual,
+        "pump_passes": pump_passes,
+        "pump_steady_iterations": pump_state.iterations,
         "cycle_average_heat_W_upper_or_assumed": heat_W,
         "cycle_average_pump_absorbed_W": absorbed_W,
         "cycle_average_signal_gain_W": signal_gain_W,
@@ -424,8 +427,8 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
         "fluorescence_escape_yield_assumed": settings.fluorescence_escape_yield,
         "thermal": thermal,
         "mean_excited_fraction_before_pulse": float(np.mean(beta_before)),
-        "scope": ("Periodic two-manifold Yb:LuAG population with a fixed CW pump-only "
-                  "axial pump profile, short pulse gain depletion, and ideal image relays "
+        "scope": (f"Periodic two-manifold Yb:LuAG population with {pump_passes} alternating "
+                  "CW pump traversals, short pulse gain depletion, and ideal image relays "
                   "between signal traversals. Retarded-time intensity transport omits "
                   "GVD, Kerr phase, walkoff, coherent diffraction within each pulse pass, "
                   "and thermal feedback. Cycle-averaged heat uses the fixed pump profile "
