@@ -31,6 +31,8 @@ from .pump_source import resolve_pump_source
 from .seeded_amplifier import apply_phase_modulator
 from .snapshots import ScientificSnapshot
 from .thermal_optics import polar_to_cartesian
+from .seeded_periodic import PeriodicAmplifierSettings, solve_periodic_seeded_amplifier
+from .refractive_response import HoIndexResponse
 
 
 @dataclass(frozen=True)
@@ -47,6 +49,14 @@ class GallerySettings:
     phase_mask_name: str = 'none'
     phase_strength_rad: float = np.pi
     solver_mode: str = 'weak_probe'
+    selected_beam: str = 'Gaussian TEM00'
+    seed_energy_J: float = 10e-9
+    seed_fwhm_s: float = 10e-12
+    signal_traversals: int = 10
+    relay_distance_m: float = 0.
+    dn_dHo_m3: float | None = None
+    dn_dExcited_m3: float | None = None
+    index_provenance: str = ''
 
     def __post_init__(self):
         values=(self.mean_ho_density_m3,self.cluster_contrast,
@@ -67,11 +77,18 @@ class GallerySettings:
             raise ValueError(f'phase mask must be one of {PHASE_MASKS}')
         if self.solver_mode not in SOLVER_MODES:
             raise ValueError(f'solver mode must be one of {SOLVER_MODES}')
+        if self.selected_beam not in BEAM_NAMES:
+            raise ValueError('unknown selected beam')
+        if self.seed_energy_J<=0 or self.seed_fwhm_s<=0 or self.signal_traversals<1 or self.relay_distance_m<0:
+            raise ValueError('invalid seeded-amplifier settings')
+        HoIndexResponse(self.dn_dHo_m3,self.dn_dExcited_m3,self.index_provenance)
 
 
 PHASE_MASKS=('none','vortex+1','vortex-1','vortex+2',
              'defocus','astigmatic','axicon')
-SOLVER_MODES=('weak_probe','full_seeded_modal')
+SOLVER_MODES=('weak_probe','full_seeded_modal','periodic_seeded_amplifier')
+BEAM_NAMES=('Gaussian TEM00','Helical LG(0,+1)','Double helix LG(0,+2)',
+            'Hermite-Gaussian HG(1,1)','Needle Bessel-Gaussian','Flattop super-Gaussian')
 
 
 def nonuniform_density(grid: Grid2D, z_edges_m, disk_radius_m: float,
@@ -307,12 +324,112 @@ def _run_full_seeded_modal(snapshot: ScientificSnapshot, grid: Grid2D,
     return outcomes,diagnostics
 
 
+def _run_periodic_seeded(snapshot, grid, density, seeds_before_slm, seeds, settings):
+    """One external seed, with pump, depletion, dark recovery, and hot assembly."""
+    case,mesh,cavity,assembly_cfg,_=_hot_solver_context(snapshot)
+    pump=case['physics']['pump']
+    cfg=PeriodicAmplifierSettings(seed_energy_J=settings.seed_energy_J,
+        seed_fwhm_s=settings.seed_fwhm_s,repetition_rate_Hz=pump['repetition_rate_Hz'],
+        pump_energy_J=pump['energy_J'],pump_fwhm_s=pump['duration_s'],pump_waist_m=pump['waist_m'],
+        signal_traversals=settings.signal_traversals,
+        pump_reflectivity=cavity.pump_hr_reflectivity,
+        relay_distance_m=settings.relay_distance_m)
+    name=settings.selected_beam
+    assembly=PlateAssembly(mesh,grid,assembly_cfg)
+    index_response=HoIndexResponse(settings.dn_dHo_m3,settings.dn_dExcited_m3,
+                                   settings.index_provenance)
+    phase=None;previous=None;converged=False;error=None;power_error=None
+    for outer in range(4):
+        pulse=solve_periodic_seeded_amplifier(seeds[name],grid,density,cfg,hot_phase_rad=phase)
+        if not pulse['converged']:
+            raise RuntimeError('seeded pump/seed population cycle did not converge within bounded cycles')
+        heat=_cartesian_to_polar(pulse['heat_W_m3'],grid,mesh)
+        optical_heat=float(np.sum(pulse['heat_W_m3'])*density.dz_m*grid.dx*grid.dy)
+        polar_heat=float(np.sum(heat*mesh.volumes_m3))
+        if not np.isfinite(polar_heat) or abs(polar_heat)<1e-30:
+            raise RuntimeError('thermal heat projection is degenerate')
+        heat*=optical_heat/polar_heat
+        temperature,displacement,screens=assembly.solve(heat)
+        opd=(screens.thermal_single_pass_opd_m+
+             screens.photoelastic_mean_single_pass_opd_m+
+             geometric_transmission_opd(screens.front_uz_m,screens.rear_uz_m,
+                                        index=cavity.host_index))
+        opd+=index_response.single_pass_opd_m(density,pulse['populations_before_signal'])
+        new_phase=2*np.pi*opd/cavity.wavelength_m
+        # Piston has no effect on gain or intensity and should not impede closure.
+        new_phase-=new_phase[grid.ny//2,grid.nx//2]
+        if phase is not None:
+            amplitude=np.sqrt(pulse['input_fluence_J_m2'])
+            error=float(np.sqrt(np.sum(amplitude**2*(new_phase-phase)**2)/np.sum(amplitude**2)))
+            power_error=abs(pulse['output_energy_J']-previous)/max(pulse['output_energy_J'],1e-30)
+            if error<2e-3 and power_error<5e-3:
+                converged=True
+                phase=new_phase
+                break
+        phase=new_phase;previous=pulse['output_energy_J']
+    # The last thermal screen is applied consistently to one final population cycle.
+    if not converged:
+        raise RuntimeError('seeded thermal-optical closure did not converge within four outer steps')
+    pulse=solve_periodic_seeded_amplifier(seeds[name],grid,density,cfg,hot_phase_rad=phase)
+    output=angular_spectrum_propagate(pulse['field_out'],grid,cavity.wavelength_m,
+                                       settings.post_disk_distance_m)
+    input_irr=pulse['input_fluence_J_m2']*cfg.repetition_rate_Hz
+    output_irr=np.abs(output)**2*cfg.repetition_rate_Hz
+    output_energy=float(np.sum(np.abs(output)**2)*grid.dx*grid.dy)
+    input_scale=np.sqrt(settings.seed_energy_J/optical_power(seeds[name],grid)*cfg.repetition_rate_Hz)
+    outcomes={name:{'seed_before_slm':seeds_before_slm[name]*input_scale,
+                    'input_field':seeds[name]*input_scale,
+                    'output_field':output*np.sqrt(cfg.repetition_rate_Hz),
+                    'input_intensity':input_irr,'output_intensity':output_irr,
+                    'input_power_W':settings.seed_energy_J*cfg.repetition_rate_Hz,
+                    'output_power_W':output_energy*cfg.repetition_rate_Hz,
+                    'disk_exit_power_W':pulse['output_energy_J']*cfg.repetition_rate_Hz,
+                    'disk_power_gain':pulse['output_energy_J']/settings.seed_energy_J,
+                    'input_pulse_energy_J':settings.seed_energy_J,
+                    'output_pulse_energy_J':output_energy}}
+    diag={'solver_mode':'periodic_seeded_amplifier','status':'periodic_and_thermal_fixed_point',
+          'population_cycles':pulse['cycles'],'population_residual':pulse['population_residual'],
+          'thermal_outer_iterations':outer+1,'thermal_peak_disk_K':float(temperature.disk_temperature_K.max()),
+          'phase_closure_rms_rad':error,'power_closure_relative':power_error,
+          'pump_absorbed_W':pulse['pump_absorbed_J']*cfg.repetition_rate_Hz,
+          'pump_source':pulse['pump_source'],
+          'signal_extracted_W':pulse['signal_extracted_J']*cfg.repetition_rate_Hz,
+          'heat_W':pulse['heat_energy_J']*cfg.repetition_rate_Hz,
+          'heat_ledger_closure_J':pulse['heat_ledger_closure_J'],
+          'gaussian_peak_seed_power_W':settings.seed_energy_J/(settings.seed_fwhm_s*np.sqrt(np.pi/(4*np.log(2)))),
+          'thermal_balance_error_W':float(temperature.balance_error_W),
+          'pass_records_J':pulse['pass_records_J'],
+          'refractive_index_model':{'host':'YAG n, dn/dT, and photoelastic reference',
+              'dn_dHo_m3':settings.dn_dHo_m3,'dn_dExcited_m3':settings.dn_dExcited_m3,
+              'provenance':settings.index_provenance,
+              'excited_population_time':'pre-signal frozen state; in-pulse electronic lens not resolved'},
+          'phase_feedback':'scalar mean thermal/photoelastic/transmission OPD applied at each material visit',
+          'hot_phase_affects_gain':settings.relay_distance_m>0,
+          'hardware_status':'illustrative bonded copper heatsink, ideal relay when distance=0; coating heat/loss not modeled',
+          'mesh_convergence_verified':False,'experimental_calibration':False,
+          'pulse_model':'short-pulse fluence kick; FWHM used for peak-power interpretation, not temporal propagation'}
+    raw={'populations_before_pump_m3':pulse['populations_before_pump'],
+         'populations_before_signal_m3':pulse['populations_before_signal'],
+         'heat_W_m3_cartesian':pulse['heat_W_m3'],
+         'heat_W_m3_polar':heat,
+         'temperature_disk_K':temperature.disk_temperature_K,
+         'temperature_plate_K':temperature.plate_temperature_K,
+         'hot_phase_single_pass_rad':phase,
+         'front_displacement_m':screens.front_uz_m,
+         'rear_displacement_m':screens.rear_uz_m,
+         'thermal_r_edges_m':mesh.r_edges_m,
+         'thermal_z_edges_m':mesh.z_edges_m,
+         'thermal_phi_rad':mesh.phi_rad}
+    return outcomes,diag,raw
+
+
 def simulate_gallery(snapshot: ScientificSnapshot,
                      settings: GallerySettings = GallerySettings()) -> dict:
     """Propagate each input through one disk and the same free-space leg."""
     a=snapshot.arrays
-    grid=Grid2D(len(a['x_m']),len(a['y_m']),
-                float(a['x_m'][1]-a['x_m'][0]),float(a['y_m'][1]-a['y_m'][0]))
+    n=96 if settings.solver_mode=='periodic_seeded_amplifier' else len(a['x_m'])
+    width=float(a['x_m'][1]-a['x_m'][0])*len(a['x_m'])
+    grid=Grid2D(n,n,width/n,width/n)
     radius=float(a['r_edges_m'][-1])
     density=nonuniform_density(grid,a['z_edges_m'],radius,settings)
     wavelength=float(snapshot.metadata['wavelength_m'])
@@ -328,13 +445,18 @@ def simulate_gallery(snapshot: ScientificSnapshot,
     if settings.solver_mode=='full_seeded_modal':
         outcomes,solver_diagnostics=_run_full_seeded_modal(snapshot,grid,density,
                                                            seeds_before_slm,modulated_seeds,settings)
+        raw_fields={}
+    elif settings.solver_mode=='periodic_seeded_amplifier':
+        outcomes,solver_diagnostics,raw_fields=_run_periodic_seeded(snapshot,grid,density,
+                                                           seeds_before_slm,modulated_seeds,settings)
     else:
+        raw_fields={}
         outcomes={}
         populations=frozen_populations_on_grid(snapshot,grid,density)
         solver_diagnostics={'solver_mode':'weak_probe','status':'completed_frozen_population_probe',
                             'population_model':'archived cycle-averaged fractions',
                             'cavity_eigenfield_update':False}
-    for name,seed in (() if settings.solver_mode=='full_seeded_modal' else seeds_before_slm.items()):
+    for name,seed in (() if settings.solver_mode!='weak_probe' else seeds_before_slm.items()):
         field=modulated_seeds[name]
         result=propagate_structured_signal_small_signal(field,grid,populations,density)
         output=angular_spectrum_propagate(result.field_out,grid,wavelength,
@@ -345,13 +467,16 @@ def simulate_gallery(snapshot: ScientificSnapshot,
                         'disk_exit_power_W':result.output_power,
                         'disk_power_gain':result.power_gain}
     return {'grid':grid,'density':density,'outcomes':outcomes,
+            'raw_fields':raw_fields,
             'phase_pattern_rad':phase_meta['phi_pattern'],
             'phase_correction_rad':phase_meta['phi_correction'],
             'phase_requested_rad':phase_meta['phi_requested'],
             'phase_applied_rad':phase_meta['phi_applied'],
             'settings':settings,'wavelength_m':wavelength,
             'reference_state_id':snapshot.metadata['state_id'],
-            'model':('fixed-mode oscillator thermal background with separate weak seeded probes'
+            'model':('periodic short-pulse externally seeded amplifier with thermal phase feedback'
+                     if settings.solver_mode=='periodic_seeded_amplifier' else
+                     'fixed-mode oscillator thermal background with separate weak seeded probes'
                      if settings.solver_mode=='full_seeded_modal' else
                      'weak one-traversal seeded probe; frozen archived population fractions'),
             'solver_diagnostics':solver_diagnostics}

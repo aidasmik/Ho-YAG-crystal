@@ -16,7 +16,7 @@ import numpy as np
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'src'))
 from hoyag.snapshots import snapshot_from_case
-from hoyag.structured_beam_gallery import GallerySettings,PHASE_MASKS,SOLVER_MODES,simulate_gallery
+from hoyag.structured_beam_gallery import GallerySettings,PHASE_MASKS,SOLVER_MODES,BEAM_NAMES,simulate_gallery
 from hoyag.validation_backend import sha256_file,source_manifest
 
 
@@ -32,8 +32,8 @@ def draw_beams(result, path):
                                   grid.y[0]*1e3,grid.y[-1]*1e3]
     rows=list(result['outcomes'].items())
     y_index=int(np.argmin(abs(grid.y)))
-    fig,axes=plt.subplots(len(rows),6,figsize=(22,14),constrained_layout=True)
-    axes=np.asarray(axes)
+    fig,axes=plt.subplots(len(rows),6,figsize=(22,max(4.5,2.5*len(rows))),constrained_layout=True)
+    axes=np.atleast_2d(axes)
     phase_cmap=plt.get_cmap('twilight').copy();phase_cmap.set_bad('#262935')
     for i,(name,case) in enumerate(rows):
         inp,out=case['input_field'],case['output_field']
@@ -69,11 +69,13 @@ def draw_beams(result, path):
         for col in (1,3):
             axes[i,col].set_ylim(bottom=0)
     mode=result['settings'].solver_mode
-    description=('fixed-mode oscillator background and one-way thermal solve; '
+    description=('periodic external seed with pump/depletion/thermal phase; approximate'
+                 if mode=='periodic_seeded_amplifier' else
+                 'fixed-mode oscillator background and one-way thermal solve; '
                  'separate undepleted seed probes' if mode=='full_seeded_modal' else
                  'frozen Stage 7W inversion; weak-signal probe')
     fig.suptitle(f'Ideal phase mask: {result["settings"].phase_mask_name} | '
-                 'structured seed → one Ho:YAG traversal → '
+                 f'structured seed → {result["settings"].signal_traversals if mode=="periodic_seeded_amplifier" else 1} Ho:YAG traversal(s) → '
                  f'{result["settings"].post_disk_distance_m:g} m free space\n{description}',fontsize=14)
     path.parent.mkdir(parents=True,exist_ok=True)
     fig.savefig(path,dpi=150)
@@ -86,7 +88,7 @@ def draw_side_profiles(result, path):
     y_index=int(np.argmin(abs(grid.y)))
     x_mm=grid.x*1e3
     rows=list(result['outcomes'].items())
-    fig,axes=plt.subplots(3,2,figsize=(12,12),sharex=True,constrained_layout=True)
+    fig,axes=plt.subplots((len(rows)+1)//2,2,figsize=(12,max(4,2.2*len(rows))),sharex=True,constrained_layout=True)
     axes=np.asarray(axes).ravel()
     for ax,(name,case) in zip(axes,rows):
         input_profile=case.get('input_intensity',abs(case['input_field'])**2)[y_index]
@@ -113,7 +115,7 @@ def draw_beam_on_density(result, path):
     density=result['density'].values_m3/1e26
     entrance=np.ma.masked_where(density[0] <= 0,density[0])
     rows=list(result['outcomes'].items())
-    fig,axes=plt.subplots(2,3,figsize=(13,8),constrained_layout=True)
+    fig,axes=plt.subplots((len(rows)+2)//3,3,figsize=(13,max(4,1.5*len(rows))),constrained_layout=True)
     axes=np.asarray(axes).ravel()
     cmap=plt.get_cmap('viridis').copy();cmap.set_bad('#e6e8ec')
     low=float(entrance.min()); high=float(entrance.max())
@@ -131,6 +133,7 @@ def draw_beam_on_density(result, path):
         ax.text(.03,.04,'white contours: 10–90% input Imax',transform=ax.transAxes,
                 color='white',fontsize=7,ha='left',va='bottom',
                 bbox={'facecolor':'black','alpha':.35,'pad':2,'edgecolor':'none'})
+    for ax in axes[len(rows):]: ax.axis('off')
     fig.colorbar(background,ax=axes.tolist(),shrink=.86,
                  label='Ho concentration at entrance (10²⁶ ions/m³)')
     fig.suptitle('Incoming beam footprints on the Ho:YAG crystal entrance slice\n'
@@ -171,13 +174,15 @@ def draw_density(result,path):
 def draw_phase_mask(result,path):
     grid=result['grid'];extent=[grid.x[0]*1e3,grid.x[-1]*1e3,
                                  grid.y[0]*1e3,grid.y[-1]*1e3]
-    gaussian=result['outcomes']['Gaussian TEM00']
-    before=abs(gaussian['seed_before_slm'])**2
-    after=abs(gaussian['input_field'])**2
+    beam_name=(result['settings'].selected_beam if result['settings'].solver_mode=='periodic_seeded_amplifier'
+               else 'Gaussian TEM00')
+    beam=result['outcomes'][beam_name]
+    before=abs(beam['seed_before_slm'])**2
+    after=abs(beam['input_field'])**2
     fig,axes=plt.subplots(1,3,figsize=(12,4),constrained_layout=True)
     for ax,data,title in ((axes[0],result['phase_applied_rad'],'Applied phase (rad)'),
-                          (axes[1],before,'Gaussian before SLM (W/m²)'),
-                          (axes[2],after,'Gaussian after SLM (W/m²)')):
+                          (axes[1],before,f'{beam_name} before SLM (W/m²)'),
+                          (axes[2],after,f'{beam_name} after SLM (W/m²)')):
         image=ax.imshow(data,origin='lower',extent=extent,
             cmap='twilight' if ax is axes[0] else 'inferno',
             vmin=0,vmax=2*np.pi if ax is axes[0] else float(before.max()))
@@ -206,7 +211,15 @@ def main():
                    help='radial phase scale for defocus, astigmatic, and axicon masks')
     p.add_argument('--post-disk-distance-m',type=float,default=.25)
     p.add_argument('--solver-mode',choices=SOLVER_MODES,default='weak_probe',
-                   help='weak_probe is fast; full_seeded_modal computes a fixed-mode oscillator background and one-way thermal/mechanical response before weak seed probes')
+                   help='periodic_seeded_amplifier uses an external depleted short-pulse seed and bonded-heatsink thermal feedback')
+    p.add_argument('--selected-beam',choices=BEAM_NAMES,default='Gaussian TEM00')
+    p.add_argument('--seed-energy-nj',type=float,default=10.)
+    p.add_argument('--seed-fwhm-ps',type=float,default=10.)
+    p.add_argument('--signal-traversals',type=int,default=10)
+    p.add_argument('--relay-distance-m',type=float,default=0.)
+    p.add_argument('--dn-dho-m3',type=float)
+    p.add_argument('--dn-dexcited-m3',type=float)
+    p.add_argument('--index-provenance',default='')
     p.add_argument('--plots-only',action='store_true',
                    help='save plots and summary without archiving complex field arrays')
     args=p.parse_args()
@@ -216,7 +229,11 @@ def main():
         cluster_radius_min_m=args.cluster_min_radius_mm*1e-3,
         cluster_radius_max_m=args.cluster_max_radius_mm*1e-3,
         phase_mask_name=args.phase_mask,phase_strength_rad=args.phase_strength_rad,
-        post_disk_distance_m=args.post_disk_distance_m,solver_mode=args.solver_mode)
+        post_disk_distance_m=args.post_disk_distance_m,solver_mode=args.solver_mode,
+        selected_beam=args.selected_beam,seed_energy_J=args.seed_energy_nj*1e-9,
+        seed_fwhm_s=args.seed_fwhm_ps*1e-12,signal_traversals=args.signal_traversals,
+        relay_distance_m=args.relay_distance_m,dn_dHo_m3=args.dn_dho_m3,
+        dn_dExcited_m3=args.dn_dexcited_m3,index_provenance=args.index_provenance)
     result=simulate_gallery(snapshot,settings)
     result['z_edges_m']=snapshot.arrays['z_edges_m']
     output=args.output_directory
@@ -242,6 +259,7 @@ def main():
             arrays[f'mode_{index}_seed_before_slm']=case['seed_before_slm']
             arrays[f'mode_{index}_input_field']=case['input_field']
             arrays[f'mode_{index}_output_field']=case['output_field']
+        arrays.update(result.get('raw_fields',{}))
         np.savez_compressed(archive,**arrays)
         fields_sha=sha256_file(archive)
     reference_summary=json.loads((args.case_directory/'summary.json').read_text())
@@ -252,7 +270,16 @@ def main():
         reference_label=str(reference_path)
     excluded=('seed_before_slm','input_field','output_field','output_vector',
               'input_intensity','output_intensity')
-    if settings.solver_mode=='full_seeded_modal':
+    if settings.solver_mode=='periodic_seeded_amplifier':
+        limitations=['YbSLAM proposal provides 10 nJ and 10 kHz, but no exact seed duration; chosen ps duration is an assumption',
+                     'proposal is Yb:YAG/Yb:LuAG; pump, Ho gain, and 1 mm Ho disk come from illustrative local Ho reference',
+                     'short-pulse fluence kicks do not resolve temporal shape, GVD, Kerr response, or pump/seed overlap',
+                     'fixed reference-temperature Ho cross sections; no validated Ho concentration or excited-state refractive-index coefficient',
+                     'scalar mean hot phase; birefringent Jones mixing during each amplifier pass is not yet coupled',
+                     'illustrative bonded copper heatsink; coating absorption and measured contact/cooling calibration absent',
+                     'ideal image relay at zero distance; physical 10-pass relay layout unspecified',
+                     'coarse optical/thermal mesh; no mesh convergence or experimental validation']
+    elif settings.solver_mode=='full_seeded_modal':
         limitations=['six declared mode intensities form one fixed-mode oscillator background; each 1 W seed is then probed separately',
                      'seed probes do not deplete populations and their power is not included in the heat source',
                      'thermal and photoelastic changes do not feed back into the modal oscillator',
@@ -264,8 +291,9 @@ def main():
                      'weak-signal probe; no population depletion by these inputs',
                      'single disk traversal; no specified multipass hardware topology']
     summary={'model':result['model'],
-             'application_mode':('oscillator_background_seeded_probe'
-                                 if settings.solver_mode=='full_seeded_modal' else 'seeded_single_pass_probe'),
+             'application_mode':('seeded_multipass_amplifier' if settings.solver_mode=='periodic_seeded_amplifier' else
+                                 'oscillator_background_seeded_probe' if settings.solver_mode=='full_seeded_modal' else
+                                 'seeded_single_pass_probe'),
              'fidelity_mode':settings.solver_mode,
              'solver_mode':settings.solver_mode,
              'solver_diagnostics':result['solver_diagnostics'],
@@ -277,6 +305,10 @@ def main():
              'reference_case':reference_label,
              'fields_sha256':fields_sha,'fields_archived':not args.plots_only,
              'wavelength_m':result['wavelength_m'],
+             'numerics':{'optical_nx':result['grid'].nx,'optical_ny':result['grid'].ny,
+                         'optical_dx_m':result['grid'].dx,'optical_dy_m':result['grid'].dy,
+                         'population_nz':result['density'].nz,
+                         'mesh_convergence_verified':False},
              'settings':asdict(result['settings']),
              'density_mean_active_m3':float(result['density'].values_m3[result['density'].values_m3>0].mean()),
              'density_min_active_m3':float(result['density'].values_m3[result['density'].values_m3>0].min()),
@@ -290,7 +322,7 @@ def main():
                                for case in result['outcomes'].values())},
              'modes':{name:{key:value for key,value in case.items() if key not in excluded}
                       for name,case in result['outcomes'].items()},
-             'time_kind':'steady_state',
+             'time_kind':('periodic_pulse_state' if settings.solver_mode=='periodic_seeded_amplifier' else 'steady_state'),
              'limitations':limitations}
     (output/'summary.json').write_text(json.dumps(summary,indent=2)+'\n')
     print(json.dumps({'output_directory':str(output.resolve()),

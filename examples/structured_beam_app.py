@@ -25,11 +25,11 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'src'))
 
 from hoyag.local_supervisor import BudgetLedger, Limits, run_bounded
-from hoyag.structured_beam_gallery import PHASE_MASKS, SOLVER_MODES
+from hoyag.structured_beam_gallery import PHASE_MASKS, SOLVER_MODES, BEAM_NAMES
 
 
-def _number(payload, name, low, high, integer=False):
-    value = payload.get(name)
+def _number(payload, name, low, high, integer=False, default=None):
+    value = payload.get(name,default)
     if isinstance(value, bool):
         raise ValueError(f'{name} must be numeric')
     try:
@@ -58,6 +58,9 @@ def validate_request(payload):
     solver_mode = payload.get('solver_mode', 'weak_probe')
     if solver_mode not in SOLVER_MODES:
         raise ValueError(f'solver_mode must be one of {SOLVER_MODES}')
+    selected_beam=payload.get('selected_beam','Gaussian TEM00')
+    if selected_beam not in BEAM_NAMES:
+        raise ValueError('invalid selected_beam')
     values = {
         'density_seed': _number(payload, 'density_seed', -2_000_000_000, 2_000_000_000, True),
         'cluster_count': _number(payload, 'cluster_count', 2, 64, True),
@@ -66,19 +69,33 @@ def validate_request(payload):
         'cluster_max_radius_mm': _number(payload, 'cluster_max_radius_mm', .05, 2.5),
         'phase_strength_rad': _number(payload, 'phase_strength_rad', -50, 50),
         'post_disk_distance_m': _number(payload, 'post_disk_distance_m', 0, 2),
+        'seed_energy_nj':_number(payload,'seed_energy_nj',.001,100000,default=10),
+        'seed_fwhm_ps':_number(payload,'seed_fwhm_ps',.1,1000,default=10),
+        'signal_traversals':_number(payload,'signal_traversals',1,20,True,default=10),
+        'relay_distance_m':_number(payload,'relay_distance_m',0,2,default=0),
     }
     if values['cluster_min_radius_mm'] > values['cluster_max_radius_mm']:
         raise ValueError('cluster_min_radius_mm cannot exceed cluster_max_radius_mm')
     values['phase_mask'] = mask
     values['solver_mode'] = solver_mode
+    values['selected_beam']=selected_beam
+    for key in ('dn_dHo_m3','dn_dExcited_m3'):
+        raw=payload.get(key)
+        values[key]=None if raw in (None,'') else _number(payload,key,-1e-24,1e-24)
+    provenance=payload.get('index_provenance','')
+    if not isinstance(provenance,str) or len(provenance)>500:
+        raise ValueError('index provenance must be text under 500 characters')
+    if any(values[key] is not None for key in ('dn_dHo_m3','dn_dExcited_m3')) and not provenance.strip():
+        raise ValueError('measured index coefficients require source or measurement provenance')
+    values['index_provenance']=provenance
     return values
 
 
 def build_gallery_command(values, output_directory):
     relative = output_directory.resolve().relative_to(ROOT)
-    return [
+    command=[
         sys.executable, 'examples/structured_beam_gallery.py',
-        '--output-directory', str(relative), '--plots-only',
+        '--output-directory', str(relative),
         '--density-seed', str(values['density_seed']),
         '--cluster-count', str(values['cluster_count']),
         '--cluster-contrast', str(values['cluster_contrast']),
@@ -88,7 +105,21 @@ def build_gallery_command(values, output_directory):
         '--phase-strength-rad', str(values['phase_strength_rad']),
         '--post-disk-distance-m', str(values['post_disk_distance_m']),
         '--solver-mode', values['solver_mode'],
+        '--selected-beam',values['selected_beam'],
+        '--seed-energy-nj',str(values['seed_energy_nj']),
+        '--seed-fwhm-ps',str(values['seed_fwhm_ps']),
+        '--signal-traversals',str(values['signal_traversals']),
+        '--relay-distance-m',str(values['relay_distance_m']),
     ]
+    if values['solver_mode']!='periodic_seeded_amplifier':
+        command.append('--plots-only')
+    if values['dn_dHo_m3'] is not None:
+        command.extend(('--dn-dho-m3',str(values['dn_dHo_m3'])))
+    if values['dn_dExcited_m3'] is not None:
+        command.extend(('--dn-dexcited-m3',str(values['dn_dExcited_m3'])))
+    if values['index_provenance']:
+        command.extend(('--index-provenance',values['index_provenance']))
+    return command
 
 
 def budget_status():
@@ -135,7 +166,7 @@ def run_calculation(values):
     output = ROOT / 'results' / 'structured_beams' / 'runs' / run_id
     output.mkdir(parents=True, exist_ok=False)
     execution = output / 'execution.json'
-    full_solver = values['solver_mode'] == 'full_seeded_modal'
+    full_solver = values['solver_mode'] in ('full_seeded_modal','periodic_seeded_amplifier')
     try:
         result = run_bounded(
             build_gallery_command(values, output), cwd=ROOT,
@@ -153,10 +184,14 @@ def run_calculation(values):
     if result['status'] != 'completed' or result.get('exit_code') != 0:
         raise RuntimeError(json.dumps(result))
     summary = json.loads((output / 'summary.json').read_text())
+    return result_for_run(output, summary, result)
+
+
+def result_for_run(output, summary, execution):
     relative = output.relative_to(ROOT).as_posix()
     return {
-        'run_id': run_id,
-        'execution': result,
+        'run_id': output.name,
+        'execution': execution,
         'summary': summary,
         'images': {
             key: f'/{relative}/{filename}'
@@ -169,6 +204,18 @@ def run_calculation(values):
             }.items()
         },
     }
+
+
+def latest_completed_run():
+    runs=ROOT/'results'/'structured_beams'/'runs'
+    for directory in sorted(runs.iterdir(),key=lambda p:p.name,reverse=True) if runs.is_dir() else ():
+        summary_path=directory/'summary.json'
+        execution_path=directory/'execution.json'
+        if directory.is_dir() and summary_path.is_file() and execution_path.is_file():
+            execution=json.loads(execution_path.read_text())
+            if execution.get('status')=='completed' and execution.get('exit_code')==0:
+                return result_for_run(directory,json.loads(summary_path.read_text()),execution)
+    return None
 
 
 class AppHandler(BaseHTTPRequestHandler):
@@ -220,6 +267,10 @@ class AppHandler(BaseHTTPRequestHandler):
         path = urlparse(self.path).path
         if path == '/budget/status':
             self._send_json(200, budget_status())
+            return
+        if path == '/runs/latest':
+            result=latest_completed_run()
+            self._send_json(200 if result else 404,result or {'error':'no completed run'})
             return
         if path == '/':
             path = '/results/structured_beams/index.html'
