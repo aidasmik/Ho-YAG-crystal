@@ -73,6 +73,11 @@ def scalar_yb_screens(fem, displacement, mesh: DiskThermalMesh,
 
 def solve_yb_cooler_temperature(mesh: DiskThermalMesh, heat_W_m3, configuration):
     """Linear constant-property copper-cooler screen, before validity check."""
+    return yb_cooler_solver(mesh, configuration).steady(heat_W_m3)
+
+
+def yb_cooler_solver(mesh: DiskThermalMesh, configuration):
+    """Build the same disk, bond, and finite-copper thermal operator for steady or transient use."""
     cfg = configuration
     geometry = cfg["geometry"]
     thermal_cfg = cfg["thermal"]
@@ -80,7 +85,6 @@ def solve_yb_cooler_temperature(mesh: DiskThermalMesh, heat_W_m3, configuration)
     if (not np.isclose(mesh.r_edges_m[-1], geometry["disk_radius_m"], atol=1e-12, rtol=0)
             or not np.isclose(mesh.z_edges_m[-1], geometry["disk_thickness_m"], atol=1e-12, rtol=0)):
         raise ValueError("Yb mesh and assembly geometry disagree")
-    heat = mesh.field(heat_W_m3, "Yb heat source")
     plate = cooling_plate_mesh(mesh, radius_m=geometry["plate_radius_m"],
                                thickness_m=geometry["plate_thickness_m"],
                                nz=numerics["plate_thermal_nz"])
@@ -91,12 +95,12 @@ def solve_yb_cooler_temperature(mesh: DiskThermalMesh, heat_W_m3, configuration)
                                 thermal_cfg["coolant_conductance_W_m2K"]),
         disk_material=ThermalMaterial(**thermal_cfg["disk"]),
         plate_material=ThermalMaterial(**thermal_cfg["plate"]))
-    temperature = solver.steady(heat)
-    return temperature
+    return solver
 
 
-def solve_yb_assembly(mesh: DiskThermalMesh, heat_W_m3, grid, configuration):
-    """Solve assembly only inside the 293.15–300 K material data range."""
+def solve_yb_assembly(mesh: DiskThermalMesh, heat_W_m3, grid, configuration, *,
+                      temperature=None, allow_extrapolation=False):
+    """Solve assembly; explicit extrapolation is reserved for labeled previews."""
     cfg = configuration
     geometry = cfg["geometry"]
     mechanical = cfg["mechanical"]
@@ -105,10 +109,11 @@ def solve_yb_assembly(mesh: DiskThermalMesh, heat_W_m3, grid, configuration):
     plate = cooling_plate_mesh(mesh, radius_m=geometry["plate_radius_m"],
                                thickness_m=geometry["plate_thickness_m"],
                                nz=numerics["plate_thermal_nz"])
-    temperature = solve_yb_cooler_temperature(mesh, heat_W_m3, cfg)
+    if temperature is None:
+        temperature = solve_yb_cooler_temperature(mesh, heat_W_m3, cfg)
     material_range_valid = bool(np.min(temperature.disk_temperature_K) >= 293.15 and
                                 np.max(temperature.disk_temperature_K) <= 300.0)
-    if not material_range_valid:
+    if not material_range_valid and not allow_extrapolation:
         raise ValueError("Yb:LuAG disk outside 293.15–300 K assembly-material range")
     fem = DiskPlateMesh.make(
         radius_m=geometry["disk_radius_m"],
@@ -137,4 +142,8 @@ def solve_yb_assembly(mesh: DiskThermalMesh, heat_W_m3, grid, configuration):
         dn_dT_K1=optics["dn_dT_K1"],
         reference_temperature_K=optics["reference_temperature_K"])
     return YbAssemblyResult(temperature, displacement, screens,
-                            material_range_valid=material_range_valid)
+                            material_range_valid=material_range_valid,
+                            scope=("steady or transient linear assembly with constant material properties; "
+                                   "outside 293.15–300 K is an unvalidated extrapolation"
+                                   if not material_range_valid else
+                                   "linear thermal and isotropic elastic assembly within material range"))

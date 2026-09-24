@@ -43,6 +43,11 @@ class YbLuAGPhysicsTests(unittest.TestCase):
                                result["cycle_average_heat_W_upper_or_assumed"], places=7)
         self.assertEqual(np.asarray(thermal["front_displacement_nm"]).shape,
                          np.asarray(thermal["rear_displacement_nm"]).shape)
+        timeline = result["thermal_timeline"]
+        self.assertEqual(timeline["time_s"][-1], 30.0)
+        self.assertFalse(timeline["material_range_valid"][-1])
+        self.assertFalse(result["thermal_feedback_applied"])
+        self.assertLess(timeline["energy_balance_relative_max"], 1e-7)
         with self.assertRaisesRegex(ValueError, "at least as long"):
             calculate_pulsed({"source_fwhm_fs": 500, "seed_fwhm_ps": 0.3})
 
@@ -65,11 +70,23 @@ class YbLuAGPhysicsTests(unittest.TestCase):
     def test_nonuniform_pulse_reference_changes_output(self):
         sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "examples"))
         from ybluag_app import calculate_pulsed
-        result = calculate_pulsed({"cluster_contrast": 0.1})
+        result = calculate_pulsed({"cluster_contrast": 0.1,
+                                   "operation_duration_s": 0})
         actual = np.asarray(result["output_fluence_J_m2"])
         uniform = np.asarray(result["uniform_isothermal_output_fluence_J_m2"])
         self.assertEqual(actual.shape, uniform.shape)
         self.assertGreater(float(np.max(abs(actual - uniform))), 0)
+
+    def test_valid_transient_opd_changes_output_phase_not_pulse_energy(self):
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "examples"))
+        from ybluag_app import calculate_pulsed
+        hot = calculate_pulsed({"pump_W": 0.2, "operation_duration_s": 1.0})
+        cold = calculate_pulsed({"pump_W": 0.2, "operation_duration_s": 0})
+        self.assertTrue(hot["thermal_timeline"]["material_range_valid"][-1])
+        self.assertTrue(hot["thermal_feedback_applied"])
+        self.assertAlmostEqual(hot["output_energy_J"], cold["output_energy_J"], places=12)
+        self.assertGreater(float(np.max(np.abs(
+            np.asarray(hot["output_phase"]) - np.asarray(cold["output_phase"])))), 0)
 
     def test_selected_cw_shape_includes_uniform_reference_and_cooler(self):
         sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "examples"))

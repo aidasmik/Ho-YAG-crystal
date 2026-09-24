@@ -34,31 +34,43 @@ fluorescence escape yield. It applies the 1030 nm center cross sections to
 the pulse energy. It does not propagate femtosecond spectral bandwidth,
 chirp, gain narrowing, dispersion, or nonlinear phase, so its pulse energy
 and phase cannot verify the proposal's >100 µJ, >10,000 gain, or pattern
-fidelity targets. The proposal-default 40 W run gives about 39 nJ at the disk
-exit, well below the energy target. The UI keeps the existing 10 at.% CW
+fidelity targets. The uniform-dopant 40 W run gives about 39 nJ at the disk
+exit, well below the energy target; the UI's synthetic nonuniform map changes
+that result. The UI keeps the existing 10 at.% CW
 comparison separate from this proposal pulse setup. The enlarged pulse
-figures show input and output transverse fluence and horizontal and vertical
-center cuts. Dashed cuts come from a separate uniform-dopant solve with the
-same pump and seed. Both curves omit temperature-dependent optical feedback;
-they coincide at the default zero cluster contrast and do not measure thermal
-distortion. A separate room-temperature copper-cooler and scalar
-thermoelastic reference is calculated for CW or pulsed heat only when the disk
-stays within the material data's 293.15–300 K range. It omits LuAG
-photoelastic birefringence, which lacks a verified tensor.
-The app also offers a six-shape periodic pulse regime using the proposal
-controls; these are six independent seeded runs, not six simultaneous beams.
+figures show one selected input and output transverse fluence with horizontal
+and vertical center cuts. Dashed cuts come from a separate uniform-dopant,
+isothermal solve with the same pump and seed. The pulsed UI defaults to a
+synthetic 0.27 cluster contrast to expose that comparison. The temperature
+timeline advances one disk, contact and finite copper plate from a uniform
+20 °C start for the selected operating duration (30 s by default), using the
+periodic pulse heat as a constant source. Each sampled temperature drives a
+bonded elastic solve and round-trip OPD. The first pump/population startup
+interval is approximated. Under ideal image relays, the thermal phase is
+accumulated over the signal traversals and propagated to the output plane
+only if the requested-time state remains inside the available room-temperature
+thermomechanical parameter range. Beam-reshaping feedback into gain, photoelastic
+birefringence, and an actual relay geometry are omitted.
+The app simulates one selected pulse shape at a time.
 Every CW and pulsed shape can overlay a dashed uniform-Yb output profile
 computed with the same pump and seed settings. Yb concentration maps use a
 dark-blue/teal/yellow scale. Thermal heat interpolation is normalized to
 preserve integrated deposited power. For a selected heat load above the
 measured 293.15–300 K material range, the copper-cooler view reports the
-out-of-range constant-property temperature screen only as a risk flag. It
+out-of-range constant-property temperature and OPD timeline only as an
+explicitly dashed extrapolation, not an operational prediction. It
 then shows front/rear disk displacement and optical-path maps for the same
 heat pattern scaled to the proposal's 5 K design rise. Those maps are a
 separate in-range design reference, not a deformation prediction for the
 selected pump case. The generic C10100 copper plate, indium-contact and
 coolant conductances remain assumed hardware parameters in
 `config/ybluag_10at_assembly.json`.
+The 26.85 °C cutoff is a parameter-calibration limit, not crystal failure.
+Published [Yb:LuAG absorption/emission spectra](https://opg.optica.org/josab/abstract.cfm?uri=josab-29-9-2493) reach 200 °C, while the current
+high-doping conductivity and thermo-optic/elastic inputs do not support an
+accurate 250 °C coupled calculation. The UI marks 250 °C as a user-supplied
+crystal reference. The modeled indium interface would also cease to be solid
+near [156.6 °C](https://www.nist.gov/publications/standard-reference-material-1745-indium-freezing-point-standard-and-standard-0); a 250 °C assembly requires a different bond/contact design.
 The separate CW comparison retains the reconstructed cross-section plot and approximate
 output-coupler design screen. All spectra are figure-guided reconstructions,
 and cavity geometry and cooling boundary values are assumptions, not a

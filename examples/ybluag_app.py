@@ -195,6 +195,7 @@ def calculate_pulsed(data, *, compute_thermal=True):
         "cluster_count": 24,
         "cluster_contrast": 0.0,
         "escape_yield": 0.0,
+        "operation_duration_s": 30.0,
         **data,
     }
     source_fwhm_fs = number(data, "source_fwhm_fs", 50, 10000)
@@ -228,7 +229,8 @@ def calculate_pulsed(data, *, compute_thermal=True):
     result = simulate_pulsed_seed(
         material,
         settings, beam,
-        *pulse_args, pump_passes=pump_passes, compute_thermal=compute_thermal)
+        *pulse_args, pump_passes=pump_passes, compute_thermal=compute_thermal,
+        operation_duration_s=number(data, "operation_duration_s", 0, 120))
     reference = (result if settings.cluster_contrast == 0 else
                  simulate_pulsed_seed(material, replace(settings, cluster_contrast=0.0),
                                       beam, *pulse_args, pump_passes=pump_passes,
@@ -252,7 +254,7 @@ def calculate_pulsed(data, *, compute_thermal=True):
         "x_mm": jsonable(result["grid"].x * 1e3),
         "y_mm": jsonable(result["grid"].y * 1e3),
         "uniform_isothermal_output_fluence_J_m2": jsonable(reference["output_fluence_J_m2"]),
-        "reference_scope": "Dashed profiles use the same pump and seed with uniform Yb concentration. Both runs omit temperature-dependent optical feedback; the dashed curve does not quantify thermal distortion.",
+        "reference_scope": "Dashed profiles use the same pump and seed with uniform Yb concentration and no thermal phase. The selected-beam profile receives the transient thermal OPD only if its final temperature is within the stated material range; temperature-dependent gain and relay feedback remain omitted.",
         "spectral_scope": "Pulse gain uses the 1030 nm center cross sections. The femtosecond source bandwidth, chirp, gain narrowing, dispersion and nonlinear phase are not propagated spectrally; pulse energy is a monochromatic engineering estimate.",
     }
 

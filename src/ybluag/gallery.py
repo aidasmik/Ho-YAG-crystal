@@ -22,7 +22,8 @@ from hoyag.thermal import DiskThermalMesh
 
 from .fluorescence import fluorescence_spectrum
 from .model import YbLuAGMaterial
-from .assembly import solve_yb_assembly, solve_yb_cooler_temperature
+from .assembly import (solve_yb_assembly, solve_yb_cooler_temperature,
+                       yb_cooler_solver)
 from .pulsed import propagate_pulse
 from .multipass_pump import steady_multipass_pump, transport_multipass_pump
 
@@ -92,7 +93,7 @@ def _thermal_payload(assembly, scope: str):
         "scalar_roundtrip_opd_nm": screens.mean_roundtrip_opd_m * 1e9,
         "front_displacement_nm": screens.front_uz_m * 1e9,
         "rear_displacement_nm": screens.rear_uz_m * 1e9,
-        "scope": scope + " Within the stated 20–26.85 °C material range.",
+        "scope": scope + " Within the currently supported 20–26.85 °C thermo-mechanical parameter range; this is not a crystal survival limit.",
     }
 
 
@@ -133,6 +134,60 @@ def _conservative_heat_polar(heat_slices, grid, mesh):
     if not np.isfinite(mapped_W) or mapped_W <= 0 or target_W <= 0:
         raise ValueError("thermal heat mapping requires positive finite power")
     return polar * (target_W / mapped_W)
+
+
+def _pulsed_thermal_timeline(mesh, heat_polar, grid, configuration, duration_s):
+    """Cycle-averaged heating of one disk and finite copper plate from a cold start."""
+    solver = yb_cooler_solver(mesh, configuration)
+    bath = configuration["thermal"]["coolant_temperature_K"]
+    disk = np.full(mesh.shape, bath)
+    plate = np.full(solver.plate.shape, bath)
+    x, y = grid.mesh
+    inside = x*x + y*y <= (5e-3)**2
+    times = np.r_[0.0, np.geomspace(min(2.5e-5, duration_s / 1000), duration_s, 16)]
+    max_temperature = [bath - 273.15]
+    opd_pv = [0.0]
+    front_pv = [0.0]
+    valid = [True]
+    balance = []
+    final = None
+    latest_valid = None
+    latest_valid_time = 0.0
+    for previous, now in zip(times[:-1], times[1:]):
+        step = solver.advance(disk, plate, heat_polar, float(now - previous))
+        disk, plate = step.disk_temperature_K, step.plate_temperature_K
+        assembly = solve_yb_assembly(mesh, heat_polar, grid, configuration,
+                                     temperature=step, allow_extrapolation=True)
+        screen = assembly.screens.mean_roundtrip_opd_m[inside]
+        face = assembly.screens.front_uz_m[inside]
+        max_temperature.append(float(np.max(disk) - 273.15))
+        opd_pv.append(float(np.ptp(screen) * 1e9))
+        front_pv.append(float(np.ptp(face) * 1e9))
+        valid.append(assembly.material_range_valid)
+        balance.append(step.relative_balance_error)
+        final = assembly
+        if assembly.material_range_valid:
+            latest_valid = assembly
+            latest_valid_time = float(now)
+    return {
+        "time_s": times, "disk_max_C": np.asarray(max_temperature),
+        "roundtrip_opd_pv_nm": np.asarray(opd_pv),
+        "front_displacement_pv_nm": np.asarray(front_pv),
+        "material_range_valid": valid,
+        "energy_balance_relative_max": float(max(balance)),
+        "final_roundtrip_opd_m": final.screens.mean_roundtrip_opd_m,
+        "latest_valid_time_s": latest_valid_time,
+        "latest_valid_roundtrip_opd_m": (latest_valid.screens.mean_roundtrip_opd_m
+                                          if latest_valid is not None else np.zeros(grid.shape)),
+        "final_front_displacement_nm": final.screens.front_uz_m * 1e9,
+        "final_rear_displacement_nm": final.screens.rear_uz_m * 1e9,
+        "scope": ("Finite startup from uniform coolant temperature with cycle-averaged periodic pulse heat "
+                  "applied from t=0; the first population-recovery interval is approximated. "
+                  "Disk, contact, and copper heat capacities are integrated by backward Euler; each recorded "
+                  "temperature drives a bonded elastic solve and round-trip OPD. Constant material properties "
+                  "outside the currently supported 20–26.85 °C thermo-mechanical parameter range "
+                  "are an unvalidated extrapolation, not a crystal failure claim or device prediction."),
+    }
 
 
 def _modal_cw_background(material, settings, grid, density_scale, pump):
@@ -352,7 +407,8 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
                          selected_beam: str, seed_energy_J: float,
                          seed_fwhm_s: float, repetition_rate_Hz: float,
                          signal_traversals: int, pump_passes: int = 10,
-                         *, compute_thermal: bool = True):
+                         *, compute_thermal: bool = True,
+                         operation_duration_s: float = 0.0):
     """Periodic pulsed seed with fixed pump-only CW profile and ideal relays.
 
     The population is iterated from pulse to pulse. During the short seed the
@@ -366,7 +422,9 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
             not np.isfinite(repetition_rate_Hz) or repetition_rate_Hz <= 0 or
             isinstance(signal_traversals, bool) or not 1 <= signal_traversals <= 10 or
             isinstance(pump_passes, bool) or not isinstance(pump_passes, int) or
-            not 1 <= pump_passes <= 48):
+            not 1 <= pump_passes <= 48 or
+            not np.isfinite(operation_duration_s) or
+            not 0 <= operation_duration_s <= 120):
         raise ValueError("invalid pulsed seed settings")
     grid = Grid2D.square(settings.grid_n, settings.field_size_m)
     common = GallerySettings(mean_ho_density_m3=material.number_density_m3,
@@ -442,20 +500,35 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
     thermal = {"status": "out_of_scope", "reason": f"The assembly configuration is for a {nominal_thickness * 1e6:g} µm disk."}
     if not compute_thermal:
         thermal = {"status": "not_requested", "reason": "Thermal calculation was shared from the Gaussian reference case."}
+    timeline = None
     if compute_thermal and np.isclose(settings.thickness_m, nominal_thickness, atol=1e-12):
         configuration = _assembly_configuration(material, settings.thickness_m)
         mesh = DiskThermalMesh.disk(nr=8, nz=settings.z_steps, nphi=12,
                                     radius_m=5e-3, thickness_m=settings.thickness_m)
+        heat_polar = _conservative_heat_polar(heat_slices, grid, mesh)
         try:
             thermal = _thermal_or_design_reference(
-                mesh, _conservative_heat_polar(heat_slices, grid, mesh), grid, configuration,
+                mesh, heat_polar, grid, configuration,
                 "Fixed pump-profile periodic heat on generic C10100 copper; scalar optical path and surface deformation; photoelasticity omitted.")
         except ValueError as exc:
             thermal = {"status": "out_of_scope", "reason": str(exc)}
+        if operation_duration_s:
+            timeline = _pulsed_thermal_timeline(mesh, heat_polar, grid,
+                                                 configuration, operation_duration_s)
     fluence_out = np.trapezoid(signal, time, axis=0)
     disk_output_J = float(np.sum(fluence_out) * grid.dx * grid.dy)
     gain_amplitude = np.sqrt(np.maximum(fluence_out, 0) / np.maximum(input_fluence, 1e-30))
     field_out = seed * gain_amplitude
+    thermal_feedback_applied = bool(timeline is not None and
+                                    timeline["material_range_valid"][-1])
+    if thermal_feedback_applied:
+        # An ideal image relay returns the same transverse coordinate to the
+        # same physical disk. Two thickness traversals make one active-mirror
+        # round trip; this phase is applied at each encounter in that model.
+        phase_screen = (np.pi * signal_traversals /
+                        (material.signal_wavelength_nm * 1e-9) *
+                        timeline["final_roundtrip_opd_m"])
+        field_out *= np.exp(1j * phase_screen)
     if settings.post_disk_distance_m:
         field_out = angular_spectrum_propagate(field_out, grid,
                                                material.signal_wavelength_nm * 1e-9,
@@ -480,12 +553,19 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
         "cycle_average_escaping_fluorescence_W": fluorescence_W,
         "fluorescence_escape_yield_assumed": settings.fluorescence_escape_yield,
         "thermal": thermal,
+        "thermal_timeline": timeline,
+        "thermal_feedback_applied": thermal_feedback_applied,
+        "thermal_feedback_time_s": (operation_duration_s if thermal_feedback_applied else None),
         "mean_excited_fraction_before_pulse": float(np.mean(beta_before)),
         "scope": (f"Periodic two-manifold Yb:LuAG population with {pump_passes} alternating "
                   "CW pump traversals, short pulse gain depletion, and ideal image relays "
                   "between signal traversals. Retarded-time intensity transport omits "
                   "GVD, Kerr phase, walkoff, coherent diffraction within each pulse pass, "
-                  "and thermal feedback. Cycle-averaged heat uses the fixed pump profile "
+                  "and gain feedback from thermal beam reshaping. The recorded thermal OPD "
+                  "is applied per ideal-relayed disk encounter before output-plane diffraction "
+                  "only when the requested operating time remains inside the 20–26.85 C "
+                  "thermo-mechanical parameter range, which is not a crystal survival limit. "
+                  "Cycle-averaged heat uses the fixed pump profile "
                   "and an assumed fluorescence escape yield; the generic copper assembly "
                   "runs only inside its material temperature range. The output spatial "
                   "phase retains the seed phase "
