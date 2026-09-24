@@ -73,6 +73,7 @@ def validate_request(payload):
         'seed_fwhm_ps':_number(payload,'seed_fwhm_ps',.1,1000,default=10),
         'signal_traversals':_number(payload,'signal_traversals',1,20,True,default=10),
         'relay_distance_m':_number(payload,'relay_distance_m',0,2,default=0),
+        'cavity_ejection_efficiency':_number(payload,'cavity_ejection_efficiency',.01,1,default=1),
         'cpu_workers':_number(payload,'cpu_workers',1,16,True,default=4),
     }
     if values['cluster_min_radius_mm'] > values['cluster_max_radius_mm']:
@@ -111,6 +112,7 @@ def build_gallery_command(values, output_directory):
         '--seed-fwhm-ps',str(values['seed_fwhm_ps']),
         '--signal-traversals',str(values['signal_traversals']),
         '--relay-distance-m',str(values['relay_distance_m']),
+        '--cavity-ejection-efficiency',str(values['cavity_ejection_efficiency']),
         '--cpu-workers',str(values['cpu_workers']),
     ]
     if values['solver_mode']!='periodic_seeded_amplifier':

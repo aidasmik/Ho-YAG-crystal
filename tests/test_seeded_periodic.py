@@ -52,6 +52,35 @@ def test_spatial_worker_tiles_match_serial_population_and_heat():
     assert parallel['cpu_workers']==2
 
 
+def test_pass_extraction_uses_shared_inversion_and_separate_ejection():
+    grid=Grid2D.square(8,2e-3)
+    density=uniform_ho_density_field(grid,2,1e-3,1.52e26)
+    x,y=grid.mesh
+    seed=np.exp(-(x*x+y*y)/(0.4e-3)**2)*np.exp(1j*np.arctan2(y,x))
+    cfg=PeriodicAmplifierSettings(seed_energy_J=10e-9,pump_energy_J=.1e-3,
+        signal_traversals=3,relay_distance_m=.05,signal_relay_transmission=.95,
+        cavity_ejection_efficiency=.8,max_cycles=3)
+    result=solve_periodic_seeded_amplifier(seed,grid,density,cfg,
+                                            temperature_K=np.full(grid.shape,303.))
+    records=result['pass_diagnostics']
+    assert len(records)==3
+    for record in records:
+        assert np.isclose(record['net_stimulated_transfer_J'],
+                          record['disk_exit_energy_J']-record['seed_energy_J'],rtol=1e-10)
+        assert np.isclose(record['stored_laser_energy_before_J']-
+                          record['stored_laser_energy_after_J'],
+                          record['net_stimulated_transfer_J'],rtol=1e-8,atol=1e-18)
+        assert np.isclose(record['beam_weighted_temperature_K'],303.)
+        assert np.isfinite(record['small_signal_log_gain'])
+    assert np.isclose(result['output_energy_J'],.8*result['disk_exit_energy_J'])
+    assert np.isclose(result['cavity_ejection_loss_J'],.2*result['disk_exit_energy_J'])
+    assert np.isclose(sum(r['net_stimulated_transfer_J'] for r in records),
+                      result['signal_extracted_J'],rtol=1e-8,atol=1e-18)
+    assert abs(result['optical_energy_balance_residual_J'])<1e-15
+    assert np.isclose(result['gain_medium_extraction_efficiency'],
+                      result['signal_extracted_J']/result['initial_stored_laser_energy_J'])
+
+
 def test_ho_index_increment_requires_coefficient_provenance_and_correct_depth_integral():
     grid=Grid2D.square(4,1e-3)
     density=uniform_ho_density_field(grid,2,1e-3,1e26)

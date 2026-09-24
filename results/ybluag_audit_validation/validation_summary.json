@@ -1,0 +1,204 @@
+{
+  "cold_propagation": [
+    {
+      "window_mm": 8,
+      "grid_n": 96,
+      "radius_um": 136.641638937698,
+      "analytic_radius_um": 136.60799282054353,
+      "coherent_overlap": 0.9999990215968821,
+      "edge_energy_fraction": 8.52243763569846e-08
+    },
+    {
+      "window_mm": 8,
+      "grid_n": 192,
+      "radius_um": 136.60799283690798,
+      "analytic_radius_um": 136.60799282054353,
+      "coherent_overlap": 0.999999999950159,
+      "edge_energy_fraction": 3.2011055027382206e-21
+    },
+    {
+      "window_mm": 8,
+      "grid_n": 384,
+      "radius_um": 136.607992836908,
+      "analytic_radius_um": 136.60799282054353,
+      "coherent_overlap": 0.9999999999501553,
+      "edge_energy_fraction": 3.1498044013321853e-21
+    },
+    {
+      "window_mm": 12,
+      "grid_n": 96,
+      "radius_um": 171.04427444216077,
+      "analytic_radius_um": 136.60799282054353,
+      "coherent_overlap": 0.9977546484017294,
+      "edge_energy_fraction": 1.9608235144361426e-07
+    },
+    {
+      "window_mm": 12,
+      "grid_n": 192,
+      "radius_um": 136.6079944211229,
+      "analytic_radius_um": 136.60799282054353,
+      "coherent_overlap": 0.9999999999253519,
+      "edge_energy_fraction": 4.058893137283799e-13
+    },
+    {
+      "window_mm": 12,
+      "grid_n": 384,
+      "radius_um": 136.60799283690804,
+      "analytic_radius_um": 136.60799282054353,
+      "coherent_overlap": 0.9999999999501554,
+      "edge_energy_fraction": 2.268370883218811e-21
+    },
+    {
+      "window_mm": 16,
+      "grid_n": 96,
+      "radius_um": 346.165817407214,
+      "analytic_radius_um": 136.60799282054353,
+      "coherent_overlap": 0.9640501840075694,
+      "edge_energy_fraction": 1.4068903414435502e-07
+    },
+    {
+      "window_mm": 16,
+      "grid_n": 192,
+      "radius_um": 136.64589849913926,
+      "analytic_radius_um": 136.60799282054353,
+      "coherent_overlap": 0.9999990119795974,
+      "edge_energy_fraction": 1.422567457497217e-10
+    },
+    {
+      "window_mm": 16,
+      "grid_n": 384,
+      "radius_um": 136.60799283690798,
+      "analytic_radius_um": 136.60799282054353,
+      "coherent_overlap": 0.9999999999501606,
+      "edge_energy_fraction": 2.723282796016009e-21
+    }
+  ],
+  "structured_sampling": {
+    "vortex": [
+      {
+        "grid_n": 96,
+        "overlap_vs_384": 0.9884674152198856
+      },
+      {
+        "grid_n": 192,
+        "overlap_vs_384": 0.9977223204126717
+      }
+    ],
+    "quadrant": [
+      {
+        "grid_n": 96,
+        "overlap_vs_384": 0.8795971271289744
+      },
+      {
+        "grid_n": 192,
+        "overlap_vs_384": 0.9612737335109625
+      }
+    ]
+  },
+  "frantz_nodvik": [
+    {
+      "input_fsat": 0.001,
+      "time_points": 41,
+      "axial_cells": 1,
+      "relative_error": -2.887302896326105e-06,
+      "population_min": 0.7491379893747805,
+      "population_max": 0.7491379893747805
+    },
+    {
+      "input_fsat": 0.001,
+      "time_points": 161,
+      "axial_cells": 4,
+      "relative_error": -1.9326786149242992e-07,
+      "population_min": 0.7490214972325541,
+      "population_max": 0.7492662522184372
+    },
+    {
+      "input_fsat": 0.001,
+      "time_points": 641,
+      "axial_cells": 16,
+      "relative_error": -2.4119989561199873e-08,
+      "population_min": 0.7489867516702547,
+      "population_max": 0.7492929526127844
+    },
+    {
+      "input_fsat": 0.5,
+      "time_points": 41,
+      "axial_cells": 1,
+      "relative_error": -0.0010926539271969293,
+      "population_min": 0.4396595874469094,
+      "population_max": 0.4396595874469094
+    },
+    {
+      "input_fsat": 0.5,
+      "time_points": 161,
+      "axial_cells": 4,
+      "relative_error": -0.00012685636577769444,
+      "population_min": 0.4168963826573551,
+      "population_max": 0.4667968123032773
+    },
+    {
+      "input_fsat": 0.5,
+      "time_points": 641,
+      "axial_cells": 16,
+      "relative_error": -2.310938906557869e-05,
+      "population_min": 0.411004392929805,
+      "population_max": 0.4730005484807261
+    },
+    {
+      "input_fsat": 5,
+      "time_points": 41,
+      "axial_cells": 1,
+      "relative_error": -0.0020202284610573162,
+      "population_min": 0.05487385457651028,
+      "population_max": 0.05487385457651028
+    },
+    {
+      "input_fsat": 5,
+      "time_points": 161,
+      "axial_cells": 4,
+      "relative_error": -0.0002914192468073118,
+      "population_min": 0.05444713771381722,
+      "population_max": 0.05561017525680941
+    },
+    {
+      "input_fsat": 5,
+      "time_points": 641,
+      "axial_cells": 16,
+      "relative_error": -6.0380915361424314e-05,
+      "population_min": 0.054368582068310384,
+      "population_max": 0.055783533714048775
+    }
+  ],
+  "gain_feasibility": {
+    "pump_passes": 10,
+    "material_traversals": 10,
+    "regenerative_round_trips": null,
+    "signal_transparency_inversion": 0.051131099675307996,
+    "pump_asymptotic_inversion": 0.8522955274548539,
+    "saturation_fluence_J_m2": 59764.14129394143,
+    "full_inversion_unsaturated_gain_ceiling": 184.4993977177403,
+    "pump_asymptotic_unsaturated_gain_ceiling": 81.89581810670911,
+    "configured_optical_retention": 1.0,
+    "pump_ceiling_after_configured_losses": 81.89581810670911,
+    "requested_energy_gain": 10000.0,
+    "requested_energy_exceeds_pump_ceiling": true,
+    "scope": "Upper bounds: homogeneous 20 \u00b0C cross sections, no saturation, no spatial hole burning. Pump asymptote neglects finite lifetime and signal depletion. Optical retention is separate from gain-medium extraction and omits unspecified aperture and switch transients."
+  },
+  "coherent_global_phase_invariance": 1.0,
+  "hardware": {
+    "pump_coating_status": "outside_specified_target_band",
+    "pump_coating_measured_reflectivity": null,
+    "switching_status": "unknown",
+    "ase_parasitic_risk": "unknown: geometry-dependent spontaneous-emission transport missing",
+    "nonlinear_B_integral": null,
+    "nonlinear_B_integral_reason": "bulk nonlinear index and intracavity temporal peak field unavailable",
+    "coating_absorption_W": null,
+    "coating_absorption_reason": "measured coating absorptance unavailable",
+    "damage_margin": null,
+    "damage_margin_reason": "coating and crystal damage data for the actual pulse unavailable"
+  },
+  "temperature_validity": "Covered by tests/test_ybluag.py; coupled hot-cavity convergence is not established",
+  "photon_and_cavity_balance": "Covered by tests/test_ybluag_regenerative.py; fluorescence transport is not calibrated",
+  "coupled_thermal_optical_convergence": "not_calculated: iterative local-temperature and per-encounter hot-optic model unavailable",
+  "material_provenance": "See docs/YBLUAG_SPECTRA_COOLING_COATINGS.md; figure-guided reconstruction, not author arrays"
+}

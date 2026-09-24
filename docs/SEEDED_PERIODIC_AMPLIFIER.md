@@ -22,6 +22,26 @@ solvers generate a scalar mean thermal/photoelastic/geometric transmission
 phase. That phase is applied on each amplifier traversal. The result is accepted
 only after both periodic populations and the thermal phase iteration converge.
 An ideal unit-magnification relay is assumed when relay distance is zero.
+At each seed traversal the current local I7/I8 populations set the small-signal
+gain, a photon-conserving saturated fluence step scales the actual complex
+field, and the same shared populations are depleted (or increased by
+reabsorption). A nonzero relay distance also advances all four Ho manifolds
+through the flight time using the existing decay, ETU and cross-relaxation RHS.
+Pump recovery remains between seed pulses. The seed and pump are separate
+events; no fixed gain-medium extraction percentage is imposed.
+
+Each pass reports incoming seed and exit energy, saturated gain, mean inversion
+before and after, signed net stimulated transfer, stored ionic and I7
+photon-equivalent energy, and beam-weighted disk temperature. The temperature
+is from the converged steady thermal map and held over the picosecond train.
+After the last pass the solver calculates signed gain-medium extraction as net
+stimulated transfer divided by pre-seed I7 photon-equivalent energy over the
+whole disk. A separately chosen cavity ejection fraction is then applied to
+the exiting optical field; its default is unity when no ejection loss is
+specified. Optical closure checks seed + material transfer − relay transport
+change − relay loss − ejection loss = output. The local heat ledger remains
+independent of cavity ejection loss.
+
 New app calculations archive complex input/output fields, the Ho map, population
 states, heat, temperature, and hot phase in `fields.npz` for later mesh checks.
 The first 96-pixel verification run predates this archive switch and retains
@@ -44,7 +64,9 @@ The seed is a **short-pulse fluence approximation**. Its picosecond duration is
 recorded and checked against the repetition period, but the temporal envelope,
 group-velocity dispersion, Kerr effects, spectral gain reshaping, pulse overlap,
 and in-pulse excited-state lens are not solved. No gain or thermal conductivity
-update from local temperature is included. Scalar phase omits birefringent
+update from local temperature is included: the repository has only a 295 K Ho
+pump-spectrum surrogate and fixed laser cross sections, no validated Ho
+emission/reabsorption cross-section temperature series. Scalar phase omits birefringent
 Jones mixing between amplifier passes. The heat ledger uses approximate dark
 fluorescence quadrature and the Stage 0.1 centroid energies. The numerical mesh
 has not passed a convergence campaign. These outputs are engineering estimates,

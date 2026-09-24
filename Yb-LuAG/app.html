@@ -50,6 +50,7 @@
 <p>Ytterbium-doped <strong>lutetium aluminum garnet</strong>. The proposal setup is a femtosecond laser seed stretched to a picosecond pulse before the 12 at.% Yb:LuAG disk. <a href="#proposal-pulse">Go to pulsed proposal setup</a> · <a href="http://127.0.0.1:8780/results/structured_beams/index.html">Ho:YAG structured-beam app</a></p>
 <h2 id="proposal-pulse">Yb:LuAG pulsed disk</h2>
 <p>The source is always a Gaussian TEM00 seed. Choose the target field at the crystal; a phase-only SLM mask is applied to the Gaussian and the beam propagates to the disk. Optional phase corrections are added to that mask. The model follows the 10 kHz pulse train through one 100 µm disk and a generic copper cooler.</p>
+<p class="validity-warning">Numerically checked: passive Gaussian propagation, two-manifold population transport and selected energy balances. Physical approximations: reconstructed spectra, ideal pump relays, finite-grid phase masks and a generic copper cooler. Experimentally calibrated for this assembly: none. The default 96² optical grid is a preview; full thermal–optical cavity feedback, measured coating response and concentration-dependent index are unavailable.</p>
 <div class="layout"><form id="pulsedForm">
   <h3 class="control-title">1 · Yb distribution</h3>
   <label>Cluster contrast (0 = uniform)<input name="cluster_contrast" type="number" min="0" max="1" step="any" value="0.27" required></label>
@@ -77,6 +78,12 @@
   <label>Assumed incident pump power (W)<input name="pump_W" type="number" min="0.001" max="1000" step="any" value="40" required></label>
   <label>Pump radius (mm), 2 mm diameter<input name="radius_mm" type="number" min="0.1" max="5" step="any" value="1" required></label>
   <label>Disk thickness (µm)<input name="thickness_um" type="number" min="1" max="2000" step="any" value="100" required></label>
+  <label>Optical grid points per axis<input name="grid_n" type="number" min="32" max="768" step="1" value="96" required></label>
+  <label>Optical FFT window (mm)<input name="field_size_mm" type="number" min="8" max="24" step="any" value="12" required></label><small>96 points is a fast preview. Refine both grid and window for each beam and phase mask before using quantitative profiles.</small>
+  <label>Optical depth cells<input name="optical_z_steps" type="number" min="1" max="16" step="1" value="4" required></label>
+  <label>Thermal radial cells<input name="thermal_nr" type="number" min="4" max="48" step="1" value="8" required></label>
+  <label>Thermal angular cells<input name="thermal_nphi" type="number" min="4" max="96" step="1" value="12" required></label>
+  <label>Thermal depth cells<input name="thermal_nz" type="number" min="1" max="24" step="1" value="4" required></label>
   <label>Assumed signal waist (mm)<input name="waist_mm" type="number" min="0.1" max="2" step="any" value="0.6" required></label>
   <label>SLM to disk propagation (m)<input name="slm_to_disk_m" type="number" min="0.001" max="2" step="any" value="0.25" required></label>
   <label>Yb cluster seed<input name="density_seed" type="number" min="-2000000000" max="2000000000" step="1" value="17" required></label>
@@ -109,6 +116,12 @@
   <label>Incident pump power (W)<input name="pump_W" type="number" min="0.001" max="1000" step="any" value="40" required></label>
   <label>Common beam radius (mm)<input name="radius_mm" type="number" min="0.01" max="10" step="any" value="0.6" required></label>
   <label>Disk thickness (µm)<input name="thickness_um" type="number" min="1" max="2000" step="any" value="150" required></label>
+  <label>Optical grid points per axis<input name="grid_n" type="number" min="32" max="768" step="1" value="96" required></label>
+  <label>Optical FFT window (mm)<input name="field_size_mm" type="number" min="8" max="24" step="any" value="12" required></label><small>Preview settings; convergence depends on selected structure.</small>
+  <label>Optical depth cells<input name="optical_z_steps" type="number" min="1" max="16" step="1" value="4" required></label>
+  <label>Thermal radial cells<input name="thermal_nr" type="number" min="4" max="48" step="1" value="8" required></label>
+  <label>Thermal angular cells<input name="thermal_nphi" type="number" min="4" max="96" step="1" value="12" required></label>
+  <label>Thermal depth cells<input name="thermal_nz" type="number" min="1" max="24" step="1" value="4" required></label>
   <label>Incident signal power (W)<input name="seed_W" type="number" min="0" max="1000" step="any" value="1" required></label>
   <button type="submit">Calculate</button><p id="status">Ready.</p>
   <small>One uniform transverse intensity and one disk pass. Pump recycling, cavity mode, temperature rise, and thermal lens feedback are outside this calculation.</small>
@@ -269,8 +282,8 @@ function drawFootprint(canvas,density,intensity){
  }ctx.putImageData(image,0,0);
 }
 function drawProfile(svg,input,output,ideal=null){
- const W=560,H=115,max=Math.max(...input,...output,...(ideal||[]),1e-30),path=a=>a.map((v,i)=>`${i?'L':'M'}${(i/(a.length-1)*W).toFixed(1)},${(H-8-v/max*(H-20)).toFixed(1)}`).join(' ');
- svg.innerHTML=`${ideal?`<path d="${path(ideal)}" stroke="#74d5ee" stroke-width="4" stroke-dasharray="8 5" fill="none"/>`:''}<path d="${path(input)}" stroke="#73bcff" stroke-width="2" fill="none"/><path d="${path(output)}" stroke="#ffad62" stroke-width="2" fill="none"/><text x="8" y="16" fill="#73bcff" font-size="12">Input</text><text x="65" y="16" fill="#ffad62" font-size="12">Selected Yb</text>${ideal?'<text x="165" y="16" fill="#74d5ee" font-size="12">Uniform Yb (dashed)</text>':''}`;
+ const W=560,H=115,max=Math.max(...input,...(output||[]),...(ideal||[]),1e-30),path=a=>a.map((v,i)=>`${i?'L':'M'}${(i/(a.length-1)*W).toFixed(1)},${(H-8-v/max*(H-20)).toFixed(1)}`).join(' ');
+ svg.innerHTML=`${ideal?`<path d="${path(ideal)}" stroke="#74d5ee" stroke-width="4" stroke-dasharray="8 5" fill="none"/>`:''}<path d="${path(input)}" stroke="#73bcff" stroke-width="2" fill="none"/>${output?`<path d="${path(output)}" stroke="#ffad62" stroke-width="2" fill="none"/>`:''}<text x="8" y="16" fill="#73bcff" font-size="12">Input</text>${output?'<text x="65" y="16" fill="#ffad62" font-size="12">Selected Yb</text>':''}${ideal?'<text x="165" y="16" fill="#74d5ee" font-size="12">Uniform Yb (dashed)</text>':''}`;
 }
 function drawSpatialProfile(svg,coordinates,actual,reference,axis){
  const W=560,H=160,L=58,R=12,T=18,B=30,max=Math.max(...actual,...reference,1e-30)*1.08;
@@ -319,13 +332,14 @@ function renderThermal(thermal,x,prefix){
  const textBox=document.getElementById(prefix==='pulse'?'pulseThermalText':'thermalText');
  textBox.textContent=available?(thermal.status==='design_reference'?`Selected heat ${thermal.actual_heat_W.toFixed(2)} W exceeds the supported thermo-mechanical parameter range; this is not a crystal damage threshold. Under the stated generic cooler assumptions, a 5 K design-rise calculation uses ${(100*thermal.design_heat_scale).toFixed(2)}% of the selected heat. The maps below show only that design reference. `:`Disk ${thermal.disk_temperature_min_C.toFixed(2)}–${thermal.disk_temperature_max_C.toFixed(2)} °C. `)+thermal.scope:`Thermal solve unavailable: ${thermal.reason}`;
  if(!available)return;
- drawMap(document.getElementById(prefix==='pulse'?'pulseOpdCanvas':'opdCanvas'),thermal.scalar_roundtrip_opd_nm,'signed');
- drawMap(document.getElementById(prefix==='pulse'?'pulseDisplacementCanvas':'displacementCanvas'),thermal.front_displacement_nm,'signed');
- drawMap(document.getElementById(prefix==='pulse'?'pulseRearCanvas':'rearCanvas'),thermal.rear_displacement_nm,'signed');
- for(const [id,values,label] of [[prefix==='pulse'?'pulseOpdCanvas':'opdCanvas',thermal.scalar_roundtrip_opd_nm,'Optical path'],[prefix==='pulse'?'pulseDisplacementCanvas':'displacementCanvas',thermal.front_displacement_nm,'Front displacement'],[prefix==='pulse'?'pulseRearCanvas':'rearCanvas',thermal.rear_displacement_nm,'Rear displacement']]){
+ const shown=thermal.design_reference_maps||thermal;
+ drawMap(document.getElementById(prefix==='pulse'?'pulseOpdCanvas':'opdCanvas'),shown.scalar_roundtrip_opd_nm,'signed');
+ drawMap(document.getElementById(prefix==='pulse'?'pulseDisplacementCanvas':'displacementCanvas'),shown.front_displacement_nm,'signed');
+ drawMap(document.getElementById(prefix==='pulse'?'pulseRearCanvas':'rearCanvas'),shown.rear_displacement_nm,'signed');
+ for(const [id,values,label] of [[prefix==='pulse'?'pulseOpdCanvas':'opdCanvas',shown.scalar_roundtrip_opd_nm,'Optical path'],[prefix==='pulse'?'pulseDisplacementCanvas':'displacementCanvas',shown.front_displacement_nm,'Front displacement'],[prefix==='pulse'?'pulseRearCanvas':'rearCanvas',shown.rear_displacement_nm,'Rear displacement']]){
   const flat=values.flat();document.getElementById(id).nextElementSibling.textContent=`${label}: ${Math.min(...flat).toFixed(2)} to ${Math.max(...flat).toFixed(2)} nm`;
  }
- drawDeformationProfile(document.getElementById(prefix==='pulse'?'pulseDeformationProfile':'deformationProfile'),x,thermal.front_displacement_nm,thermal.rear_displacement_nm);
+ drawDeformationProfile(document.getElementById(prefix==='pulse'?'pulseDeformationProfile':'deformationProfile'),x,shown.front_displacement_nm,shown.rear_displacement_nm);
 }
 async function calculateStructured(){
  structuredStatus.textContent='Calculating selected Yb:LuAG beam and copper cooler…';structuredStatus.classList.remove('error');
@@ -388,6 +402,7 @@ async function calculatePulsed(){
   const r=await response.json();if(serial!==pulseRequestSerial)return;if(!response.ok)throw Error(r.error||'Pulse calculation failed');
   diskExtentMm=r.x_mm.length*(r.x_mm[1]-r.x_mm[0]);
   document.getElementById('pulseMetrics').innerHTML=metric('Yb doping',r.yb_at_percent.toFixed(0)+' at.%')+metric('Input energy',(r.input_energy_J*1e9).toFixed(3)+' nJ')+metric(r.regenerative?'Intracavity before switch':'Disk exit energy',(r.disk_output_energy_J*1e9).toFixed(3)+' nJ')+metric('Extracted output',(r.output_energy_J*1e9).toFixed(3)+' nJ')+metric('Net extracted gain',r.net_energy_gain.toFixed(2)+'×')+metric('Average laser output',r.average_output_W.toPrecision(4)+' W')+metric('Input→exit pattern overlap',r.extraction_shape_retention.toFixed(3))+metric('Stretched pulse',r.amplifier_fwhm_ps_assumed.toFixed(2)+' ps')+metric('Stretch factor',r.stretch_factor.toFixed(1)+'×')+metric('Pump passes',String(r.pump_passes))+metric('Peak pump intensity',r.peak_pump_intensity_kW_cm2.toFixed(2)+' kW/cm²')+metric('Grid-mean pre-pulse excitation',(100*r.mean_excited_fraction_before_pulse).toFixed(2)+'%')+metric('Convergence',r.cycles+' cycles');
+  document.getElementById('pulseMetrics').innerHTML+=metric('Material traversals',String(r.gain_feasibility.material_traversals))+metric('Pump-limited gain ceiling',r.gain_feasibility.pump_asymptotic_unsaturated_gain_ceiling.toPrecision(4)+'× before losses')+metric('Requested energy feasibility',r.gain_feasibility.requested_energy_exceeds_pump_ceiling?'Exceeds upper bound':'Not ruled out by upper bound')+metric('Coherent target→cold',r.field_fidelity.target_vs_cold_coherent.toFixed(3))+metric('Coherent cold→hot',r.field_fidelity.cold_vs_hot_coherent===null?'Unavailable':r.field_fidelity.cold_vs_hot_coherent.toFixed(3))+metric('Optical sampling',`${r.sampling.grid_points_per_axis}² · ${r.sampling.pixel_um.toFixed(1)} µm · preview`)+metric('Pump coating',r.hardware_validity.pump_coating_status);
   const gainPoints=r.regenerative?[[0,r.input_energy_J*r.regenerative.injection_efficiency],...r.regenerative.roundtrip_energy_J.map((p,i)=>[i+1,p[2]]),[r.regenerative.roundtrip_energy_J.length+1,r.output_energy_J]]:[[0,r.input_energy_J],[1,r.output_energy_J]];
   plotOperatingCurve(document.getElementById('gainChart'),gainPoints,r.regenerative?'Round trips (last point: extracted)':'Input → output','Pulse energy (J)',true);
   plotOperatingCurve(document.getElementById('pumpOutputChart'),[[r.incident_pump_W,r.average_output_W]],'Incident pump power (W)','Output (W)');
@@ -395,7 +410,8 @@ async function calculatePulsed(){
   powerSummary.className=hotInvalid?'validity-warning':'';
   powerSummary.textContent=`${r.architecture==='regenerative'?'Regenerative cavity':'Ideal relayed multipass'} · ${r.incident_pump_W.toPrecision(4)} W pump → ${r.average_output_W.toPrecision(4)} W average extracted signal · net gain ${r.net_energy_gain.toPrecision(4)}×. ${r.regenerative?`Cold-cavity waist ${(r.regenerative.cold_cavity_waist_m*1e3).toFixed(3)} mm; storage ${(r.regenerative.storage_time_s*1e9).toFixed(2)} ns. `:''}${hotInvalid?'Fixed-temperature optical estimate only: the requested thermal state exceeds the validated material range.':''}`;
   document.getElementById('pumpSweepStatus').textContent='Selected fixed-temperature optical point shown. Calculate the five-point curve to recompute optical output at other pump powers.';
-  document.getElementById('pulseHeatMetrics').innerHTML=metric('Pump absorbed',r.cycle_average_pump_absorbed_W.toFixed(3)+' W')+metric('Signal gain',r.cycle_average_signal_gain_W.toFixed(6)+' W')+metric('Escaping fluorescence',r.cycle_average_escaping_fluorescence_W.toFixed(3)+' W')+metric('Heat upper bound / assumption',r.cycle_average_heat_W_upper_or_assumed.toFixed(3)+' W');
+  document.getElementById('pulseHeatMetrics').innerHTML=metric('Pump absorbed',r.cycle_average_pump_absorbed_W.toFixed(3)+' W')+metric('Signal gain',r.cycle_average_signal_gain_W.toFixed(6)+' W')+metric('Escaping fluorescence',r.cycle_average_escaping_fluorescence_W.toFixed(3)+' W')+metric('Excitation storage change',r.cycle_average_excitation_storage_change_W.toExponential(2)+' W')+metric('Heat upper bound / assumption',r.cycle_average_heat_W_upper_or_assumed.toFixed(3)+' W');
+  document.getElementById('pulseHeatMetrics').innerHTML+=metric('Effective escape 0→1 heat',`${r.fluorescence_effective_escape_sensitivity.rows[0].heat_W.toFixed(3)}→${r.fluorescence_effective_escape_sensitivity.rows.at(-1).heat_W.toFixed(3)} W (fixed populations)`)+(r.cooler_conductance_sensitivity?metric('Contact 0.5×/2× disk peaks',`${r.cooler_conductance_sensitivity.rows[1].disk_max_C.toFixed(2)}/${r.cooler_conductance_sensitivity.rows[2].disk_max_C.toFixed(2)} °C (fixed heat)`):'');
   renderThermal(r.thermal,r.x_mm,'pulse');
   if(r.thermal_timeline)renderTimeline(r.thermal_timeline);
   document.getElementById('timelineAssumptions').textContent=`${r.fluorescence_escape_yield_assumed===0?'Zero escaping fluorescence makes deposited heat an upper estimate.':'Deposited heat uses the entered escaping-fluorescence assumption.'} Flow control changes an assumed water-side conductance with instantaneous response and an ideal constant-temperature bath; pump heat is cycle averaged. The 26.85 °C division is the current thermo-mechanical parameter limit, not crystal damage. Published spectral reconstructions reach 200 °C. The assumed indium contact melts near 156.6 °C; 250 °C marks your crystal temperature reference, not an assembly rating. Solid green uses room-temperature properties within range; dashed amber extrapolates them. Time is logarithmic after t = 0.`;
@@ -409,10 +425,14 @@ async function calculatePulsed(){
   drawMaskedPhaseMap(document.getElementById('slmPhaseCanvas'),r.phase_mask,r.input_fluence_J_m2,false);
   drawMaskedPhaseMap(document.getElementById('outputPhaseCanvas'),r.output_phase,r.output_fluence_J_m2);
   document.getElementById('outputPhaseCaption').textContent=`Amplified phase · ${r.output_distance_m===0?'extraction plane':`${r.output_distance_m.toFixed(3)} m after extraction`}`;
-  const residualLimit=drawResidualPhaseMap(document.getElementById('residualPhaseCanvas'),r.phase_residual_rad,r.output_fluence_J_m2);
-  document.getElementById('residualPhaseLabel').textContent=`Phase residual: blue negative, red positive; ±${residualLimit.toFixed(3)} rad · weighted RMS ${r.phase_residual_rms_rad.toFixed(3)} rad`;
+  const residualData=r.phase_residual_rad??r.cold_density_phase_residual_rad;
+  const residualLimit=drawResidualPhaseMap(document.getElementById('residualPhaseCanvas'),residualData,r.output_fluence_J_m2);
+  document.getElementById('residualPhaseLabel').textContent=r.phase_residual_rad===null?
+    `Cold density-only residual: ±${residualLimit.toFixed(3)} rad · weighted RMS ${r.cold_density_phase_residual_rms_rad.toFixed(3)} rad. Hot phase unavailable: ${r.hot_phase_reason}`:
+    `Modeled phase residual: ±${residualLimit.toFixed(3)} rad · weighted RMS ${r.phase_residual_rms_rad.toFixed(3)} rad`;
   document.getElementById('pulseBeamScope').textContent=`Gaussian source → phase-only target mask plus optional added phase → ${Number(data.slm_to_disk_m).toFixed(3)} m propagation → disk gain → ${r.output_distance_m===0?'amplifier extraction plane':`${r.output_distance_m.toFixed(3)} m free-space propagation after extraction`}. Same-plane input-to-extraction intensity overlap ${r.extraction_shape_retention.toFixed(3)}; this measures pattern retention, not agreement with the ideal target. ${r.output_distance_m>0?`At the chosen later plane, overlap with the disk input is ${r.observed_shape_retention.toFixed(3)} because free-space diffraction changes the profile. `:''}${r.thermal_feedback_applied?`Calculated thermal OPD is applied after extraction using the ${r.thermal_feedback_time_s.toPrecision(3)} s thermal state. `:'No validated thermal phase was available for this operating point; output is shown without thermal correction. '}Dashed output uses uniform Yb and no thermal phase.`;
   drawProfile(document.getElementById('pulseTrace'),r.input_power_trace_W,r.output_power_trace_W);
+  document.getElementById('pulseTrace').nextElementSibling.textContent=r.output_power_trace_W===null?'Blue input only. Regenerative output waveform and compressed duration are not calculated from a fluence-only map.':'Blue input; orange time-sampled output intensity. Spectral phase and compressed duration are not calculated.';
   document.getElementById('pulseScope').textContent=`${r.reference_scope} ${r.source_fwhm_fs_assumed} fs source: approximately ${r.transform_limited_seed_spectral_fwhm_nm.toFixed(2)} nm transform-limited Gaussian bandwidth at 1030 nm. Assumed 12 at.% lifetime ${(r.lifetime_s_assumed*1e3).toFixed(3)} ms is interpolated, not measured at 12 at.%. ${r.spectral_scope} ${r.scope}`;
   pulsedStatus.textContent='Periodic pulse calculation complete.';
  }catch(e){if(serial===pulseRequestSerial){pulsedStatus.textContent=e.message;pulsedStatus.classList.add('error')}throw e}

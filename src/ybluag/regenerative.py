@@ -32,11 +32,14 @@ class RegenerativeCavity:
     injection_efficiency: float = 0.9
     extraction_efficiency: float = 0.9
     disk_diameter_m: float = 0.010
+    recovery_substeps: int = 8
 
     def validate(self, material: YbLuAGMaterial, thickness_m: float,
                  grid: Grid2D, repetition_rate_Hz: float) -> ThinDiskResonator:
         if isinstance(self.round_trips, bool) or not isinstance(self.round_trips, int) or not 1 <= self.round_trips <= 60:
             raise ValueError("regenerative round trips must be 1–60")
+        if isinstance(self.recovery_substeps, bool) or not isinstance(self.recovery_substeps, int) or not 1 <= self.recovery_substeps <= 128:
+            raise ValueError("recovery substeps must be 1–128")
         for name in ("air_gap_m", "mirror_radius_m", "disk_hr_reflectivity",
                      "held_roundtrip_retention", "injection_efficiency",
                      "extraction_efficiency", "disk_diameter_m"):
@@ -139,8 +142,11 @@ def amplify_regenerative(material: YbLuAGMaterial, grid: Grid2D, seed_field,
     period_s = 1/repetition_rate_Hz
     orders = (range(scale.shape[0]), range(scale.shape[0]-1, -1, -1))
     for cycle in range(1, 101):
+        initial_beta = beta_before.copy()
         beta = beta_before.copy()
         field = seed*np.sqrt(seed_energy_J*cavity_settings.injection_efficiency)
+        cavity_losses = {"aperture_J": 0.0, "disk_hr_J": 0.0,
+                         "held_optics_J": 0.0}
         signal_ledger = np.zeros_like(beta)
         absorbed_integral = np.zeros_like(beta)
         excited_integral = np.zeros_like(beta)
@@ -148,13 +154,21 @@ def amplify_regenerative(material: YbLuAGMaterial, grid: Grid2D, seed_field,
         for iround in range(cavity_settings.round_trips):
             before = optical_power(field, grid)
             field *= aperture
+            cavity_losses["aperture_J"] += before - optical_power(field, grid)
             disk_pass(field, beta, orders[0], signal_ledger)
+            before_hr = optical_power(field, grid)
             field *= math.sqrt(cavity_settings.disk_hr_reflectivity)
+            cavity_losses["disk_hr_J"] += before_hr-optical_power(field, grid)
             disk_pass(field, beta, orders[1], signal_ledger)
             after_disk = optical_power(field, grid)
             field = travel(field)
+            before_hold = optical_power(field, grid)
             field *= mirror_phase*math.sqrt(cavity_settings.held_roundtrip_retention)
-            field = travel(field)*aperture
+            cavity_losses["held_optics_J"] += before_hold-optical_power(field, grid)
+            field = travel(field)
+            before_aperture = optical_power(field, grid)
+            field *= aperture
+            cavity_losses["aperture_J"] += before_aperture-optical_power(field, grid)
             after_return = optical_power(field, grid)
             history.append((before, after_disk, after_return))
             beta, a, b = recover(beta, roundtrip_s, 1)
@@ -163,7 +177,8 @@ def amplify_regenerative(material: YbLuAGMaterial, grid: Grid2D, seed_field,
         stored = optical_power(field, grid)
         output_field = field*math.sqrt(cavity_settings.extraction_efficiency)
         output_energy = optical_power(output_field, grid)
-        beta, a, b = recover(beta, period_s-cavity_settings.round_trips*roundtrip_s, 8)
+        beta, a, b = recover(beta, period_s-cavity_settings.round_trips*roundtrip_s,
+                             cavity_settings.recovery_substeps)
         absorbed_integral += a
         excited_integral += b
         residual = float(np.max(np.abs(beta-beta_before)))
@@ -175,15 +190,41 @@ def amplify_regenerative(material: YbLuAGMaterial, grid: Grid2D, seed_field,
     mean_beta = excited_integral/period_s
     pump_absorbed = absorbed_integral/period_s
     signal_gain = signal_ledger*repetition_rate_Hz
-    fluorescence = (density*mean_beta/material.lifetime_s*
-                    fluorescence_escape_yield*fluorescence_photon_energy_J*dz)
-    heat_slices = (pump_absorbed-signal_gain-fluorescence)/dz
+    fluorescence_potential = (density*mean_beta/material.lifetime_s*
+                              fluorescence_photon_energy_J*dz)
+    fluorescence = fluorescence_escape_yield*fluorescence_potential
+    storage_photons_per_m2_s = density*dz*(beta-initial_beta)*repetition_rate_Hz
+    storage_energy_W_m2 = storage_photons_per_m2_s*fluorescence_photon_energy_J
+    heat_slices = (pump_absorbed-signal_gain-fluorescence-storage_energy_W_m2)/dz
+    signal_transfer_J = float(np.sum(signal_ledger)*pixel_area)
+    initial_cavity_J = optical_power(seed, grid)*seed_energy_J*cavity_settings.injection_efficiency
+    cavity_losses["unextracted_ejection_J"] = stored-output_energy
+    cavity_losses["injection_external_J"] = (optical_power(seed, grid)*seed_energy_J-
+                                             initial_cavity_J)
+    cavity_balance_J = (initial_cavity_J+signal_transfer_J-output_energy-
+                        sum(value for key, value in cavity_losses.items()
+                            if key != "injection_external_J"))
+    pump_photon_J = H*C/(material.pump_wavelength_nm*1e-9)
+    decay_photons_per_m2_s = density*mean_beta/material.lifetime_s*dz
+    photon_residual_per_m2_s = (
+        np.sum(pump_absorbed, axis=0)/pump_photon_J -
+        np.sum(signal_gain, axis=0)/photon_J -
+        np.sum(decay_photons_per_m2_s, axis=0) -
+        np.sum(storage_photons_per_m2_s, axis=0))
+    photon_scale = (np.sum(np.abs(pump_absorbed))/pump_photon_J +
+                    np.sum(np.abs(signal_gain))/photon_J +
+                    np.sum(decay_photons_per_m2_s)+
+                    np.sum(np.abs(storage_photons_per_m2_s)))
+    photon_residual_fraction = (float(np.sum(np.abs(photon_residual_per_m2_s))/photon_scale)
+                                if photon_scale > 0 else 0.0)
     return {
         "output_field": output_field,
         "heat_W_m3_by_slice": heat_slices,
         "pump_absorbed_W_m2_by_slice": pump_absorbed,
         "signal_gain_W_m2_by_slice": signal_gain,
         "escaping_fluorescence_W_m2_by_slice": fluorescence,
+        "excitation_storage_change_W_m2_by_slice": storage_energy_W_m2,
+        "fluorescence_potential_W_m2_by_slice": fluorescence_potential,
         "roundtrip_energy_J": np.asarray(history),
         "roundtrip_time_s": roundtrip_s,
         "storage_time_s": cavity_settings.round_trips*roundtrip_s,
@@ -197,5 +238,11 @@ def amplify_regenerative(material: YbLuAGMaterial, grid: Grid2D, seed_field,
         "residual": residual,
         "mean_excited_fraction_before_pulse": float(np.mean(beta_before)),
         "pump_steady_iterations": pump_steady.iterations,
+        "recovery_substeps": cavity_settings.recovery_substeps,
         "saturation_fluence_J_m2": saturation_J_m2,
+        "signal_transfer_in_medium_J": signal_transfer_J,
+        "cavity_losses_J": cavity_losses,
+        "cavity_energy_balance_residual_J": cavity_balance_J,
+        "population_photon_balance_relative_L1": photon_residual_fraction,
+        "population_photon_balance_scope": "Periodic cycle; pump/signal boundary photons and integrated excited-state decay. Non-escaped decay energy enters the effective heat ledger.",
     }

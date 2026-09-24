@@ -25,6 +25,7 @@ from ybluag import (YbLuAGMaterial, YbGallerySettings, fluorescence_spectrum,
                     simulate_pulsed_seed)
 from ybluag.model import _spectra
 from ybluag.regenerative import RegenerativeCavity
+from ybluag.diagnostics import gain_feasibility, hardware_validity, spectral_gain_screen
 
 PAGE = ROOT / "Yb-LuAG" / "app.html"
 COATINGS = ROOT / "config" / "ybluag_10at_coatings.json"
@@ -61,6 +62,25 @@ def jsonable(value):
     if isinstance(value, (list, tuple)):
         return [jsonable(item) for item in value]
     return value
+
+
+def sampling_diagnostics(grid, fluence):
+    """Map-level FFT checks; convergence still requires independent refinement."""
+    values = np.asarray(fluence, dtype=float)
+    x, y = grid.mesh
+    total = float(values.sum())
+    edge = ((np.abs(x) > 0.4*grid.nx*grid.dx) |
+            (np.abs(y) > 0.4*grid.ny*grid.dy))
+    return {
+        "grid_points_per_axis": grid.nx,
+        "window_mm": grid.nx*grid.dx*1e3,
+        "pixel_um": grid.dx*1e6,
+        "second_moment_radius_um": (math.sqrt(2*float(np.sum(values*(x*x+y*y)))/total)*1e6
+                                    if total > 0 else None),
+        "edge_energy_fraction": float(values[edge].sum()/total) if total > 0 else None,
+        "status": "preview_not_convergence_certified",
+        "note": "Check radius, complex-field overlap, vortex core and mask structure across independent grid and window refinements.",
+    }
 
 
 def calculate(data):
@@ -112,7 +132,9 @@ def calculate(data):
 def calculate_structured(data):
     if not isinstance(data, dict):
         raise ValueError("request must be an object")
-    data = {"slm_to_disk_m": 0.25, **data}
+    data = {"slm_to_disk_m": 0.25, "grid_n": 96,
+            "field_size_mm": 12.0, "optical_z_steps": 4,
+            "thermal_nr": 8, "thermal_nphi": 12, "thermal_nz": 4, **data}
     from hoyag.structured_beam_gallery import PHASE_MASKS, BEAM_NAMES
     mask = data.get("phase_mask", "none")
     if mask not in PHASE_MASKS:
@@ -137,7 +159,13 @@ def calculate_structured(data):
         cluster_count=integer(data, "cluster_count", 2, 64),
         cluster_contrast=number(data, "cluster_contrast", 0, 1),
         fluorescence_escape_yield=number(data, "escape_yield", 0, 1),
-        solver_mode=mode, grid_n=96, field_size_m=12e-3)
+        solver_mode=mode,
+        grid_n=integer(data, "grid_n", 32, 768),
+        field_size_m=number(data, "field_size_mm", 8, 24) * 1e-3,
+        z_steps=integer(data, "optical_z_steps", 1, 16),
+        thermal_nr=integer(data, "thermal_nr", 4, 48),
+        thermal_nphi=integer(data, "thermal_nphi", 4, 96),
+        thermal_nz=integer(data, "thermal_nz", 1, 24))
     result = simulate_structured_gallery(YbLuAGMaterial(), settings, selected_beam=beam)
     ideal = (result if settings.cluster_contrast == 0 else
              simulate_structured_gallery(YbLuAGMaterial(),
@@ -147,7 +175,13 @@ def calculate_structured(data):
     grid = result["grid"]
     return {
         "material": "Yb:LuAG", "solver_mode": mode,
-        "grid_n": grid.nx, "selected_beam": beam,
+        "concentration_dependent_index_status": "not_calculated: no measured bulk dn/dYb for this crystal",
+        "grid_n": grid.nx, "field_size_mm": settings.field_size_m * 1e3,
+        "optical_z_steps": settings.z_steps,
+        "thermal_mesh": {"nr": settings.thermal_nr, "nphi": settings.thermal_nphi,
+                         "nz": settings.thermal_nz},
+        "selected_beam": beam,
+        "sampling": sampling_diagnostics(grid, result["outcomes"][beam]["output_intensity"]),
         "x_mm": (grid.x * 1e3).tolist(), "y_mm": (grid.y * 1e3).tolist(),
         "phase_mask": result["phase_mask"].tolist(),
         "target_phase_mask": result["target_phase_mask"].tolist(),
@@ -161,8 +195,7 @@ def calculate_structured(data):
         "pump_intensity_W_m2": result["pump_intensity_W_m2"].tolist(),
         "fluorescence_escape_yield_assumed": result["fluorescence_escape_yield_assumed"],
         "scope": result["scope"],
-        "thermal": {key: (value.tolist() if isinstance(value, np.ndarray) else value)
-                    for key, value in result["thermal"].items()},
+        "thermal": jsonable(result["thermal"]),
         "resonator": result["resonator"],
         "modes": {name: {key: (value.tolist() if isinstance(value, np.ndarray) else value)
                          for key, value in case.items()}
@@ -199,6 +232,12 @@ def calculate_pulsed(data, *, compute_thermal=True, summary_only=False):
         "density_seed": 17,
         "cluster_count": 24,
         "cluster_contrast": 0.0,
+        "grid_n": 96,
+        "field_size_mm": 12.0,
+        "optical_z_steps": 4,
+        "thermal_nr": 8,
+        "thermal_nphi": 12,
+        "thermal_nz": 4,
         "escape_yield": 0.0,
         "operation_duration_s": 30.0,
         "slm_to_disk_m": 0.25,
@@ -232,7 +271,12 @@ def calculate_pulsed(data, *, compute_thermal=True, summary_only=False):
         cluster_count=integer(data, "cluster_count", 2, 64),
         cluster_contrast=number(data, "cluster_contrast", 0, 1),
         fluorescence_escape_yield=number(data, "escape_yield", 0, 1),
-        grid_n=96, field_size_m=12e-3)
+        grid_n=integer(data, "grid_n", 32, 768),
+        field_size_m=number(data, "field_size_mm", 8, 24) * 1e-3,
+        z_steps=integer(data, "optical_z_steps", 1, 16),
+        thermal_nr=integer(data, "thermal_nr", 4, 48),
+        thermal_nphi=integer(data, "thermal_nphi", 4, 96),
+        thermal_nz=integer(data, "thermal_nz", 1, 24))
     material = YbLuAGMaterial(
             yb_at_percent=proposal["material"]["yb_at_percent"],
             lifetime_s=proposal["material"]["lifetime_s"],
@@ -282,16 +326,55 @@ def calculate_pulsed(data, *, compute_thermal=True, summary_only=False):
     mask = weights >= 0.01 * float(weights.max())
     raw_residual = np.angle(np.exp(1j * (actual_phase - reference_phase)))
     piston = float(np.angle(np.sum(weights[mask] * np.exp(1j * raw_residual[mask]))))
-    phase_residual = np.angle(np.exp(1j * (raw_residual - piston)))
-    phase_residual_rms = float(np.sqrt(np.average(phase_residual[mask]**2, weights=weights[mask])))
+    cold_density_residual = np.angle(np.exp(1j * (raw_residual - piston)))
+    cold_density_rms = float(np.sqrt(np.average(
+        cold_density_residual[mask]**2, weights=weights[mask])))
+    hot_phase_validity = ("extrapolated_unvalidated"
+                          if result["thermal_timeline"] is not None else
+                          "not_calculated")
+    hot_phase_reason = (
+        "Material parameters are within their stated range, but the generic assembly "
+        "is uncalibrated and thermal phase is applied after amplification only."
+        if result["thermal_feedback_applied"] else
+        "Requested temperature exceeds the supported thermo-mechanical property range; "
+        "the displayed beam is cold-only, and hot wavefront error is unknown."
+        if result["thermal_timeline"] is not None else
+        "No requested-time thermal optical calculation was performed; the displayed beam is cold-only.")
     wavelength_nm = proposal["optics"]["signal_wavelength_nm"]
     spectral_fwhm_nm = (wavelength_nm * 1e-9)**2 / 299792458.0 * (
         0.441 / (source_fwhm_fs * 1e-15)) * 1e9
     peak_pump_kW_cm2 = 2 * settings.pump_power_W / (
         math.pi * settings.pump_radius_m**2) / 1e7
+    feasibility = gain_feasibility(
+        material, thickness_m=settings.thickness_m,
+        pump_passes=pump_passes, signal_traversals=pulse_args[3],
+        regenerative_round_trips=(regenerative_cavity.round_trips
+                                    if regenerative_cavity is not None else None),
+        input_energy_J=pulse_args[0],
+        requested_output_energy_J=proposal["targets"]["output_energy_uJ_min"]*1e-6,
+        injection_efficiency=(regenerative_cavity.injection_efficiency
+                              if regenerative_cavity is not None else 1),
+        extraction_efficiency=(regenerative_cavity.extraction_efficiency
+                               if regenerative_cavity is not None else 1),
+        held_roundtrip_retention=(regenerative_cavity.held_roundtrip_retention
+                                  if regenerative_cavity is not None else 1),
+        disk_hr_reflectivity=(regenerative_cavity.disk_hr_reflectivity
+                              if regenerative_cavity is not None else 1))
+    hardware = hardware_validity(
+        pump_nm=material.pump_wavelength_nm,
+        coating_band_nm=tuple(proposal["coatings"]["HR_band_nm"]),
+        cavity_roundtrip_time_s=(result["regenerative"]["roundtrip_time_s"]
+                                 if result["regenerative"] is not None else None))
+    spectral_screen = spectral_gain_screen(
+        material, source_fwhm_fs=source_fwhm_fs,
+        stretched_fwhm_ps=amplifier_fwhm_ps,
+        shared_inversion=result["mean_excited_fraction_before_pulse"],
+        material_traversals=feasibility["material_traversals"],
+        thickness_m=settings.thickness_m)
     return {
         **{key: jsonable(value) for key, value in result.items() if key != "grid"},
         "yb_at_percent": proposal["material"]["yb_at_percent"],
+        "concentration_dependent_index_status": "not_calculated: no measured bulk dn/dYb for this crystal",
         "lifetime_s_assumed": proposal["material"]["lifetime_s"],
         "lifetime_status": proposal["material"]["lifetime_status"],
         "source_fwhm_fs_assumed": source_fwhm_fs,
@@ -303,12 +386,25 @@ def calculate_pulsed(data, *, compute_thermal=True, summary_only=False):
         "average_output_W": result["output_energy_J"]*pulse_args[2],
         "net_energy_gain": result["output_energy_J"]/result["input_energy_J"],
         "proposal_targets": proposal["targets"],
+        "gain_feasibility": feasibility,
+        "hardware_validity": hardware,
+        "spectral_gain_screen": spectral_screen,
+        "sampling": sampling_diagnostics(result["grid"], result["output_fluence_J_m2"]),
+        "optical_z_steps": settings.z_steps,
+        "thermal_mesh": {"nr": settings.thermal_nr, "nphi": settings.thermal_nphi,
+                         "nz": settings.thermal_nz},
         "x_mm": jsonable(result["grid"].x * 1e3),
         "y_mm": jsonable(result["grid"].y * 1e3),
         "uniform_isothermal_output_fluence_J_m2": jsonable(reference["output_fluence_J_m2"]),
         "uniform_isothermal_output_phase": jsonable(reference_phase),
-        "phase_residual_rad": jsonable(phase_residual),
-        "phase_residual_rms_rad": phase_residual_rms,
+        "phase_residual_rad": jsonable(cold_density_residual) if result["thermal_feedback_applied"] else None,
+        "phase_residual_rms_rad": cold_density_rms if result["thermal_feedback_applied"] else None,
+        "cold_density_phase_residual_rad": jsonable(cold_density_residual)
+            if not result["thermal_feedback_applied"] else None,
+        "cold_density_phase_residual_rms_rad": cold_density_rms
+            if not result["thermal_feedback_applied"] else None,
+        "hot_phase_validity": hot_phase_validity,
+        "hot_phase_reason": hot_phase_reason,
         "reference_scope": "Dashed output profiles use the same Gaussian source, target-shaping mask, added phase, SLM-to-disk propagation, pump and selected amplifier architecture with uniform Yb concentration and no thermal phase. The selected output receives transient thermal OPD only when the requested-time temperature is within the stated material range; temperature-dependent gain and thermal cavity feedback remain omitted.",
         "spectral_scope": "Pulse gain uses the 1030 nm center cross sections. The femtosecond source bandwidth, chirp, gain narrowing, dispersion and nonlinear phase are not propagated spectrally; pulse energy is a monochromatic engineering estimate.",
     }

@@ -1,5 +1,21 @@
 # Yb:LuAG simulation material package
 
+For issue-by-issue audit status, reproduced numerical comparisons and missing
+measurements, see [Yb:LuAG audit fixes](../docs/YBLUAG_AUDIT_FIXES.md).
+
+## Native Tkinter simulator
+
+From the repository root, run `python examples/ybluag_desktop.py` using a
+Python environment with Tk, Matplotlib, Pillow and the project dependencies.
+The desktop window exposes the CW, structured CW, and proposal pulse solvers,
+including regenerative cavity controls. It restores the latest saved Yb result
+and displays beam maps with adjacent horizontal and vertical profiles, phase
+and synthetic dopant maps, gain curves, cooler timeline, and thermal surfaces.
+The five-point pump curve is calculated on demand from the displayed pulse
+configuration. Results and logs are saved in `results/desktop_runs/` under the
+shared bounded-run ledger. The physics scope and assumptions below apply to
+the desktop simulator as well.
+
 ## Local browser calculator
 
 On Windows, from the repository root in Command Prompt:

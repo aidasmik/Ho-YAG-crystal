@@ -4,6 +4,45 @@ This repository reconstructs and extends a Ho:YAG laser model into a **10 mm dia
 
 For the separate Yb:LuAG active-medium implementation, see [Yb:LuAG replacement](docs/YBLUAG_REPLACEMENT.md). It provides two-manifold CW pump/signal propagation with the Yb:LuAG spectral data; the Ho:YAG coupled-resonator results below remain Ho:YAG results.
 
+The Yb:LuAG [audit implementation and validation status](docs/YBLUAG_AUDIT_FIXES.md)
+separates numerically checked propagation and population behavior from
+engineering approximations and missing experimental inputs. Its 96² optical
+grid is a preview, not a convergence-tested device prediction. Hot-cavity
+thermal feedback, calibrated coating losses, photoelasticity and
+concentration-dependent refractive index remain unavailable.
+
+## Desktop calculator
+
+The Tkinter calculator has **Yb:LuAG** and **Ho:YAG** tabs. It runs the
+existing solvers locally and displays maps and profiles inside the window.
+The Yb tab offers the proposal pulse amplifier (including regenerative cavity),
+structured CW passes, and a CW material/coating screen. The Ho tab offers weak
+probe, modal thermal, and periodic seeded amplifier calculations. Calculations
+use the shared `.local_runtime/budget.json` limits; the window shows the budget
+and can explicitly archive an exhausted ledger. It does not start a web server.
+
+On Linux, install Tk for your system Python, then run:
+
+```bash
+.venv/bin/python -m pip install -e '.[desktop]'
+.venv/bin/python examples/ybluag_desktop.py
+```
+
+The Yb launcher opens its native calculator with the latest saved Yb run. It
+shows source, disk-input and output beams with adjacent horizontal and vertical
+profiles; SLM phase and synthetic Yb maps; gain and pulse traces; and cooler
+timelines and thermal surfaces where the solver provides them. Its five-point
+pump curve recalculates the periodic optical state for the displayed pulse run
+without rerunning the cooler. Use `examples/desktop_simulation.py` to open the
+combined Yb and Ho desktop calculator with Ho selected first.
+
+On Windows, use a Python installation with Tk and replace `.venv/bin/python`
+with its interpreter path. Results and execution logs are saved under
+`results/desktop_runs/` for Yb and `results/structured_beams/runs/` for Ho.
+The Yb spectra, lifetimes, cooling contact, coating and cavity parameters are
+engineering assumptions described in `docs/YBLUAG_REPLACEMENT.md` and
+`docs/YBLUAG_REGENERATIVE_MODEL.md`; the GUI does not make them measured data.
+
 The numerical core has passed the Stage 0–7 software/physics audit and API-0.8 corrections. The current reference solution is suitable for numerical research and sensitivity studies, but it is **not yet an experimentally calibrated digital twin** and is **not yet qualified as ground truth for NN/SLM training**. Full mesh/mode-count refinement and calibration of the real crystal–bond–cooler assembly remain required.
 
 ---
@@ -399,8 +438,8 @@ irradiance contours as the beam footprint.
 `--phase-mask` selects `none`, `vortex+1`, `vortex-1`, `vortex+2`,
 `defocus`, `astigmatic`, or `axicon`; the ideal applied phase and unchanged
 immediate SLM irradiance are saved in `phase_mask.png`. Centerline input/output
-irradiance cuts for all six modes are saved beside the corresponding input and
-output maps in `input_output_beams.png` and also collected in
+horizontal and vertical irradiance cuts for all six modes are saved beside the
+corresponding input and output maps in `input_output_beams.png` and collected in
 `beam_side_profiles.png`.
 The precomputed choices can also be browsed in
 `results/structured_beams/index.html`; regenerate an arbitrary random seed

@@ -61,7 +61,12 @@ def thermal_conductivity_undoped_W_mK(T_K, extrapolate=False):
     T = np.asarray(T_K, dtype=float)
     if not extrapolate and np.any((T < _K_T.min()) | (T > _K_T.max())):
         raise ValueError("T outside measured undoped-LuAG range 101-298 K")
-    out = np.interp(T, _K_T, _K_V)
+    from ybluag.model import _interp_with_explicit_extrapolation
+    if extrapolate and np.any((T < _K_T.min()) | (T > _K_T.max())):
+        import warnings
+        warnings.warn("undoped LuAG conductivity extrapolation is unvalidated",
+                      RuntimeWarning, stacklevel=2)
+    out = _interp_with_explicit_extrapolation(T, _K_T, _K_V, extrapolate)
     return _return_like_input(T_K, out)
 
 
@@ -106,29 +111,24 @@ def _load_spectra():
                 d["sigma_em_cm2"].astype(float))
 
 
-def _sigma(kind, wavelength_nm, temperature_C, extrapolate=False):
-    wl_grid, T_grid, sa, se = _load_spectra()
-    wl = np.asarray(wavelength_nm, dtype=float)
-    T = float(temperature_C)
-    if not extrapolate:
-        if np.any((wl < wl_grid[0]) | (wl > wl_grid[-1])):
-            raise ValueError("wavelength outside reconstructed range 880-1150 nm")
-        if T < T_grid[0] or T > T_grid[-1]:
-            raise ValueError("temperature outside reconstructed range 20-200 C")
-    table = sa if kind == "abs" else se
-    spectral_at_Tnodes = np.vstack([np.interp(wl, wl_grid, row) for row in table])
-    flat = spectral_at_Tnodes.reshape(len(T_grid), -1)
-    out = np.array([np.interp(T, T_grid, flat[:, j]) for j in range(flat.shape[1])])
-    out = out.reshape(wl.shape)
-    return _return_like_input(wavelength_nm, out)
+def _sigma(kind, wavelength_nm, temperature_C, extrapolate=False,
+           dataset="canonical_mccumber"):
+    from ybluag.model import spectral_cross_sections_m2
+    absorption, emission = spectral_cross_sections_m2(
+        wavelength_nm, float(temperature_C) + 273.15,
+        extrapolate=extrapolate, dataset=dataset)
+    return _return_like_input(wavelength_nm,
+                              np.asarray(absorption if kind == "abs" else emission) * 1e4)
 
 
-def sigma_abs_cm2(wavelength_nm, temperature_C=20.0, extrapolate=False):
-    return _sigma("abs", wavelength_nm, temperature_C, extrapolate)
+def sigma_abs_cm2(wavelength_nm, temperature_C=20.0, extrapolate=False,
+                  dataset="canonical_mccumber"):
+    return _sigma("abs", wavelength_nm, temperature_C, extrapolate, dataset)
 
 
-def sigma_em_cm2(wavelength_nm, temperature_C=20.0, extrapolate=False):
-    return _sigma("em", wavelength_nm, temperature_C, extrapolate)
+def sigma_em_cm2(wavelength_nm, temperature_C=20.0, extrapolate=False,
+                 dataset="canonical_mccumber"):
+    return _sigma("em", wavelength_nm, temperature_C, extrapolate, dataset)
 
 
 def absorption_coefficient_cm1(wavelength_nm, yb_at_percent, temperature_C=20.0):

@@ -50,6 +50,8 @@
       <input id="signal_traversals" name="signal_traversals" type="number" value="10" min="1" max="20" step="1">
       <label for="relay_distance_m">Free-space relay distance (m; 0 = ideal image relay)</label>
       <input id="relay_distance_m" name="relay_distance_m" type="number" value="0" min="0" max="2" step="0.01">
+      <label for="cavity_ejection_efficiency">Cavity ejection fraction (separate from gain)</label>
+      <input id="cavity_ejection_efficiency" name="cavity_ejection_efficiency" type="number" value="1" min="0.01" max="1" step="0.01">
       <label for="cpu_workers">CPU workers (seeded amplifier)</label>
       <input id="cpu_workers" name="cpu_workers" type="number" value="4" min="1" max="16" step="1">
       <label for="dn_dHo_m3">Measured dn/dN(Ho) (m³/ion; optional)</label>
@@ -93,6 +95,10 @@
       <img id="densityImage" src="ho_density.png" alt="Calculated random clustered Ho distribution">
       <h2>Calculated probe powers</h2>
       <table class="metrics" id="metrics"><tbody><tr><th>Mode</th><th>Output power</th><th>Disk gain</th></tr></tbody></table>
+      <section id="passesBlock" hidden><h2>Seed traversals and energy</h2>
+        <p class="note" id="energyBalance"></p>
+        <table class="metrics" id="passes"><tbody></tbody></table>
+      </section>
       <p class="note" id="scopeNote">Model scope: one disk traversal plus free-space propagation, frozen archived inversion fractions, and weak-signal gain.</p>
     </main>
   </div>
@@ -118,6 +124,7 @@
       document.getElementById('solver_mode').value=s.solver_mode;
       if(s.settings.selected_beam)document.getElementById('selected_beam').value=s.settings.selected_beam;
       if(s.settings.cpu_workers)document.getElementById('cpu_workers').value=s.settings.cpu_workers;
+      if(s.settings.cavity_ejection_efficiency)document.getElementById('cavity_ejection_efficiency').value=s.settings.cavity_ejection_efficiency;
       document.getElementById('phaseImage').src=image(result.images.phase);
       document.getElementById('beamsImage').src=image(result.images.beams);
       document.getElementById('profilesImage').src=image(result.images.profiles);
@@ -127,16 +134,25 @@
       const modeLabel=s.solver_mode==='periodic_seeded_amplifier'?'Picosecond seeded amplifier':s.solver_mode==='full_seeded_modal'?'Modal thermal estimate':'Weak probe';
       document.getElementById('resultSummary').innerHTML=`<span class="pill">Calculated ${result.run_id}</span> <strong>${modeLabel}</strong>; Mask: <strong>${phase.name}</strong>; Ho range: ${(s.density_min_active_m3/1e26).toFixed(3)}–${(s.density_max_active_m3/1e26).toFixed(3)} ×10²⁶ ions/m³; immediate SLM irradiance relative change: ${phase.maximum_local_irradiance_relative_change.toExponential(2)}`;
       document.getElementById('scopeNote').textContent=s.solver_mode==='periodic_seeded_amplifier'
-        ? `Seeded amplifier: ${s.settings.seed_energy_J*1e9} nJ, assumed ${s.settings.seed_fwhm_s*1e12} ps, ${s.settings.signal_traversals} material traversals. ${s.solver_diagnostics.population_cycles} pump/seed cycles, heat ${s.solver_diagnostics.heat_W.toFixed(4)} W, disk peak ${s.solver_diagnostics.thermal_peak_disk_K.toFixed(2)} K. The pulse width is used for peak-power interpretation; the gain solver uses short-pulse fluence. Ho index coefficients, measured mounting, and mesh convergence remain absent.`
+        ? `Seeded amplifier: ${s.settings.seed_energy_J*1e9} nJ, assumed ${s.settings.seed_fwhm_s*1e12} ps, ${s.settings.signal_traversals} material traversals. ${s.solver_diagnostics.population_cycles} pump/seed cycles, heat ${s.solver_diagnostics.heat_W.toFixed(4)} W, disk peak ${s.solver_diagnostics.thermal_peak_disk_K.toFixed(2)} K. Gain-medium extraction is calculated from shared Ho populations; cavity ejection is applied afterward. Temperature-dependent Ho cross sections are unavailable, so the 295 K reference values remain fixed.`
         : s.solver_mode==='full_seeded_modal'
         ? 'Modal estimate: one fixed-mode oscillator background supplies saturated populations and heat. Each shown beam is a separate undepleted one-pass probe. Thermal and photoelastic phases are applied once; there is no cavity eigenfield or hot-optics feedback. Output phase is the x-polarized component; irradiance sums both polarizations.'
         : 'Weak mode: one disk traversal plus free-space propagation using archived inversion fractions; the changed Ho map is not a self-consistent pump, thermal, or mechanical operating point.';
       const rows=Object.entries(s.modes).map(([name,m])=>`<tr><td>${name}</td><td>${m.output_power_W.toFixed(6)} W</td><td>${m.disk_power_gain.toFixed(6)}×</td></tr>`).join('');
       document.getElementById('metrics').innerHTML=`<tbody><tr><th>Mode</th><th>Output power</th><th>Disk gain</th></tr>${rows}</tbody>`;
+      const passes=s.solver_diagnostics.pass_diagnostics;
+      document.getElementById('passesBlock').hidden=!passes;
+      if(passes){
+        const d=s.solver_diagnostics;
+        const efficiency=d.gain_medium_extraction_efficiency;
+        document.getElementById('energyBalance').textContent=`Net stimulated transfer ${(d.signal_extracted_J*1e9).toFixed(4)} nJ per pulse; gain-medium extraction ${efficiency===null?'undefined':(100*efficiency).toFixed(4)+'%'} of pre-seed upper-manifold photon-equivalent energy; cavity ejection ${(100*d.cavity_ejection_efficiency).toFixed(1)}%; optical residual ${d.optical_energy_balance_residual_J.toExponential(2)} J. The steady thermal map is held through the picosecond passes.`;
+        const perPass=passes.map(p=>`<tr><td>${p.pass}</td><td>${(p.seed_energy_J*1e9).toFixed(4)}</td><td>${p.small_signal_log_gain.toFixed(5)}</td><td>${p.saturated_energy_gain.toFixed(5)}×</td><td>${(100*p.beam_weighted_inversion_before_fraction).toFixed(4)}→${(100*p.beam_weighted_inversion_after_fraction).toFixed(4)}</td><td>${(p.net_stimulated_transfer_J*1e9).toFixed(4)}</td><td>${(p.stored_laser_energy_after_J*1e6).toFixed(4)}</td><td>${p.beam_weighted_temperature_K.toFixed(2)}</td></tr>`).join('');
+        document.getElementById('passes').innerHTML=`<tbody><tr><th>Pass</th><th>Seed (nJ)</th><th>Small-signal log gain</th><th>Saturated gain</th><th>Beam inversion % before→after</th><th>Net extracted (nJ)</th><th>Stored after (µJ)</th><th>T (K)</th></tr>${perPass}</tbody>`;
+      }
     }
     calculateButton.addEventListener('click',async ()=>{
       calculateButton.disabled=true;statusBox.className='status';statusBox.textContent='Calculating numerical propagation…';
-      const payload={solver_mode:value('solver_mode'),selected_beam:value('selected_beam'),seed_energy_nj:value('seed_energy_nj'),seed_fwhm_ps:value('seed_fwhm_ps'),signal_traversals:value('signal_traversals'),relay_distance_m:value('relay_distance_m'),cpu_workers:value('cpu_workers'),dn_dHo_m3:value('dn_dHo_m3'),dn_dExcited_m3:value('dn_dExcited_m3'),index_provenance:value('index_provenance'),phase_mask:value('phase_mask'),phase_strength_rad:value('phase_strength_rad'),density_seed:value('density_seed'),cluster_count:value('cluster_count'),cluster_contrast:value('cluster_contrast'),cluster_min_radius_mm:value('cluster_min_radius_mm'),cluster_max_radius_mm:value('cluster_max_radius_mm'),post_disk_distance_m:value('post_disk_distance_m')};
+      const payload={solver_mode:value('solver_mode'),selected_beam:value('selected_beam'),seed_energy_nj:value('seed_energy_nj'),seed_fwhm_ps:value('seed_fwhm_ps'),signal_traversals:value('signal_traversals'),relay_distance_m:value('relay_distance_m'),cavity_ejection_efficiency:value('cavity_ejection_efficiency'),cpu_workers:value('cpu_workers'),dn_dHo_m3:value('dn_dHo_m3'),dn_dExcited_m3:value('dn_dExcited_m3'),index_provenance:value('index_provenance'),phase_mask:value('phase_mask'),phase_strength_rad:value('phase_strength_rad'),density_seed:value('density_seed'),cluster_count:value('cluster_count'),cluster_contrast:value('cluster_contrast'),cluster_min_radius_mm:value('cluster_min_radius_mm'),cluster_max_radius_mm:value('cluster_max_radius_mm'),post_disk_distance_m:value('post_disk_distance_m')};
       try{const response=await fetch('/calculate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const result=await response.json();if(!response.ok)throw new Error(result.error||'calculation failed');renderResult(result);statusBox.className='status ok';statusBox.textContent='Calculation complete. The plots and metrics above are from the new run.';}
       catch(error){
         const detail=String(error.message||error);

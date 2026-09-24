@@ -29,6 +29,7 @@ from .pulsed import propagate_pulse
 from .multipass_pump import steady_multipass_pump, transport_multipass_pump
 from .beam_shaping import gaussian_seed_and_target_mask
 from .regenerative import RegenerativeCavity, amplify_regenerative
+from .field_metrics import coherent_overlap, intensity_overlap as field_intensity_overlap
 
 
 @dataclass(frozen=True)
@@ -52,6 +53,9 @@ class YbGallerySettings:
     grid_n: int = 64
     field_size_m: float = 8e-3
     z_steps: int = 4
+    thermal_nr: int = 8
+    thermal_nphi: int = 12
+    thermal_nz: int = 4
 
     def __post_init__(self):
         if self.phase_mask_name not in PHASE_MASKS:
@@ -71,9 +75,13 @@ class YbGallerySettings:
                 self.cluster_count < 2 or self.cluster_count > 64 or
                 self.cluster_radius_min_m <= 0 or
                 self.cluster_radius_max_m < self.cluster_radius_min_m or
-                self.grid_n not in (64, 96) or
-                not 8e-3 <= self.field_size_m <= 16e-3 or
-                not 1 <= self.z_steps <= 16):
+                isinstance(self.grid_n, bool) or not isinstance(self.grid_n, int) or
+                not 32 <= self.grid_n <= 768 or
+                not 8e-3 <= self.field_size_m <= 24e-3 or
+                not 1 <= self.z_steps <= 16 or
+                not 4 <= self.thermal_nr <= 48 or
+                not 4 <= self.thermal_nphi <= 96 or
+                not 1 <= self.thermal_nz <= 24):
             raise ValueError("invalid structured-gallery settings")
 
 
@@ -92,6 +100,8 @@ def _thermal_payload(assembly, scope: str):
     screens = assembly.screens
     return {
         "status": "computed", "material_range_valid": True,
+        "validity": "extrapolated_unvalidated",
+        "validity_reason": "Temperature is within the available material range, but the generic assembly and proxy optical coefficients are not experimentally calibrated.",
         "input_heat_W": assembly.temperature.input_heat_W,
         "balance_error_W": assembly.temperature.balance_error_W,
         "disk_temperature_min_C": float(np.min(assembly.temperature.disk_temperature_K) - 273.15),
@@ -99,8 +109,19 @@ def _thermal_payload(assembly, scope: str):
         "scalar_roundtrip_opd_nm": screens.mean_roundtrip_opd_m * 1e9,
         "front_displacement_nm": screens.front_uz_m * 1e9,
         "rear_displacement_nm": screens.rear_uz_m * 1e9,
+        "photoelastic_retardance_rad": None,
+        "photoelastic_reason": "Yb:LuAG photoelastic coefficients are unavailable for this crystal.",
         "scope": scope + " Within the currently supported 20–26.85 °C thermo-mechanical parameter range; this is not a crystal survival limit.",
     }
+
+
+def _empty_thermal(status, reason):
+    return {"status": status, "validity": "not_calculated", "reason": reason,
+            "scalar_roundtrip_opd_nm": None,
+            "front_displacement_nm": None,
+            "rear_displacement_nm": None,
+            "photoelastic_retardance_rad": None,
+            "photoelastic_reason": "Yb:LuAG photoelastic coefficients are unavailable."}
 
 
 def _thermal_or_design_reference(mesh, heat_polar, grid, configuration, scope):
@@ -120,9 +141,18 @@ def _thermal_or_design_reference(mesh, heat_polar, grid, configuration, scope):
     factor = min(1.0, 5.0 / max_rise)
     design = solve_yb_assembly(mesh, heat_polar * factor, grid, configuration)
     payload = _thermal_payload(design, scope)
+    design_maps = {key: payload[key] for key in (
+        "scalar_roundtrip_opd_nm", "front_displacement_nm",
+        "rear_displacement_nm")}
     payload.update(
         status="design_reference",
         material_range_valid=False,
+        validity="extrapolated_unvalidated",
+        validity_reason="Actual-operation deformation and OPD are outside supported material properties.",
+        design_reference_maps=design_maps,
+        scalar_roundtrip_opd_nm=None,
+        front_displacement_nm=None,
+        rear_displacement_nm=None,
         actual_heat_W=float(screen.input_heat_W),
         actual_constant_property_max_C=float(np.max(screen.disk_temperature_K) - 273.15),
         design_heat_scale=factor,
@@ -133,13 +163,45 @@ def _thermal_or_design_reference(mesh, heat_polar, grid, configuration, scope):
 
 def _conservative_heat_polar(heat_slices, grid, mesh):
     """Preserve integrated heat after Cartesian-to-polar interpolation."""
-    polar = _cartesian_to_polar(heat_slices, grid, mesh)
-    target_W = float(np.sum(heat_slices * np.diff(mesh.z_edges_m)[:, None, None]) *
+    source = np.asarray(heat_slices, dtype=float)
+    source_edges = np.linspace(0, mesh.z_edges_m[-1], source.shape[0]+1)
+    if source.shape[0] != mesh.nz:
+        resampled = np.empty((mesh.nz, *grid.shape))
+        for j, (left, right) in enumerate(zip(mesh.z_edges_m[:-1], mesh.z_edges_m[1:])):
+            overlap = np.maximum(0, np.minimum(source_edges[1:], right) -
+                                 np.maximum(source_edges[:-1], left))
+            resampled[j] = np.tensordot(overlap, source, axes=(0, 0))/(right-left)
+    else:
+        resampled = source
+    polar = _cartesian_to_polar(resampled, grid, mesh)
+    target_W = float(np.sum(source * np.diff(source_edges)[:, None, None]) *
                      grid.dx * grid.dy)
     mapped_W = float(np.sum(polar * mesh.volumes_m3))
     if not np.isfinite(mapped_W) or mapped_W <= 0 or target_W <= 0:
         raise ValueError("thermal heat mapping requires positive finite power")
     return polar * (target_W / mapped_W)
+
+
+def _fixed_heat_cooler_sensitivity(mesh, heat_polar, configuration):
+    """Steady temperature sensitivity with the optical heat held fixed."""
+    base = configuration["thermal"]
+    rows = []
+    for interface_factor, coolant_factor in ((1, 1), (.5, 1), (2, 1),
+                                              (1, .5), (1, 2)):
+        cfg = deepcopy(configuration)
+        cfg["thermal"]["interface_conductance_W_m2K"] = (
+            base["interface_conductance_W_m2K"]*interface_factor)
+        cfg["thermal"]["coolant_conductance_W_m2K"] = (
+            base["coolant_conductance_W_m2K"]*coolant_factor)
+        temperature = solve_yb_cooler_temperature(mesh, heat_polar, cfg)
+        maximum = float(np.max(temperature.disk_temperature_K))
+        rows.append({"interface_factor": interface_factor,
+                     "coolant_factor": coolant_factor,
+                     "disk_max_C": maximum-273.15,
+                     "material_range_valid": 293.15 <= maximum <= 300.0})
+    return {"status": "fixed_heat_constant_property_screen",
+            "rows": rows,
+            "scope": "Steady cooler with unchanged optical heat; outside 20–26.85 °C the constant-property result is unvalidated."}
 
 
 def _pulsed_thermal_timeline(mesh, heat_polar, grid, configuration, duration_s,
@@ -421,9 +483,14 @@ def simulate_structured_gallery(material: YbLuAGMaterial,
             field = angular_spectrum_propagate(field_next, grid, wavelength, dz / 2,
                                                refractive_index=n)
         disk_out = optical_power(field, grid)
+        target_at_output = angular_spectrum_propagate(
+            disk_field_in, grid, wavelength, settings.thickness_m,
+            refractive_index=n)
         if settings.post_disk_distance_m:
             field = angular_spectrum_propagate(field, grid, wavelength,
                                                settings.post_disk_distance_m)
+            target_at_output = angular_spectrum_propagate(
+                target_at_output, grid, wavelength, settings.post_disk_distance_m)
         outcomes[name] = {
             "input_intensity": abs(field_in)**2,
             "disk_input_intensity": abs(disk_field_in)**2,
@@ -436,6 +503,9 @@ def simulate_structured_gallery(material: YbLuAGMaterial,
             "input_power_W": optical_power(field_in, grid),
             "disk_output_power_W": disk_out,
             "output_power_W": optical_power(field, grid),
+            "target_vs_cold_coherent_overlap": coherent_overlap(target_at_output, field),
+            "target_vs_cold_intensity_overlap": field_intensity_overlap(target_at_output, field),
+            "target_overlap_scope": "Mask-generated cold target propagated to the same output plane, not an ideal pure mode; hot optical feedback unavailable.",
             "mean_excited_fraction": float(np.mean(beta_sum / settings.z_steps)),
             "pump_absorbed_W": float(np.sum(pump - pump_step) * grid.dx * grid.dy),
             "net_heat_W_upper_or_assumed": float(
@@ -444,14 +514,15 @@ def simulate_structured_gallery(material: YbLuAGMaterial,
         }
         reference_heat_slices = (modal["heat_W_m3_by_slice"] if modal is not None
                                  else np.stack(heat_slices))
-    thermal = {"status": "not_requested", "reason": "Thermal calculation disabled."}
+    thermal = _empty_thermal("not_requested", "Thermal calculation disabled.")
     if compute_thermal:
         nominal_thickness = 100e-6 if material.yb_at_percent == 12 else 150e-6
         if not np.isclose(settings.thickness_m, nominal_thickness, atol=1e-12):
-            thermal = {"status": "out_of_scope", "reason": f"The assembly configuration is for a {nominal_thickness * 1e6:g} µm disk."}
+            thermal = _empty_thermal("out_of_scope", f"The assembly configuration is for a {nominal_thickness * 1e6:g} µm disk.")
         else:
             configuration = _assembly_configuration(material, settings.thickness_m)
-            mesh = DiskThermalMesh.disk(nr=8, nz=settings.z_steps, nphi=12,
+            mesh = DiskThermalMesh.disk(nr=settings.thermal_nr, nz=settings.thermal_nz,
+                                        nphi=settings.thermal_nphi,
                                         radius_m=5e-3, thickness_m=settings.thickness_m)
             heat_polar = _conservative_heat_polar(reference_heat_slices, grid, mesh)
             try:
@@ -462,7 +533,7 @@ def simulate_structured_gallery(material: YbLuAGMaterial,
                      f"{selected_beam} saturated-CW heat") +
                     " on generic C10100 copper; scalar optical path and surface deformation; photoelasticity omitted.")
             except ValueError as exc:
-                thermal = {"status": "out_of_scope", "reason": str(exc)}
+                thermal = _empty_thermal("out_of_scope", str(exc))
     if modal is not None:
         modal = {key: value for key, value in modal.items()
                  if key not in ("beta_by_slice", "heat_W_m3_by_slice")}
@@ -559,11 +630,13 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
             fluorescence_spectrum(material).mean_photon_energy_J,
             settings.fluorescence_escape_yield)
         fluence_out = abs(regen["output_field"])**2
-        signal = pulse_shape[:, None, None] * fluence_out[None]
+        signal = None  # Fluence-only map cannot predict a temporal output trace.
         heat_slices = regen["heat_W_m3_by_slice"]
         pump_absorbed = regen["pump_absorbed_W_m2_by_slice"]
         signal_gain = regen["signal_gain_W_m2_by_slice"]
         fluorescence = regen["escaping_fluorescence_W_m2_by_slice"]
+        fluorescence_potential = regen["fluorescence_potential_W_m2_by_slice"]
+        excitation_storage = regen["excitation_storage_change_W_m2_by_slice"]
         cycles, residual = regen["cycles"], regen["residual"]
         mean_beta_before = regen["mean_excited_fraction_before_pulse"]
         pump_iterations = regen["pump_steady_iterations"]
@@ -582,6 +655,7 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
         cycles = 0
         residual = math.inf
         for cycles in range(1, 101):
+            initial_beta = beta_before.copy()
             signal = initial_signal
             beta = beta_before.copy()
             signal_gain_fluence = np.zeros_like(beta)
@@ -606,11 +680,15 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
         beta_average = beta_dark_integral * repetition_rate_Hz
         _, pump_absorbed, _ = transport_multipass_pump(
             material, pump, scale, settings.thickness_m, pump_passes, beta_average)
-        fluorescence = (density * beta_average / material.lifetime_s *
-                        settings.fluorescence_escape_yield *
-                        fluorescence_spectrum(material).mean_photon_energy_J * dz)
+        fluorescence_potential = (density * beta_average / material.lifetime_s *
+                                  fluorescence_spectrum(material).mean_photon_energy_J * dz)
+        fluorescence = settings.fluorescence_escape_yield * fluorescence_potential
         signal_gain = signal_gain_fluence * repetition_rate_Hz
-        heat_slices = (pump_absorbed - signal_gain - fluorescence) / dz
+        excitation_storage = (density*dz*(following-initial_beta)*
+                              repetition_rate_Hz*
+                              fluorescence_spectrum(material).mean_photon_energy_J)
+        heat_slices = (pump_absorbed - signal_gain - fluorescence -
+                       excitation_storage) / dz
         fluence_out = trapezoid(signal, time, axis=0)
         disk_output_J = float(np.sum(fluence_out) * grid.dx * grid.dy)
         gain_amplitude = np.sqrt(np.maximum(fluence_out, 0) / np.maximum(disk_input_fluence, 1e-30))
@@ -622,16 +700,30 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
     absorbed_W = float(np.sum(pump_absorbed) * pixel_area)
     signal_gain_W = float(np.sum(signal_gain) * pixel_area)
     fluorescence_W = float(np.sum(fluorescence) * pixel_area)
+    excitation_storage_W = float(np.sum(excitation_storage) * pixel_area)
+    fluorescence_potential_W = float(np.sum(fluorescence_potential) * pixel_area)
+    fluorescence_sensitivity = {
+        "status": "fixed_population_effective_escape_screen",
+        "rows": [{"effective_escape_yield": fraction,
+                  "heat_W": absorbed_W-signal_gain_W-excitation_storage_W-
+                  fraction*fluorescence_potential_W}
+                 for fraction in (0.0, 0.5, 0.9, 1.0)],
+        "scope": "Effective escaped fraction combines intrinsic radiative efficiency, escape and reabsorption; these are unmeasured separately here. Populations are held fixed.",
+    }
     nominal_thickness = 100e-6 if material.yb_at_percent == 12 else 150e-6
-    thermal = {"status": "out_of_scope", "reason": f"The assembly configuration is for a {nominal_thickness * 1e6:g} µm disk."}
+    thermal = _empty_thermal("out_of_scope", f"The assembly configuration is for a {nominal_thickness * 1e6:g} µm disk.")
     if not compute_thermal:
-        thermal = {"status": "not_requested", "reason": "Thermal calculation was shared from the Gaussian reference case."}
+        thermal = _empty_thermal("not_requested", "Thermal calculation was shared from the Gaussian reference case.")
     timeline = None
+    cooler_sensitivity = None
     if compute_thermal and np.isclose(settings.thickness_m, nominal_thickness, atol=1e-12):
         configuration = _assembly_configuration(material, settings.thickness_m)
-        mesh = DiskThermalMesh.disk(nr=8, nz=settings.z_steps, nphi=12,
+        mesh = DiskThermalMesh.disk(nr=settings.thermal_nr, nz=settings.thermal_nz,
+                                    nphi=settings.thermal_nphi,
                                     radius_m=5e-3, thickness_m=settings.thickness_m)
         heat_polar = _conservative_heat_polar(heat_slices, grid, mesh)
+        cooler_sensitivity = _fixed_heat_cooler_sensitivity(
+            mesh, heat_polar, configuration)
         try:
             thermal = _thermal_or_design_reference(
                 mesh, heat_polar, grid, configuration,
@@ -642,7 +734,7 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
                  "Fixed pump-profile periodic heat on generic C10100 copper; scalar optical "
                  "path and surface deformation; photoelasticity omitted."))
         except ValueError as exc:
-            thermal = {"status": "out_of_scope", "reason": str(exc)}
+            thermal = _empty_thermal("out_of_scope", str(exc))
         if operation_duration_s:
             timeline = _pulsed_thermal_timeline(mesh, heat_polar, grid,
                                                  configuration, operation_duration_s,
@@ -650,6 +742,7 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
                                                  cooling_h_max_W_m2K)
     thermal_feedback_applied = bool(timeline is not None and
                                     timeline["requested_material_range_valid"])
+    cold_field_out = field_out.copy()
     if thermal_feedback_applied:
         # This is a lumped post-amplifier OPD approximation. A fully coupled
         # hot-cavity model must apply the screen on each disk encounter.
@@ -669,6 +762,14 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
         field_out = angular_spectrum_propagate(field_out, grid,
                                                material.signal_wavelength_nm * 1e-9,
                                                settings.post_disk_distance_m)
+        cold_field_out = angular_spectrum_propagate(
+            cold_field_out, grid, material.signal_wavelength_nm * 1e-9,
+            settings.post_disk_distance_m)
+        target_field_out = angular_spectrum_propagate(
+            seed, grid, material.signal_wavelength_nm * 1e-9,
+            settings.post_disk_distance_m)
+    else:
+        target_field_out = seed
     observed_fluence = abs(field_out)**2 * seed_energy_J
     return {
         "grid": grid, "phase_mask": phase,
@@ -682,20 +783,37 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
         "extraction_fluence_J_m2": extraction_fluence,
         "extraction_shape_retention": extraction_shape_retention,
         "observed_shape_retention": intensity_overlap(disk_input_fluence, observed_fluence),
+        "field_fidelity": {
+            "comparison_plane_m_after_extraction": settings.post_disk_distance_m,
+            "target_definition": "phase-mask-generated cold disk input propagated to the same output plane; not an ideal pure LG/HG mode",
+            "target_vs_cold_coherent": coherent_overlap(target_field_out, cold_field_out),
+            "target_vs_cold_intensity": field_intensity_overlap(target_field_out, cold_field_out),
+            "cold_vs_hot_coherent": (coherent_overlap(cold_field_out, field_out)
+                                     if thermal_feedback_applied else None),
+            "cold_vs_hot_intensity": (field_intensity_overlap(cold_field_out, field_out)
+                                      if thermal_feedback_applied else None),
+            "hot_comparison_validity": ("extrapolated_unvalidated" if thermal_feedback_applied else
+                                        "not_calculated"),
+        },
         "output_distance_m": settings.post_disk_distance_m,
         "input_phase": np.angle(source),
         "disk_input_phase": np.angle(seed),
         "output_phase": np.angle(field_out),
         "time_ps": (time * 1e12),
         "input_power_trace_W": np.sum(initial_signal, axis=(1, 2)) * grid.dx * grid.dy,
-        "output_power_trace_W": np.sum(signal, axis=(1, 2)) * grid.dx * grid.dy,
+        "output_power_trace_W": (np.sum(signal, axis=(1, 2)) * grid.dx * grid.dy
+                                 if signal is not None else None),
+        "output_trace_status": ("not_calculated_fluence_only_regenerative"
+                                if signal is None else "time_sampled_intensity_transport"),
         "input_energy_J": seed_energy_J, "disk_output_energy_J": disk_output_J,
         "output_energy_J": optical_power(field_out, grid) * seed_energy_J,
         "architecture": architecture,
         "regenerative": ({key: value for key, value in regen.items()
                           if key not in ("output_field", "heat_W_m3_by_slice",
                                          "pump_absorbed_W_m2_by_slice", "signal_gain_W_m2_by_slice",
-                                         "escaping_fluorescence_W_m2_by_slice")}
+                                         "escaping_fluorescence_W_m2_by_slice",
+                                         "fluorescence_potential_W_m2_by_slice",
+                                         "excitation_storage_change_W_m2_by_slice")}
                          if regen is not None else None),
         "cycles": cycles, "residual": residual,
         "pump_passes": pump_passes,
@@ -704,6 +822,9 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
         "cycle_average_pump_absorbed_W": absorbed_W,
         "cycle_average_signal_gain_W": signal_gain_W,
         "cycle_average_escaping_fluorescence_W": fluorescence_W,
+        "cycle_average_excitation_storage_change_W": excitation_storage_W,
+        "fluorescence_effective_escape_sensitivity": fluorescence_sensitivity,
+        "cooler_conductance_sensitivity": cooler_sensitivity,
         "fluorescence_escape_yield_assumed": settings.fluorescence_escape_yield,
         "thermal": thermal,
         "thermal_timeline": timeline,

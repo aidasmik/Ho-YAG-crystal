@@ -55,6 +55,65 @@ def _positive(name, value):
         raise ValueError(f"{name} must be finite and positive")
 
 
+def _interp_with_explicit_extrapolation(x, xp, fp, extrapolate):
+    value = np.interp(x, xp, fp)
+    if extrapolate:
+        value = np.where(x < xp[0], fp[0] + (x-xp[0]) *
+                         (fp[1]-fp[0])/(xp[1]-xp[0]), value)
+        value = np.where(x > xp[-1], fp[-1] + (x-xp[-1]) *
+                         (fp[-1]-fp[-2])/(xp[-1]-xp[-2]), value)
+    return value
+
+
+def spectral_cross_sections_m2(wavelength_nm, temperature_K, *,
+                               extrapolate=False, dataset="canonical_mccumber"):
+    """Canonical figure-guided absorption and derived emission (SI units).
+
+    `archived_reconstruction` explicitly selects the independent historical
+    emission trace. Outside the archive domain, linear extrapolation is a
+    numerical option only and is not validated material behavior.
+    """
+    import warnings
+    wl = np.asarray(wavelength_nm, dtype=float)
+    temperature_K = float(temperature_K)
+    wavelengths, temperatures, absorption, archived_emission = _spectra()
+    if np.any(~np.isfinite(wl)) or not np.isfinite(temperature_K):
+        raise ValueError("nonfinite spectral query")
+    outside = (np.any((wl < wavelengths[0]) | (wl > wavelengths[-1])) or
+               not temperatures[0] <= temperature_K <= temperatures[-1])
+    if outside and not extrapolate:
+        raise ValueError("spectral query outside 880–1150 nm or 293.15–473.15 K")
+    if outside:
+        warnings.warn("Yb:LuAG spectral extrapolation is unvalidated", RuntimeWarning,
+                      stacklevel=2)
+    if dataset not in ("canonical_mccumber", "archived_reconstruction"):
+        raise ValueError("unknown Yb:LuAG spectral dataset")
+
+    def sampled(table):
+        at_nodes = np.stack([_interp_with_explicit_extrapolation(
+            wl, wavelengths, row, extrapolate) for row in table])
+        flat = at_nodes.reshape(len(temperatures), -1)
+        values = np.array([_interp_with_explicit_extrapolation(
+            temperature_K, temperatures, flat[:, j], extrapolate)
+            for j in range(flat.shape[1])])
+        return values.reshape(wl.shape)
+
+    sigma_abs = sampled(absorption)
+    if dataset == "archived_reconstruction":
+        sigma_em = sampled(archived_emission)
+    else:
+        kbt_cm1 = (K_B * temperature_K / (H * C)) / 100.0
+        z_ground = sum(np.exp(-energy / kbt_cm1) for energy in GROUND_STARK_CM1)
+        z_excited = sum(np.exp(-(energy - EXCITED_STARK_CM1[0]) / kbt_cm1)
+                        for energy in EXCITED_STARK_CM1)
+        sigma_em = sigma_abs * (z_ground / z_excited) * np.exp(
+            (EXCITED_STARK_CM1[0] - 1e7 / wl) / kbt_cm1)
+    if np.any(sigma_abs < 0) or np.any(sigma_em < 0):
+        raise ValueError("spectral extrapolation produced negative cross section")
+    return (float(sigma_abs) if wl.ndim == 0 else sigma_abs,
+            float(sigma_em) if wl.ndim == 0 else sigma_em)
+
+
 @dataclass(frozen=True)
 class YbLuAGMaterial:
     """A fixed-temperature Yb:LuAG sample and two optical wavelengths.
@@ -100,19 +159,7 @@ class YbLuAGMaterial:
         Stark energies to obtain emission by reciprocity instead.
         """
         _positive("wavelength_nm", wavelength_nm)
-        wavelength, temperature, absorption, _ = _spectra()
-        if not wavelength[0] <= wavelength_nm <= wavelength[-1]:
-            raise ValueError("optical wavelength must be 880–1150 nm")
-        at_nodes = [np.interp(wavelength_nm, wavelength, row) for row in absorption]
-        sigma_abs = float(np.interp(self.temperature_K, temperature, at_nodes))
-        kbt_cm1 = (K_B * self.temperature_K / (H * C)) / 100.0
-        z_ground = sum(np.exp(-energy / kbt_cm1) for energy in GROUND_STARK_CM1)
-        z_excited = sum(np.exp(-(energy - EXCITED_STARK_CM1[0]) / kbt_cm1)
-                        for energy in EXCITED_STARK_CM1)
-        photon_cm1 = 1e7 / wavelength_nm
-        sigma_em = sigma_abs * (z_ground / z_excited) * np.exp(
-            (EXCITED_STARK_CM1[0] - photon_cm1) / kbt_cm1)
-        return sigma_abs, float(sigma_em)
+        return spectral_cross_sections_m2(wavelength_nm, self.temperature_K)
 
     def rates_s1(self, pump_intensity_W_m2, signal_intensity_W_m2):
         """Per-ion total upward and downward rates including reabsorption."""

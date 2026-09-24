@@ -122,6 +122,8 @@ class PeriodicHeatResult:
     cycles: int
     residual: float
     fluorescence_wavelength_nm_used: float
+    population_photon_balance_relative_L1: float
+    excitation_storage_change_W_m2_by_slice: np.ndarray
 
 
 def periodic_pulse_heat(material: YbLuAGMaterial, time_s, pump_in_W_m2,
@@ -184,9 +186,28 @@ def periodic_pulse_heat(material: YbLuAGMaterial, time_s, pump_in_W_m2,
                     (thickness_m / steps) * repetition_rate_Hz)
     pump_power = pulse.absorbed_pump_fluence_J_m2_by_slice * repetition_rate_Hz
     signal_power = pulse.signal_fluence_change_J_m2_by_slice * repetition_rate_Hz
-    heat = (pump_power - signal_power - fluorescence) / (thickness_m / steps)
+    dz = thickness_m / steps
+    decay_integral = (pulse.excited_fraction_time_integral_s_by_slice +
+                      beta_dark_integral)
+    following = pulse.final_excited_fraction_by_slice * np.exp(
+        -dark_time/material.lifetime_s)
+    storage_photons = material.number_density_m3*dz*(following-beta)*repetition_rate_Hz
+    pump_photons = pump_power/(H*C/(material.pump_wavelength_nm*1e-9))
+    signal_photons = signal_power/(H*C/(material.signal_wavelength_nm*1e-9))
+    decay_photons = (material.number_density_m3*dz*decay_integral /
+                     material.lifetime_s*repetition_rate_Hz)
+    photon_residual = pump_photons-signal_photons-decay_photons-storage_photons
+    photon_scale = (np.sum(np.abs(pump_photons))+
+                    np.sum(np.abs(signal_photons))+
+                    np.sum(decay_photons)+np.sum(np.abs(storage_photons)))
+    photon_relative = (float(np.sum(np.abs(photon_residual))/photon_scale)
+                       if photon_scale > 0 else 0.0)
+    excited_photon_J = H*C/(mean_fluorescence_wavelength_nm*1e-9)
+    storage_power = storage_photons*excited_photon_J
+    heat = (pump_power - signal_power - fluorescence - storage_power)/dz
     return PeriodicHeatResult(heat, pump_power, signal_power, fluorescence,
-                              beta, cycle, error, mean_fluorescence_wavelength_nm)
+                              beta, cycle, error, mean_fluorescence_wavelength_nm,
+                              photon_relative, storage_power)
 
 
 def periodic_pump_state(material: YbLuAGMaterial, time_s, pump_in_W_m2,

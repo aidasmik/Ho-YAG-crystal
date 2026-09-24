@@ -54,6 +54,7 @@ class GallerySettings:
     seed_fwhm_s: float = 10e-12
     signal_traversals: int = 10
     relay_distance_m: float = 0.
+    cavity_ejection_efficiency: float = 1.
     cpu_workers: int = 4
     dn_dHo_m3: float | None = None
     dn_dExcited_m3: float | None = None
@@ -80,7 +81,8 @@ class GallerySettings:
             raise ValueError(f'solver mode must be one of {SOLVER_MODES}')
         if self.selected_beam not in BEAM_NAMES:
             raise ValueError('unknown selected beam')
-        if self.seed_energy_J<=0 or self.seed_fwhm_s<=0 or self.signal_traversals<1 or self.relay_distance_m<0:
+        if (self.seed_energy_J<=0 or self.seed_fwhm_s<=0 or self.signal_traversals<1 or
+            self.relay_distance_m<0 or not 0<self.cavity_ejection_efficiency<=1):
             raise ValueError('invalid seeded-amplifier settings')
         if isinstance(self.cpu_workers,bool) or not isinstance(self.cpu_workers,int) or not 1<=self.cpu_workers<=16:
             raise ValueError('cpu_workers must be an integer from 1 to 16')
@@ -336,14 +338,17 @@ def _run_periodic_seeded(snapshot, grid, density, seeds_before_slm, seeds, setti
         pump_energy_J=pump['energy_J'],pump_fwhm_s=pump['duration_s'],pump_waist_m=pump['waist_m'],
         signal_traversals=settings.signal_traversals,
         pump_reflectivity=cavity.pump_hr_reflectivity,
-        relay_distance_m=settings.relay_distance_m,cpu_workers=settings.cpu_workers)
+        relay_distance_m=settings.relay_distance_m,
+        cavity_ejection_efficiency=settings.cavity_ejection_efficiency,
+        cpu_workers=settings.cpu_workers)
     name=settings.selected_beam
     assembly=PlateAssembly(mesh,grid,assembly_cfg)
     index_response=HoIndexResponse(settings.dn_dHo_m3,settings.dn_dExcited_m3,
                                    settings.index_provenance)
-    phase=None;previous=None;converged=False;error=None;power_error=None
+    phase=None;temperature_xy=None;previous=None;converged=False;error=None;power_error=None
     for outer in range(4):
-        pulse=solve_periodic_seeded_amplifier(seeds[name],grid,density,cfg,hot_phase_rad=phase)
+        pulse=solve_periodic_seeded_amplifier(seeds[name],grid,density,cfg,
+              hot_phase_rad=phase,temperature_K=temperature_xy)
         if not pulse['converged']:
             raise RuntimeError('seeded pump/seed population cycle did not converge within bounded cycles')
         heat=_cartesian_to_polar(pulse['heat_W_m3'],grid,mesh)
@@ -353,6 +358,8 @@ def _run_periodic_seeded(snapshot, grid, density, seeds_before_slm, seeds, setti
             raise RuntimeError('thermal heat projection is degenerate')
         heat*=optical_heat/polar_heat
         temperature,displacement,screens=assembly.solve(heat)
+        temperature_xy=polar_to_cartesian(mesh,np.mean(temperature.disk_temperature_K,axis=0),
+                                          grid,outside=293.15)
         opd=(screens.thermal_single_pass_opd_m+
              screens.photoelastic_mean_single_pass_opd_m+
              geometric_transmission_opd(screens.front_uz_m,screens.rear_uz_m,
@@ -373,7 +380,8 @@ def _run_periodic_seeded(snapshot, grid, density, seeds_before_slm, seeds, setti
     # The last thermal screen is applied consistently to one final population cycle.
     if not converged:
         raise RuntimeError('seeded thermal-optical closure did not converge within four outer steps')
-    pulse=solve_periodic_seeded_amplifier(seeds[name],grid,density,cfg,hot_phase_rad=phase)
+    pulse=solve_periodic_seeded_amplifier(seeds[name],grid,density,cfg,
+                                          hot_phase_rad=phase,temperature_K=temperature_xy)
     output=angular_spectrum_propagate(pulse['field_out'],grid,cavity.wavelength_m,
                                        settings.post_disk_distance_m)
     input_irr=pulse['input_fluence_J_m2']*cfg.repetition_rate_Hz
@@ -386,10 +394,12 @@ def _run_periodic_seeded(snapshot, grid, density, seeds_before_slm, seeds, setti
                     'input_intensity':input_irr,'output_intensity':output_irr,
                     'input_power_W':settings.seed_energy_J*cfg.repetition_rate_Hz,
                     'output_power_W':output_energy*cfg.repetition_rate_Hz,
-                    'disk_exit_power_W':pulse['output_energy_J']*cfg.repetition_rate_Hz,
-                    'disk_power_gain':pulse['output_energy_J']/settings.seed_energy_J,
+                    'disk_exit_power_W':pulse['disk_exit_energy_J']*cfg.repetition_rate_Hz,
+                    'disk_power_gain':pulse['disk_exit_energy_J']/settings.seed_energy_J,
                     'input_pulse_energy_J':settings.seed_energy_J,
-                    'output_pulse_energy_J':output_energy}}
+                    'output_pulse_energy_J':output_energy,
+                    'gain_medium_extraction_efficiency':pulse['gain_medium_extraction_efficiency'],
+                    'cavity_ejection_efficiency':cfg.cavity_ejection_efficiency}}
     diag={'solver_mode':'periodic_seeded_amplifier','status':'periodic_and_thermal_fixed_point',
           'population_cycles':pulse['cycles'],'population_residual':pulse['population_residual'],
           'cpu_workers':pulse['cpu_workers'],
@@ -398,18 +408,30 @@ def _run_periodic_seeded(snapshot, grid, density, seeds_before_slm, seeds, setti
           'pump_absorbed_W':pulse['pump_absorbed_J']*cfg.repetition_rate_Hz,
           'pump_source':pulse['pump_source'],
           'signal_extracted_W':pulse['signal_extracted_J']*cfg.repetition_rate_Hz,
+          'signal_extracted_J':pulse['signal_extracted_J'],
+          'gain_medium_extraction_efficiency':pulse['gain_medium_extraction_efficiency'],
+          'initial_stored_laser_energy_J':pulse['initial_stored_laser_energy_J'],
+          'disk_exit_energy_J':pulse['disk_exit_energy_J'],
+          'cavity_ejection_efficiency':cfg.cavity_ejection_efficiency,
+          'cavity_ejection_loss_J':pulse['cavity_ejection_loss_J'],
+          'relay_loss_J':pulse['relay_loss_J'],
+          'passive_transport_change_J':pulse['passive_transport_change_J'],
+          'optical_energy_balance_residual_J':pulse['optical_energy_balance_residual_J'],
           'heat_W':pulse['heat_energy_J']*cfg.repetition_rate_Hz,
           'heat_ledger_closure_J':pulse['heat_ledger_closure_J'],
           'gaussian_peak_seed_power_W':settings.seed_energy_J/(settings.seed_fwhm_s*np.sqrt(np.pi/(4*np.log(2)))),
           'thermal_balance_error_W':float(temperature.balance_error_W),
           'pass_records_J':pulse['pass_records_J'],
+          'pass_diagnostics':pulse['pass_diagnostics'],
+          'cross_section_temperature_status':'fixed 295 K Ho reference; no validated Ho emission/reabsorption temperature series',
+          'pass_temperature_status':'beam-weighted converged steady thermal map; no transient temperature change between picosecond traversals',
           'refractive_index_model':{'host':'YAG n, dn/dT, and photoelastic reference',
               'dn_dHo_m3':settings.dn_dHo_m3,'dn_dExcited_m3':settings.dn_dExcited_m3,
               'provenance':settings.index_provenance,
               'excited_population_time':'pre-signal frozen state; in-pulse electronic lens not resolved'},
           'phase_feedback':'scalar mean thermal/photoelastic/transmission OPD applied at each material visit',
           'hot_phase_affects_gain':settings.relay_distance_m>0,
-          'hardware_status':'illustrative bonded copper heatsink, ideal relay when distance=0; coating heat/loss not modeled',
+          'hardware_status':'illustrative bonded copper heatsink, ideal relay when distance=0; cavity ejection is a separate post-disk loss, coating heat not modeled',
           'mesh_convergence_verified':False,'experimental_calibration':False,
           'pulse_model':'short-pulse fluence kick; FWHM used for peak-power interpretation, not temporal propagation'}
     raw={'populations_before_pump_m3':pulse['populations_before_pump'],
@@ -417,6 +439,7 @@ def _run_periodic_seeded(snapshot, grid, density, seeds_before_slm, seeds, setti
          'heat_W_m3_cartesian':pulse['heat_W_m3'],
          'heat_W_m3_polar':heat,
          'temperature_disk_K':temperature.disk_temperature_K,
+         'temperature_optical_grid_K':temperature_xy,
          'temperature_plate_K':temperature.plate_temperature_K,
          'hot_phase_single_pass_rad':phase,
          'front_displacement_m':screens.front_uz_m,

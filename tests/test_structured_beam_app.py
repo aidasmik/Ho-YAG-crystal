@@ -20,6 +20,8 @@ def test_app_validates_custom_calculation_parameters(tmp_path):
     assert '--plots-only' in command
     assert '--density-seed' in command and '23' in command
     assert '--solver-mode' in command and 'full_seeded_modal' in command
+    assert '--cavity-ejection-efficiency' in command
+    assert values['cavity_ejection_efficiency']==1
 
 
 @pytest.mark.parametrize('payload', [

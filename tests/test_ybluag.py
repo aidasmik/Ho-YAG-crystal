@@ -73,8 +73,18 @@ class YbLuAGPhysicsTests(unittest.TestCase):
         self.assertGreater(thermal["actual_constant_property_max_C"], 26.85)
         self.assertAlmostEqual(thermal["actual_heat_W"],
                                result["cycle_average_heat_W_upper_or_assumed"], places=7)
-        self.assertEqual(np.asarray(thermal["front_displacement_nm"]).shape,
-                         np.asarray(thermal["rear_displacement_nm"]).shape)
+        sensitivity = result["fluorescence_effective_escape_sensitivity"]["rows"]
+        self.assertGreater(sensitivity[0]["heat_W"], sensitivity[-1]["heat_W"])
+        cooler = result["cooler_conductance_sensitivity"]["rows"]
+        self.assertEqual(len(cooler), 5)
+        self.assertGreater(cooler[1]["disk_max_C"], cooler[0]["disk_max_C"])
+        self.assertLess(cooler[2]["disk_max_C"], cooler[0]["disk_max_C"])
+        self.assertIsNone(thermal["front_displacement_nm"])
+        self.assertIsNone(thermal["rear_displacement_nm"])
+        self.assertIsNone(thermal["scalar_roundtrip_opd_nm"])
+        self.assertIsNone(thermal["photoelastic_retardance_rad"])
+        self.assertEqual(np.asarray(thermal["design_reference_maps"]["front_displacement_nm"]).shape,
+                         np.asarray(thermal["design_reference_maps"]["rear_displacement_nm"]).shape)
         timeline = result["thermal_timeline"]
         self.assertEqual(timeline["time_s"][-1], 30.0)
         self.assertTrue(timeline["stabilized"])
@@ -86,7 +96,11 @@ class YbLuAGPhysicsTests(unittest.TestCase):
                            timeline["coolant_conductance_W_m2K"][0])
         self.assertFalse(timeline["material_range_valid"][-1])
         self.assertFalse(result["thermal_feedback_applied"])
-        self.assertLess(result["phase_residual_rms_rad"], 1e-12)
+        self.assertIsNone(result["phase_residual_rms_rad"])
+        self.assertIsNone(result["phase_residual_rad"])
+        self.assertEqual(result["hot_phase_validity"], "extrapolated_unvalidated")
+        self.assertIn("hot wavefront error is unknown", result["hot_phase_reason"])
+        self.assertLess(result["cold_density_phase_residual_rms_rad"], 1e-12)
         self.assertLess(timeline["energy_balance_relative_max"], 1e-7)
         with self.assertRaisesRegex(ValueError, "at least as long"):
             calculate_pulsed({"source_fwhm_fs": 500, "seed_fwhm_ps": 0.3})
@@ -116,7 +130,9 @@ class YbLuAGPhysicsTests(unittest.TestCase):
         uniform = np.asarray(result["uniform_isothermal_output_fluence_J_m2"])
         self.assertEqual(actual.shape, uniform.shape)
         self.assertGreater(float(np.max(abs(actual - uniform))), 0)
-        self.assertGreater(result["phase_residual_rms_rad"], 0)
+        self.assertIsNone(result["phase_residual_rms_rad"])
+        self.assertEqual(result["hot_phase_validity"], "not_calculated")
+        self.assertGreater(result["cold_density_phase_residual_rms_rad"], 0)
 
     def test_valid_transient_opd_changes_output_phase_not_pulse_energy(self):
         sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "examples"))
@@ -125,6 +141,8 @@ class YbLuAGPhysicsTests(unittest.TestCase):
         cold = calculate_pulsed({"pump_W": 0.2, "operation_duration_s": 0})
         self.assertTrue(hot["thermal_timeline"]["material_range_valid"][-1])
         self.assertTrue(hot["thermal_feedback_applied"])
+        self.assertEqual(hot["hot_phase_validity"], "extrapolated_unvalidated")
+        self.assertIn("after amplification only", hot["hot_phase_reason"])
         self.assertGreater(hot["phase_residual_rms_rad"], 0)
         self.assertAlmostEqual(hot["output_energy_J"], cold["output_energy_J"], places=12)
         self.assertGreater(float(np.max(np.abs(
@@ -189,7 +207,8 @@ class YbLuAGPhysicsTests(unittest.TestCase):
             result["cycle_average_heat_W_upper_or_assumed"],
             result["cycle_average_pump_absorbed_W"] -
             result["cycle_average_signal_gain_W"] -
-            result["cycle_average_escaping_fluorescence_W"], places=10)
+            result["cycle_average_escaping_fluorescence_W"] -
+            result["cycle_average_excitation_storage_change_W"], places=10)
         self.assertAlmostEqual(
             result["cycle_average_signal_gain_W"],
             (result["disk_output_energy_J"] - result["input_energy_J"]) * 10_000,
@@ -433,10 +452,12 @@ class YbLuAGPhysicsTests(unittest.TestCase):
             result.heat_W_m3_by_slice * dz,
             result.pump_absorbed_W_m2_by_slice -
             result.signal_change_W_m2_by_slice -
-            result.escaping_fluorescence_W_m2_by_slice,
+            result.escaping_fluorescence_W_m2_by_slice -
+            result.excitation_storage_change_W_m2_by_slice,
             rtol=1e-12, atol=1e-9)
         self.assertTrue(np.all(result.heat_W_m3_by_slice > 0))
         self.assertLess(result.residual, 1e-8)
+        self.assertLess(result.population_photon_balance_relative_L1, 1e-3)
 
     def test_yb_assembly_heat_balance_without_photoelastic_proxy(self):
         root = Path(__file__).resolve().parents[1]

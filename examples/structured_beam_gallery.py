@@ -32,6 +32,7 @@ def draw_beams(result, path):
                                   grid.y[0]*1e3,grid.y[-1]*1e3]
     rows=list(result['outcomes'].items())
     y_index=int(np.argmin(abs(grid.y)))
+    x_index=int(np.argmin(abs(grid.x)))
     fig,axes=plt.subplots(len(rows),6,figsize=(22,max(4.5,2.5*len(rows))),constrained_layout=True)
     axes=np.atleast_2d(axes)
     phase_cmap=plt.get_cmap('twilight').copy();phase_cmap.set_bad('#262935')
@@ -42,18 +43,27 @@ def draw_beams(result, path):
         vmax=max(float(ii.max()),float(oi.max()))
         image=axes[i,0].imshow(ii,origin='lower',extent=extent,cmap='inferno',
             norm=PowerNorm(gamma=.55,vmin=0,vmax=vmax),interpolation='nearest')
-        axes[i,0].set_title(f'Input irradiance\n{case["input_power_W"]:.4f} W')
+        seeded=result['settings'].solver_mode=='periodic_seeded_amplifier'
+        input_label=(f'{case["input_pulse_energy_J"]*1e9:.4f} nJ/pulse' if seeded
+                     else f'{case["input_power_W"]:.4f} W')
+        output_label=(f'{case["output_pulse_energy_J"]*1e9:.4f} nJ/pulse' if seeded
+                      else f'{case["output_power_W"]:.4f} W')
+        axes[i,0].set_title(f'Input irradiance\n{input_label}')
         fig.colorbar(image,ax=axes[i,0],shrink=.72,label='W/m²')
         image=axes[i,2].imshow(oi,origin='lower',extent=extent,cmap='inferno',
             norm=PowerNorm(gamma=.55,vmin=0,vmax=vmax),interpolation='nearest')
-        axes[i,2].set_title(f'Output irradiance\n{case["output_power_W"]:.4f} W')
+        axes[i,2].set_title(f'Output irradiance\n{output_label}')
         fig.colorbar(image,ax=axes[i,2],shrink=.72,label='W/m²')
-        axes[i,1].plot(grid.x*1e3,ii[y_index],color='tab:blue',linewidth=1.8)
-        axes[i,1].set_title('Input side profile')
+        axes[i,1].plot(grid.x*1e3,ii[y_index],color='tab:blue',linewidth=1.8,label='x cut, y≈0')
+        axes[i,1].plot(grid.y*1e3,ii[:,x_index],color='cyan',linestyle='--',linewidth=1.6,label='y cut, x≈0')
+        axes[i,1].set_title('Input x/y profiles')
         axes[i,1].set_ylabel('W/m²')
-        axes[i,3].plot(grid.x*1e3,oi[y_index],color='tab:orange',linewidth=1.8)
-        axes[i,3].set_title('Output side profile')
+        axes[i,1].legend(fontsize=7)
+        axes[i,3].plot(grid.x*1e3,oi[y_index],color='tab:orange',linewidth=1.8,label='x cut, y≈0')
+        axes[i,3].plot(grid.y*1e3,oi[:,x_index],color='gold',linestyle='--',linewidth=1.6,label='y cut, x≈0')
+        axes[i,3].set_title('Output x/y profiles')
         axes[i,3].set_ylabel('W/m²')
+        axes[i,3].legend(fontsize=7)
         for col,(field,title) in enumerate(((inp,'Input phase'),(out,
                 'Output x-polarized phase' if result['settings'].solver_mode=='full_seeded_modal' else 'Output phase')),4):
             image=axes[i,col].imshow(_relative_phase(field),origin='lower',extent=extent,
@@ -83,9 +93,10 @@ def draw_beams(result, path):
 
 
 def draw_side_profiles(result, path):
-    """Plot centerline irradiance cuts for every input and propagated output."""
+    """Plot horizontal and vertical center cuts for input and output fields."""
     grid=result['grid']
     y_index=int(np.argmin(abs(grid.y)))
+    x_index=int(np.argmin(abs(grid.x)))
     x_mm=grid.x*1e3
     rows=list(result['outcomes'].items())
     fig,axes=plt.subplots((len(rows)+1)//2,2,figsize=(12,max(4,2.2*len(rows))),sharex=True,constrained_layout=True)
@@ -93,16 +104,20 @@ def draw_side_profiles(result, path):
     for ax,(name,case) in zip(axes,rows):
         input_profile=case.get('input_intensity',abs(case['input_field'])**2)[y_index]
         output_profile=case.get('output_intensity',abs(case['output_field'])**2)[y_index]
+        input_vertical=case.get('input_intensity',abs(case['input_field'])**2)[:,x_index]
+        output_vertical=case.get('output_intensity',abs(case['output_field'])**2)[:,x_index]
         ax.plot(x_mm,input_profile,label='Input',linewidth=1.8)
         ax.plot(x_mm,output_profile,label='Output',linewidth=1.8)
+        ax.plot(grid.y*1e3,input_vertical,label='Input y cut',linestyle='--',linewidth=1.4)
+        ax.plot(grid.y*1e3,output_vertical,label='Output y cut',linestyle='--',linewidth=1.4)
         ax.set_title(name)
         ax.set_xlabel('x at y≈0 (mm)')
         ax.set_ylabel('Irradiance (W/m²)')
         ax.grid(alpha=.25)
         ax.legend(frameon=False)
         ax.set_xlim(-2,2)
-    fig.suptitle(f'Centerline side profiles after {result["settings"].post_disk_distance_m:g} m free space\n'
-                 'Input and output irradiance at y≈0',fontsize=14)
+    fig.suptitle(f'Centerline x/y profiles after {result["settings"].post_disk_distance_m:g} m free space\n'
+                 'Solid: horizontal x cut; dashed: vertical y cut',fontsize=14)
     path.parent.mkdir(parents=True,exist_ok=True)
     fig.savefig(path,dpi=160)
     plt.close(fig)
@@ -217,6 +232,7 @@ def main():
     p.add_argument('--seed-fwhm-ps',type=float,default=10.)
     p.add_argument('--signal-traversals',type=int,default=10)
     p.add_argument('--relay-distance-m',type=float,default=0.)
+    p.add_argument('--cavity-ejection-efficiency',type=float,default=1.)
     p.add_argument('--cpu-workers',type=int,default=4)
     p.add_argument('--dn-dho-m3',type=float)
     p.add_argument('--dn-dexcited-m3',type=float)
@@ -233,7 +249,9 @@ def main():
         post_disk_distance_m=args.post_disk_distance_m,solver_mode=args.solver_mode,
         selected_beam=args.selected_beam,seed_energy_J=args.seed_energy_nj*1e-9,
         seed_fwhm_s=args.seed_fwhm_ps*1e-12,signal_traversals=args.signal_traversals,
-        relay_distance_m=args.relay_distance_m,cpu_workers=args.cpu_workers,dn_dHo_m3=args.dn_dho_m3,
+        relay_distance_m=args.relay_distance_m,
+        cavity_ejection_efficiency=args.cavity_ejection_efficiency,
+        cpu_workers=args.cpu_workers,dn_dHo_m3=args.dn_dho_m3,
         dn_dExcited_m3=args.dn_dexcited_m3,index_provenance=args.index_provenance)
     result=simulate_gallery(snapshot,settings)
     result['z_edges_m']=snapshot.arrays['z_edges_m']
