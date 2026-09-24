@@ -9,7 +9,7 @@ from hoyag.cooling_plate import (DiskPlateHeatSolver,cooling_plate_mesh,ThermalM
 from hoyag.thermomechanics import (DiskPlateMesh,ElasticMaterial,YAG_ELASTIC,COPPER_ELASTIC,
     BondedInterface,solve_disk_plate,tetra_kinematics,assemble_body,_recover,von_mises,stress_tensor)
 from hoyag.stress_optics import (crystal_axes_111,stress_impermeability,photoelastic_index_matrix,
-    geometric_roundtrip_opd,ordered_jones,apply_jones,HotDiskScreens,hot_disk_cavity_roundtrip,
+    geometric_roundtrip_opd,geometric_transmission_opd,ordered_jones,apply_jones,HotDiskScreens,hot_disk_cavity_roundtrip,
     build_hot_disk_screens)
 
 
@@ -213,6 +213,8 @@ def test_geometric_opd_rigid_translation_and_fixed_rear_expansion():
     n=1.8
     assert np.isclose(geometric_roundtrip_opd(1e-7,1e-7,index=n),2e-7,rtol=1e-12,atol=0)
     assert np.isclose(geometric_roundtrip_opd(-1e-7,0,index=n),2*(n-1)*1e-7,rtol=1e-12,atol=0)
+    assert np.isclose(geometric_transmission_opd(1e-7,1e-7,index=n),0,atol=1e-20)
+    assert np.isclose(geometric_transmission_opd(-1e-7,0,index=n),(n-1)*1e-7,rtol=1e-12)
 
 
 def test_ordered_jones_reciprocity_and_unitarity():

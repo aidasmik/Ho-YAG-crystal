@@ -50,14 +50,16 @@ mechanics, saturation, and multipass hardware were not recomputed for the
 new concentration. This gallery is a controlled optical illustration, not
 a new self-consistent laser operating point.
 
-The calculator also has **Full seeded modal closure**. It reuses the audited
-`ModalThinDiskLaser`, `sample_cycle_heat`, `PlateAssembly`, and Stage 6 Jones
-screen components for the selected Ho map: periodic four-manifold
-pump/population saturation, heat, cooling plate, thermoelastic displacement,
-and photoelasticity are recalculated before each beam is propagated. The six
-input fields remain a fixed external transverse seed basis, so this mode does
-not claim a cavity eigenfield update. It is bounded by the local supervisor
-and may take substantially longer than the weak probe. When the four coupled
+The calculator also has **Modal thermal estimate** (historical identifier
+`full_seeded_modal`). It reuses the audited `ModalThinDiskLaser`,
+`sample_cycle_heat`, `PlateAssembly`, and Stage 6 Jones components for the
+selected Ho map. One fixed-mode oscillator background supplies saturated
+populations and heat. Each input beam is then a separate undepleted one-pass
+probe of that shared background. Its power does not change populations or
+heat, and the computed hot optics do not feed back into the oscillator. This
+does not claim a cavity eigenfield update or a complete seeded amplifier. It
+is bounded by the local supervisor and may take longer than the weak probe.
+When the four coupled
 slots are used, press **Start new bounded compute budget** in the calculator;
 the old ledger is archived before a fresh bounded session is opened.
 
@@ -72,14 +74,13 @@ mechanical solve or a saturated-gain propagation with stronger spatial gain.
 Rebuild with `python examples/structured_beam_gallery.py`. Select an ideal
 phase mask using `--phase-mask none|vortex+1|vortex-1|vortex+2|defocus|astigmatic|axicon`.
 Use `--solver-mode weak_probe` for the fast archived-state probe or
-`--solver-mode full_seeded_modal` for the pump, saturation, thermal,
-thermoelastic, and photoelastic closure described above.
+`--solver-mode full_seeded_modal` for the one-way modal thermal estimate above.
 The mask does not change irradiance immediately across the ideal SLM.
 Exact settings,
 source/state hashes, and power values are in `summary.json`; complex fields
 and the 3-D Ho map are in the default `fields.npz`. The `vortex+1` example
 also includes its complex fields; the other precomputed masks use
 `--plots-only` and retain plots and summaries. Rerun a selected mask without
-that flag to save its field arrays. The live calculator's full seeded modal
-path completed a bounded default-parameter run on 24 September 2026; each
+that flag to save its field arrays. The live calculator's modal estimate
+completed a bounded default-parameter run on 24 September 2026; each
 new Ho map must be computed separately.

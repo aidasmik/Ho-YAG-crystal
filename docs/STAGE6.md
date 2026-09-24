@@ -84,6 +84,11 @@ when their displacements differ across a compliant bond. Rigid translation gives
 2u; expansion with a fixed rear gives 2(n-1) Delta thickness. The earlier generic
 approximation `2*front_bulge` is not used.
 
+For a transmitted one-pass seed between fixed external air planes, the
+geometric OPD is instead `(n-1)(u_rear,z-u_front,z)`. Rigid translation then
+has zero effect. The structured-beam gallery uses this transmission convention;
+the cavity round-trip operator continues to use the reflected convention above.
+
 Each depth slice supplies a symmetric birefringent Jones retarder. Ordered products
 are reversed on the return traversal; retarders need not commute. Reflection does
 not complex-conjugate the field in this fixed laboratory polarization convention.

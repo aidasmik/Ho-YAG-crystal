@@ -30,9 +30,9 @@
       <label for="solver_mode">Solver</label>
       <select id="solver_mode" name="solver_mode">
         <option value="weak_probe">Weak probe (fast)</option>
-        <option value="full_seeded_modal">Full seeded modal closure</option>
+        <option value="full_seeded_modal">Modal thermal estimate (approximate)</option>
       </select>
-      <p class="note">Full seeded modal closure recomputes periodic pump, four-manifold saturation, heat, cooling plate, thermoelastic displacement, and photoelastic Jones screens for the selected Ho map. It uses the six requested beams as a fixed external seed basis; it does not update the cavity eigenfield.</p>
+      <p class="note">The modal estimate calculates one saturated fixed-mode oscillator background for all six shapes, then probes each 1 W beam separately. It recomputes heat, cooling, stress, and optical phase for the Ho map. The probes do not deplete the inversion or heat the crystal; the hot optics do not feed back into the oscillator.</p>
       <label for="phase_mask">Phase mask</label>
       <select id="phase_mask" name="phase_mask">
         <option value="none">None</option><option value="vortex+1">Vortex +1</option>
@@ -57,7 +57,7 @@
       <button id="calculate" type="button">Calculate</button>
       <button id="newBudget" type="button" hidden>Start new bounded compute budget</button>
       <div id="status" class="status">Waiting for a calculation.</div>
-      <p class="note">The phase mask is ideal and phase-only: irradiance is unchanged immediately across the SLM. The Ho map is regenerated from the seed on every calculation. Full mode is slower and is subject to the local supervisor time budget.</p>
+      <p class="note">The phase mask is ideal and phase-only: irradiance is unchanged immediately across the SLM. The Ho map is regenerated from the seed on every calculation. The modal estimate is slower and subject to the local supervisor time budget.</p>
     </form>
     <main class="images">
       <div id="resultSummary"><span class="pill">Saved example</span> Select parameters and calculate to replace these plots.</div>
@@ -66,7 +66,7 @@
       <img id="profilesImage" src="beam_side_profiles.png" alt="Centerline side profiles of input and output beam irradiance">
       <img id="beamDensityImage" src="beam_on_ho_density.png" alt="Calculated incoming beam footprints over the Ho concentration entrance slice">
       <img id="densityImage" src="ho_density.png" alt="Calculated random clustered Ho distribution">
-      <h2>Calculated modal powers</h2>
+      <h2>Calculated probe powers</h2>
       <table class="metrics" id="metrics"><tbody><tr><th>Mode</th><th>Output power</th><th>Disk gain</th></tr></tbody></table>
       <p class="note" id="scopeNote">Model scope: one disk traversal plus free-space propagation, frozen archived inversion fractions, and weak-signal gain.</p>
     </main>
@@ -84,7 +84,7 @@
       newBudgetButton.hidden=!budget.coupled_exhausted;
       if(budget.coupled_exhausted){
         statusBox.className='status error';
-        statusBox.textContent=`Full mode has used ${budget.coupled_attempts_used} of ${budget.coupled_attempts_limit} coupled runs in the shared budget. Start a new bounded budget to run it again; the old ledger will be archived.`;
+        statusBox.textContent=`Modal estimate has used ${budget.coupled_attempts_used} of ${budget.coupled_attempts_limit} coupled runs in the shared budget. Start a new bounded budget to run it again; the old ledger will be archived.`;
       }
     }
     function image(url){return url+'?cache='+Date.now()}
@@ -96,10 +96,10 @@
       document.getElementById('beamDensityImage').src=image(result.images.beam_density);
       document.getElementById('densityImage').src=image(result.images.density);
       const phase=s.phase_mask;
-      const modeLabel=s.solver_mode==='full_seeded_modal'?'Full seeded modal closure':'Weak probe';
+      const modeLabel=s.solver_mode==='full_seeded_modal'?'Modal thermal estimate':'Weak probe';
       document.getElementById('resultSummary').innerHTML=`<span class="pill">Calculated ${result.run_id}</span> <strong>${modeLabel}</strong>; Mask: <strong>${phase.name}</strong>; Ho range: ${(s.density_min_active_m3/1e26).toFixed(3)}–${(s.density_max_active_m3/1e26).toFixed(3)} ×10²⁶ ions/m³; immediate SLM irradiance relative change: ${phase.maximum_local_irradiance_relative_change.toExponential(2)}`;
       document.getElementById('scopeNote').textContent=s.solver_mode==='full_seeded_modal'
-        ? 'Full mode: periodic four-manifold pump/population saturation, heat, bonded thermoelastic assembly, and photoelastic Jones screens were recomputed for this Ho map. The transverse seed basis is fixed and the cavity eigenfield is not updated.'
+        ? 'Modal estimate: one fixed-mode oscillator background supplies saturated populations and heat. Each shown beam is a separate undepleted one-pass probe. Thermal and photoelastic phases are applied once; there is no cavity eigenfield or hot-optics feedback. Output phase is the x-polarized component; irradiance sums both polarizations.'
         : 'Weak mode: one disk traversal plus free-space propagation using archived inversion fractions; the changed Ho map is not a self-consistent pump, thermal, or mechanical operating point.';
       const rows=Object.entries(s.modes).map(([name,m])=>`<tr><td>${name}</td><td>${m.output_power_W.toFixed(6)} W</td><td>${m.disk_power_gain.toFixed(6)}×</td></tr>`).join('');
       document.getElementById('metrics').innerHTML=`<tbody><tr><th>Mode</th><th>Output power</th><th>Disk gain</th></tr>${rows}</tbody>`;
@@ -111,7 +111,7 @@
       catch(error){
         const detail=String(error.message||error);
         const message=detail.includes('budget_exhausted')
-          ? 'Full seeded modal calculation has used the allowed coupled runs. Press Start new bounded compute budget to archive the old ledger and allow another bounded run.'
+          ? 'Modal thermal calculation has used the allowed coupled runs. Press Start new bounded compute budget to archive the old ledger and allow another bounded run.'
           : 'Calculation failed: '+detail;
         statusBox.className='status error';statusBox.textContent=message;
         if(detail.includes('budget_exhausted'))newBudgetButton.hidden=false;
@@ -125,7 +125,7 @@
         const result=await response.json();
         if(!response.ok)throw new Error(result.error||'Could not start a new budget');
         newBudgetButton.hidden=true;statusBox.className='status ok';
-        statusBox.textContent='New bounded budget is ready. Press Calculate to run Full seeded modal closure. Previous budget archived at '+result.archive;
+        statusBox.textContent='New bounded budget is ready. Press Calculate to run the modal thermal estimate. Previous budget archived at '+result.archive;
       }catch(error){statusBox.className='status error';statusBox.textContent='Budget reset failed: '+String(error.message||error);}
       finally{newBudgetButton.disabled=false;}
     });

@@ -54,7 +54,8 @@ def draw_beams(result, path):
         axes[i,3].plot(grid.x*1e3,oi[y_index],color='tab:orange',linewidth=1.8)
         axes[i,3].set_title('Output side profile')
         axes[i,3].set_ylabel('W/m²')
-        for col,(field,title) in enumerate(((inp,'Input phase'),(out,'Output phase')),4):
+        for col,(field,title) in enumerate(((inp,'Input phase'),(out,
+                'Output x-polarized phase' if result['settings'].solver_mode=='full_seeded_modal' else 'Output phase')),4):
             image=axes[i,col].imshow(_relative_phase(field),origin='lower',extent=extent,
                  cmap=phase_cmap,vmin=-np.pi,vmax=np.pi,interpolation='nearest')
             axes[i,col].set_title(title+' (rad)')
@@ -68,8 +69,8 @@ def draw_beams(result, path):
         for col in (1,3):
             axes[i,col].set_ylim(bottom=0)
     mode=result['settings'].solver_mode
-    description=('fixed seeded modes with periodic pump/population, heat, bonded thermoelastic, '
-                 'and photoelastic closure' if mode=='full_seeded_modal' else
+    description=('fixed-mode oscillator background and one-way thermal solve; '
+                 'separate undepleted seed probes' if mode=='full_seeded_modal' else
                  'frozen Stage 7W inversion; weak-signal probe')
     fig.suptitle(f'Ideal phase mask: {result["settings"].phase_mask_name} | '
                  'structured seed → one Ho:YAG traversal → '
@@ -205,7 +206,7 @@ def main():
                    help='radial phase scale for defocus, astigmatic, and axicon masks')
     p.add_argument('--post-disk-distance-m',type=float,default=.25)
     p.add_argument('--solver-mode',choices=SOLVER_MODES,default='weak_probe',
-                   help='weak_probe is fast; full_seeded_modal recomputes pump, saturation, heat, mechanics, and photoelasticity for the selected Ho map')
+                   help='weak_probe is fast; full_seeded_modal computes a fixed-mode oscillator background and one-way thermal/mechanical response before weak seed probes')
     p.add_argument('--plots-only',action='store_true',
                    help='save plots and summary without archiving complex field arrays')
     args=p.parse_args()
@@ -252,7 +253,10 @@ def main():
     excluded=('seed_before_slm','input_field','output_field','output_vector',
               'input_intensity','output_intensity')
     if settings.solver_mode=='full_seeded_modal':
-        limitations=['fixed externally seeded transverse basis; cavity eigenfield is not updated',
+        limitations=['six declared mode intensities form one fixed-mode oscillator background; each 1 W seed is then probed separately',
+                     'seed probes do not deplete populations and their power is not included in the heat source',
+                     'thermal and photoelastic changes do not feed back into the modal oscillator',
+                     'cavity eigenfields, native Ho-concentration index changes, and mesh convergence are not resolved',
                      'photoelastic coefficients use the audited host-YAG reference',
                      'single disk traversal plus the requested free-space output plane']
     else:
@@ -260,10 +264,13 @@ def main():
                      'weak-signal probe; no population depletion by these inputs',
                      'single disk traversal; no specified multipass hardware topology']
     summary={'model':result['model'],
-             'application_mode':'seeded_multipass_amplifier',
+             'application_mode':('oscillator_background_seeded_probe'
+                                 if settings.solver_mode=='full_seeded_modal' else 'seeded_single_pass_probe'),
              'fidelity_mode':settings.solver_mode,
              'solver_mode':settings.solver_mode,
              'solver_diagnostics':result['solver_diagnostics'],
+             'phase_semantics':('output phase is the x-polarized component, while output irradiance sums both polarizations'
+                                if settings.solver_mode=='full_seeded_modal' else 'scalar field phase'),
              'source_hash':source_manifest(ROOT)['source_hash'],
              'reference_state_id':result['reference_state_id'],
              'reference_state_sha256':reference_summary['state_sha256'],

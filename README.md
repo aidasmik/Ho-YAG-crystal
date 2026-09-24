@@ -416,13 +416,15 @@ output distance, then press **Calculate**. Each run writes plots and metrics
 under `results/structured_beams/runs/<run-id>/`. The calculator performs a
 bounded weak-probe traversal using archived Stage 7W population fractions; it
 does not claim a new self-consistent pump, thermal, or mechanical solution.
-Select **Full seeded modal closure** in the calculator (or pass
-`--solver-mode full_seeded_modal` to the gallery CLI) to recompute the periodic
-four-manifold pump/population saturation cycle, heat, cooling plate,
-thermoelastic displacement, and photoelastic Jones screens for the selected Ho
-map. The six structured inputs are a fixed external seed basis; the solver does
-not update a cavity eigenfield. Full mode is bounded by the local supervisor
-and can take substantially longer. After the four coupled attempts are used,
+Select **Modal thermal estimate** in the calculator (historical CLI identifier
+`--solver-mode full_seeded_modal`) to compute a saturated fixed-mode oscillator
+background, then its heat, cooling plate, thermoelastic displacement, and
+photoelastic Jones screens for the selected Ho map. Each displayed 1 W beam
+is a separate undepleted one-pass probe of that background. The probe power
+does not affect populations or heat, and hot optics do not feed back into the
+oscillator. This is an estimate rather than a complete seeded amplifier or
+self-consistent cavity solution. It is bounded by the local supervisor and
+can take substantially longer. After the four coupled attempts are used,
 the calculator offers **Start new bounded compute budget**. Clicking it
 archives the old ledger and starts a new bounded session; restarting the app
 alone does not reset the budget.

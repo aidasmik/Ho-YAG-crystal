@@ -113,11 +113,13 @@ shown after 0.25 m of free-space propagation; phase excludes the arbitrary
 global offset and masks low-intensity pixels. The plots are numerical probes,
 not a new self-consistent pumped operating point or complete multipass device.
 The `--solver-mode weak_probe` default uses the archived fractions. Set
-`--solver-mode full_seeded_modal` to rerun the periodic four-manifold modal
-pump/saturation cycle, cycle heat, bonded cooling-plate/thermoelastic solve,
-and photoelastic Jones screen for the selected Ho map before propagating the
-six fixed external seed fields. This mode has no cavity eigenfield update and
-is subject to the bounded local supervisor budget. If the four coupled-run
+`--solver-mode full_seeded_modal` to compute one periodic fixed-mode oscillator
+background, its cycle heat, bonded cooling-plate/thermoelastic solve, and
+photoelastic Jones screen for the selected Ho map. Each of the six displayed
+inputs is then a separate weak one-pass probe. Their power does not deplete
+the shared inversion or enter the heat source. There is no hot-optics feedback
+or cavity eigenfield update. This mode is subject to the bounded local supervisor
+budget. If the four coupled-run
 slots are exhausted, the calculator offers an explicit action to archive the
 old ledger and start a new bounded session.
 Use `--help` for all density, phase-mask, and output-plane parameters.
