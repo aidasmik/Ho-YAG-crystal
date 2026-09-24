@@ -1,5 +1,18 @@
 # Yb:LuAG simulation material package
 
+## Local browser calculator
+
+On Windows, from the repository root in Command Prompt:
+
+    cd /d "F:\BAKALAUSKARAS\YbYag Studeis\Ho-YAG-crystal"
+    "C:\Users\Aidas\AppData\Local\Programs\Python\Python311\python.exe" examples\ybluag_app.py
+
+Open <http://127.0.0.1:8781/>. This is a separate Yb:LuAG app from the
+Ho:YAG structured-beam calculator on port 8780. It shows a fixed 20 C,
+10 at.% CW single-pass calculation, reconstructed model cross sections, and
+an approximate output-coupler design screen. It does not represent a coupled
+thermal/resonator prediction or a Yb:YAG material model.
+
 Physics-based Yb:LuAG material data for thin-disk laser, amplifier, resonator, thermal, elastic-deformation, and phase-propagation simulations.
 
 ## Included

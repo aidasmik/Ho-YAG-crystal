@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Yb:LuAG local calculator</title>
+<style>
+  :root{font:15px system-ui,sans-serif;color:#edf3ff;background:#101722;color-scheme:dark}
+  body{max-width:1200px;margin:auto;padding:24px}h1{margin:0 0 5px}p{line-height:1.5;color:#c4d0df}
+  a{color:#8ac9ff}.layout{display:grid;grid-template-columns:290px 1fr;gap:22px}
+  form,.card{background:#182436;border:1px solid #36465c;border-radius:11px;padding:18px}
+  label{display:block;margin:11px 0 4px}input,button{box-sizing:border-box;width:100%;padding:8px;font:inherit;border:1px solid #61748d;border-radius:6px;background:#101927;color:#fff}
+  button{background:#2075b4;font-weight:700;cursor:pointer;margin-top:18px}button:disabled{opacity:.6}
+  .cards{display:grid;gap:15px}.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:12px}
+  .metric{padding:10px;border-radius:7px;background:#111b2a}.metric strong{display:block;font-size:1.3rem;color:#97d5ff}
+  svg{width:100%;height:auto;background:#111b2a;border-radius:7px}small{color:#abbcd1}
+  #status{min-height:1.5em;color:#a9e5bf}.error{color:#ffaaaa!important}
+  @media(max-width:760px){.layout{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<h1>Yb:LuAG local calculator</h1>
+<p>Ytterbium-doped <strong>lutetium aluminum garnet</strong>. This is the separate 10 at.% room-temperature CW material model and output-coupler design screen. <a href="http://127.0.0.1:8780/results/structured_beams/index.html">Ho:YAG structured-beam app</a></p>
+<div class="layout">
+<form id="form">
+  <label>Pump wavelength (nm)<input name="pump_nm" type="number" min="880" max="1150" step="0.5" value="938" required></label>
+  <label>Signal wavelength (nm)<input name="signal_nm" type="number" min="880" max="1150" step="0.5" value="1030" required></label>
+  <label>Incident pump power (W)<input name="pump_W" type="number" min="0.001" max="1000" step="any" value="40" required></label>
+  <label>Common beam radius (mm)<input name="radius_mm" type="number" min="0.01" max="10" step="any" value="0.6" required></label>
+  <label>Disk thickness (µm)<input name="thickness_um" type="number" min="1" max="2000" step="any" value="150" required></label>
+  <label>Incident signal power (W)<input name="seed_W" type="number" min="0" max="1000" step="any" value="1" required></label>
+  <button type="submit">Calculate</button><p id="status">Ready.</p>
+  <small>One uniform transverse intensity and one disk pass. Pump recycling, cavity mode, temperature rise, and thermal lens feedback are outside this calculation.</small>
+</form>
+<main class="cards">
+  <section class="card"><h2>CW pass</h2><div class="metrics" id="metrics"></div></section>
+  <section class="card"><h2>20 °C model cross sections</h2><svg id="spectra" viewBox="0 0 760 280" role="img" aria-label="Absorption and emission spectra"></svg><small>Blue: absorption; orange: McCumber-consistent emission. Figure-guided reconstructed input data, not measured arrays.</small></section>
+  <section class="card"><h2>Output-coupler design screen</h2><svg id="coating" viewBox="0 0 760 280" role="img" aria-label="Output coupler candidate screen"></svg><p id="selected"></p><small>Equal counterpropagating intensity approximation. The plot uses relative screened output intensity; it is not a predicted device output power. Rear reflectance and round-trip survival come from the Yb:LuAG coating configuration.</small></section>
+  <section class="card"><h2>Model scope</h2><p id="scope"></p><small>The 20 °C 10 at.% lifetime is 0.965 ms. The inferred fluorescence spectral mean is shown for context; no heat result is claimed because the effective escaping fluorescence yield is unmeasured for this geometry.</small></section>
+</main></div>
+<script>
+const form=document.getElementById('form'), status=document.getElementById('status');
+function metric(label,value){return `<div class="metric"><strong>${value}</strong>${label}</div>`}
+function graph(id,x,y1,y2,label1,label2){
+  const svg=document.getElementById(id), W=760,H=280,L=58,R=18,T=18,B=43;
+  const xmin=Math.min(...x),xmax=Math.max(...x), ymax=Math.max(...y1,...(y2||[]),1e-30)*1.05;
+  const xp=v=>L+(v-xmin)/(xmax-xmin||1)*(W-L-R),yp=v=>H-B-v/ymax*(H-T-B);
+  const path=y=>x.map((v,i)=>`${i?'L':'M'}${xp(v).toFixed(1)},${yp(y[i]).toFixed(1)}`).join(' ');
+  const ticks=[0,.25,.5,.75,1].map(f=>`<line x1="${L}" x2="${W-R}" y1="${yp(f*ymax)}" y2="${yp(f*ymax)}" stroke="#34455a"/><text x="${L-7}" y="${yp(f*ymax)+4}" text-anchor="end" fill="#abbcd1" font-size="11">${(f*ymax).toExponential(1)}</text>`).join('');
+  svg.innerHTML=`${ticks}<path d="${path(y1)}" fill="none" stroke="#73bcff" stroke-width="2"/>${y2?`<path d="${path(y2)}" fill="none" stroke="#ffad62" stroke-width="2"/>`:''}<text x="${L}" y="${H-12}" fill="#abbcd1" font-size="12">${xmin.toFixed(0)}</text><text x="${W-R}" y="${H-12}" text-anchor="end" fill="#abbcd1" font-size="12">${xmax.toFixed(0)}</text><text x="${W/2}" y="${H-12}" text-anchor="middle" fill="#abbcd1" font-size="12">${id==='spectra'?'Wavelength (nm)':'Output coupler transmission (%)'}</text><text x="${L+8}" y="${T+13}" fill="#73bcff" font-size="12">${label1}</text>${y2?`<text x="${L+8}" y="${T+28}" fill="#ffad62" font-size="12">${label2}</text>`:''}`;
+}
+async function calculate(){
+ status.textContent='Calculating…';status.classList.remove('error');
+ const data=Object.fromEntries(new FormData(form).entries());
+ try{
+  const response=await fetch('/api/calculate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+  const r=await response.json();if(!response.ok)throw Error(r.error||'Calculation failed');
+  document.getElementById('metrics').innerHTML=metric('Pump absorbed',r.absorbed_pump_W.toFixed(3)+' W')+metric('Pump exiting',r.pump_out_W.toFixed(3)+' W')+metric('Signal exiting',r.signal_out_W.toFixed(3)+' W')+metric('Signal change',r.signal_change_W.toFixed(3)+' W')+metric('Mean excited fraction',(100*r.mean_excited_fraction).toFixed(2)+'%')+metric('Fluorescence energy equivalent',r.fluorescence_energy_equivalent_nm.toFixed(1)+' nm');
+  graph('spectra',r.wavelength_nm,r.absorption_cross_section_cm2,r.emission_cross_section_cm2,'Absorption (cm²)','Emission (cm²)');
+  graph('coating',r.coating_transmission.map(v=>v*100),r.coating_output_intensity_W_m2,null,'Screened output intensity (W/m²)');
+  document.getElementById('selected').textContent=`Best candidate in this screen: ${(100*r.selected_coating_transmission).toFixed(1)}% transmission. The published 220 µm device reported a 2.2% optimum under its measured conditions.`;
+  document.getElementById('scope').textContent=r.scope;
+  status.textContent='Calculation complete.';
+ }catch(e){status.textContent=e.message;status.classList.add('error')}
+}
+form.addEventListener('submit',e=>{e.preventDefault();calculate()});calculate();
+</script>
+</body></html>
