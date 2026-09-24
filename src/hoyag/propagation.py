@@ -8,6 +8,7 @@ or nonlinear response.  Those effects are added in later stages.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
 import math
 import numpy as np
 
@@ -193,11 +194,24 @@ def angular_spectrum_propagate(field, grid, wavelength_m, distance_m, *, refract
     Backward propagation of evanescent components is ill-conditioned and rejected.
     """
     arr=_check_field(field,grid)
-    transfer=angular_spectrum_transfer(grid,wavelength_m,distance_m,
-                                      refractive_index=refractive_index,bandlimit=bandlimit)
     if distance_m==0:
+        angular_spectrum_transfer(grid,wavelength_m,distance_m,
+                                  refractive_index=refractive_index,bandlimit=bandlimit)
         return arr.copy()
+    transfer=_cached_angular_spectrum_transfer(grid,wavelength_m,distance_m,
+                                                refractive_index,bandlimit)
     return np.fft.ifft2(np.fft.fft2(arr)*transfer)
+
+
+@lru_cache(maxsize=8)
+def _cached_angular_spectrum_transfer(grid, wavelength_m, distance_m,
+                                      refractive_index, bandlimit):
+    """Bounded, private transfer cache shared by Ho and Yb propagation paths."""
+    transfer=angular_spectrum_transfer(grid,wavelength_m,distance_m,
+                                        refractive_index=refractive_index,
+                                        bandlimit=bandlimit)
+    transfer.flags.writeable=False
+    return transfer
 
 
 def angular_spectrum_transfer(grid, wavelength_m, distance_m, *, refractive_index=1., bandlimit=True):

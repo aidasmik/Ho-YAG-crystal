@@ -4,7 +4,9 @@ import unittest
 
 import numpy as np
 
-from hoyag.propagation import Grid2D
+from hoyag.propagation import (Grid2D, angular_spectrum_propagate,
+                               angular_spectrum_transfer,
+                               _cached_angular_spectrum_transfer)
 from ybluag import YbLuAGMaterial, propagate_cw, propagate_structured_small_signal
 
 
@@ -53,6 +55,8 @@ class YbLuAGPhysicsTests(unittest.TestCase):
             YbLuAGMaterial(yb_at_percent=15)
         with self.assertRaisesRegex(ValueError, "temperature"):
             YbLuAGMaterial(temperature_K=290)
+        with self.assertRaisesRegex(ValueError, "lifetime"):
+            YbLuAGMaterial(temperature_K=353.15)
         with self.assertRaisesRegex(ValueError, "wavelength"):
             YbLuAGMaterial(pump_wavelength_nm=1907.7)
         material = YbLuAGMaterial(yb_at_percent=15, lifetime_s=0.985e-3)
@@ -73,6 +77,25 @@ class YbLuAGPhysicsTests(unittest.TestCase):
         self.assertAlmostEqual(result.output_power_W / result.input_power_W / expected_ratio, 1, places=10)
         self.assertLess(np.max(abs(np.angle(result.field_out * np.conj(field)))), 1e-12)
         self.assertAlmostEqual(material.refractive_index(), 1.82358010361, places=8)
+
+    def test_shared_diffraction_cache_preserves_both_materials(self):
+        grid = Grid2D.square(16, 2e-3)
+        x, y = grid.mesh
+        field = np.exp(-(x*x + y*y) / (0.3e-3)**2).astype(complex)
+        _cached_angular_spectrum_transfer.cache_clear()
+        for wavelength, index in ((2.0903e-6, 1.7991),
+                                  (1.030e-6, YbLuAGMaterial().refractive_index())):
+            transfer = angular_spectrum_transfer(grid, wavelength, 150e-6,
+                                                  refractive_index=index)
+            expected = np.fft.ifft2(np.fft.fft2(field) * transfer)
+            actual = angular_spectrum_propagate(field, grid, wavelength,
+                                                150e-6, refractive_index=index)
+            self.assertTrue(np.allclose(actual, expected, rtol=1e-13, atol=1e-13))
+            repeat = angular_spectrum_propagate(field, grid, wavelength,
+                                                150e-6, refractive_index=index)
+            self.assertTrue(np.array_equal(repeat, actual))
+        self.assertEqual(_cached_angular_spectrum_transfer.cache_info().hits, 2)
+        self.assertEqual(_cached_angular_spectrum_transfer.cache_info().currsize, 2)
 
 
 if __name__ == "__main__":

@@ -40,8 +40,9 @@ result = propagate_cw(sample, 150e-6, 200,
 print(result.pump_out_W_m2, result.signal_out_W_m2)
 ```
 
-The 10 at.% lifetime default (0.965 ms) is Beil et al.'s pinhole result.
-Other concentrations require an explicit measured lifetime. The Lu-site number
+The 10 at.% and 293.15 K lifetime default (0.965 ms) is Beil et al.'s pinhole
+result. Other concentrations or temperatures require an explicit measured
+lifetime. The Lu-site number
 density is 1.42×10²⁸ m⁻³, so 10 at.% yields 1.42×10²⁷ Yb ions m⁻³.
 Cross sections are converted from cm² to m². The package includes a copy of the
 existing `Yb-LuAG/spectra` figure-guided reconstruction of Körner et al. so
@@ -73,3 +74,8 @@ does not have a validated LuAG photoelastic tensor. A quantitative Yb:LuAG
 thin-disk resonator or multipass amplifier prediction needs measured sample
 spectra, concentration-dependent lifetime, actual pump-pass geometry, coatings,
 cooling contact, and an independently validated coupled model.
+
+Both material paths use `hoyag.propagation` for passive diffraction. Its bounded
+private transfer-function cache avoids rebuilding the same FFT multiplier on
+repeated equal steps, without changing the transfer formula or either material
+model. The public transfer builder still returns a fresh array.

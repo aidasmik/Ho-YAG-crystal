@@ -69,17 +69,17 @@ class YbLuAGMaterial:
             _positive(name, getattr(self, name))
         if self.yb_at_percent > 100:
             raise ValueError("yb_at_percent exceeds Lu-site occupancy")
-        if self.lifetime_s is None:
-            if self.yb_at_percent != 10.0:
-                raise ValueError("supply a measured lifetime_s for doping other than 10 at.%")
-            object.__setattr__(self, "lifetime_s", 0.965e-3)
-        _positive("lifetime_s", self.lifetime_s)
         wavelength, temperature, _, _ = _spectra()
         if not temperature[0] <= self.temperature_K <= temperature[-1]:
             raise ValueError("spectral temperature must be 293.15–473.15 K")
         for value in (self.pump_wavelength_nm, self.signal_wavelength_nm):
             if not wavelength[0] <= value <= wavelength[-1]:
                 raise ValueError("optical wavelength must be 880–1150 nm")
+        if self.lifetime_s is None:
+            if self.yb_at_percent != 10.0 or self.temperature_K != 293.15:
+                raise ValueError("supply a measured lifetime_s outside 10 at.% and 293.15 K")
+            object.__setattr__(self, "lifetime_s", 0.965e-3)
+        _positive("lifetime_s", self.lifetime_s)
 
     @property
     def number_density_m3(self):
