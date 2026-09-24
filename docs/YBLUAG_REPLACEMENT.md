@@ -81,8 +81,9 @@ emission reconstruction is kept for comparison, but it fails the Stark-level
 reciprocity relation away from the peaks. The active Yb model derives stimulated
 emission from reconstructed absorption through the McCumber relation using the
 published LuAG Stark energies. Its 1030 nm, 293.15 K emission is about
-3.06×10⁻²⁰ cm², within the published sample-to-sample range of about
-2.59–3.0×10⁻²⁰ cm²; this is a physics-constrained estimate, not a new
+3.06×10⁻²⁰ cm², roughly 2% above the upper cited sample value of
+3.0×10⁻²⁰ cm²; this discrepancy reflects uncertainty in the reconstructed
+absorption spectrum. It is a physics-constrained estimate, not a new
 measurement. The code refuses wavelengths outside 880–1150 nm and
 temperatures outside 293.15–473.15 K. The material model uses a uniform
 temperature, so local heating does not update the cross sections during a run.
