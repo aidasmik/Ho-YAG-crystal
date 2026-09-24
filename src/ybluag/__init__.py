@@ -2,6 +2,12 @@
 
 from .model import YbLuAGMaterial, CWResult, propagate_cw
 from .structured import StructuredSignalResult, propagate_structured_small_signal
+from .pulsed import (PulseResult, PeriodicHeatResult, propagate_pulse,
+                     periodic_pump_state, periodic_pulse_heat)
+from .assembly import YbAssemblyResult, scalar_yb_screens, solve_yb_assembly
 
 __all__ = ["YbLuAGMaterial", "CWResult", "propagate_cw",
-           "StructuredSignalResult", "propagate_structured_small_signal"]
+           "StructuredSignalResult", "propagate_structured_small_signal",
+           "PulseResult", "PeriodicHeatResult", "propagate_pulse",
+           "periodic_pump_state", "periodic_pulse_heat",
+           "YbAssemblyResult", "scalar_yb_screens", "solve_yb_assembly"]

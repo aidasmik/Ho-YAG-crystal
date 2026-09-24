@@ -17,6 +17,10 @@ import numpy as np
 H = 6.62607015e-34
 C = 299792458.0
 SITE_DENSITY_M3 = 1.42e28  # Lu sites, Beil et al. 2010
+K_B = 1.380649e-23
+# Kramers-doublet Stark energies in cm^-1, Körner et al. Table 1.
+GROUND_STARK_CM1 = (0.0, 600.0, 635.0, 762.0)
+EXCITED_STARK_CM1 = (10330.0, 10645.0, 10900.0)
 _ROOT = Path(__file__).resolve().parent / "data"
 _STEM = "yb_luag_cross_sections_20_200C_reconstructed.npz.part"
 
@@ -86,15 +90,26 @@ class YbLuAGMaterial:
         return SITE_DENSITY_M3 * self.yb_at_percent / 100.0
 
     def cross_sections_m2(self, wavelength_nm):
-        """Return (absorption, stimulated emission) at one wavelength."""
+        """Return absorption and McCumber-consistent emission in m².
+
+        The archived emission figure reconstruction violates detailed balance
+        away from its peaks. Use the reconstructed absorption and the measured
+        Stark energies to obtain emission by reciprocity instead.
+        """
         _positive("wavelength_nm", wavelength_nm)
-        wavelength, temperature, absorption, emission = _spectra()
+        wavelength, temperature, absorption, _ = _spectra()
         if not wavelength[0] <= wavelength_nm <= wavelength[-1]:
             raise ValueError("optical wavelength must be 880–1150 nm")
-        def interpolate(table):
-            at_nodes = [np.interp(wavelength_nm, wavelength, row) for row in table]
-            return float(np.interp(self.temperature_K, temperature, at_nodes))
-        return interpolate(absorption), interpolate(emission)
+        at_nodes = [np.interp(wavelength_nm, wavelength, row) for row in absorption]
+        sigma_abs = float(np.interp(self.temperature_K, temperature, at_nodes))
+        kbt_cm1 = (K_B * self.temperature_K / (H * C)) / 100.0
+        z_ground = sum(np.exp(-energy / kbt_cm1) for energy in GROUND_STARK_CM1)
+        z_excited = sum(np.exp(-(energy - EXCITED_STARK_CM1[0]) / kbt_cm1)
+                        for energy in EXCITED_STARK_CM1)
+        photon_cm1 = 1e7 / wavelength_nm
+        sigma_em = sigma_abs * (z_ground / z_excited) * np.exp(
+            (EXCITED_STARK_CM1[0] - photon_cm1) / kbt_cm1)
+        return sigma_abs, float(sigma_em)
 
     def rates_s1(self, pump_intensity_W_m2, signal_intensity_W_m2):
         """Per-ion total upward and downward rates including reabsorption."""
@@ -146,6 +161,7 @@ class CWResult:
     excited_fraction_by_step: np.ndarray
     fluorescence_W_m2: np.ndarray | None
     heat_W_m2: np.ndarray | None
+    heat_W_m3_by_step: np.ndarray | None
     scope: str = "collinear monochromatic CW, fixed-temperature, no diffraction or cavity feedback"
 
 
@@ -180,6 +196,7 @@ def propagate_cw(material: YbLuAGMaterial, thickness_m: float, steps: int,
     dz = thickness_m / steps
     fractions = []
     fluorescence = np.zeros_like(pump) if fluorescence_quantum_yield is not None else None
+    heat_by_step = [] if fluorescence is not None else None
     for _ in range(steps):
         beta0 = material.excited_fraction_cw(pump, signal)
         alpha0, gain0 = material.coefficients_m1(beta0)
@@ -187,16 +204,20 @@ def propagate_cw(material: YbLuAGMaterial, thickness_m: float, steps: int,
         signal_mid = signal * np.exp(0.5 * gain0 * dz)
         beta = material.excited_fraction_cw(pump_mid, signal_mid)
         alpha, gain = material.coefficients_m1(beta)
-        pump *= np.exp(-alpha * dz)
-        signal *= np.exp(gain * dz)
+        next_pump = pump * np.exp(-alpha * dz)
+        next_signal = signal * np.exp(gain * dz)
         fractions.append(beta)
         if fluorescence is not None:
             photon_energy = H * C / (mean_fluorescence_wavelength_nm * 1e-9)
-            fluorescence += (material.number_density_m3 * beta /
-                             material.lifetime_s * fluorescence_quantum_yield *
-                             photon_energy * dz)
+            emitted = (material.number_density_m3 * beta /
+                       material.lifetime_s * fluorescence_quantum_yield *
+                       photon_energy * dz)
+            fluorescence += emitted
+            heat_by_step.append(((pump - next_pump) - (next_signal - signal) - emitted) / dz)
+        pump, signal = next_pump, next_signal
     absorbed = original_pump - pump
     signal_change = signal - original_signal
     heat = absorbed - signal_change - fluorescence if fluorescence is not None else None
     return CWResult(pump, signal, absorbed, signal_change,
-                    np.stack(fractions, axis=0), fluorescence, heat)
+                    np.stack(fractions, axis=0), fluorescence, heat,
+                    np.stack(heat_by_step, axis=0) if heat_by_step is not None else None)
