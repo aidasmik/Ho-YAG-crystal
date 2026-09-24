@@ -659,10 +659,17 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
                         (material.signal_wavelength_nm * 1e-9) *
                         timeline["final_roundtrip_opd_m"])
         field_out *= np.exp(1j * phase_screen)
+    extraction_fluence = abs(field_out)**2 * seed_energy_J
+    def intensity_overlap(a, b):
+        numerator = float(np.sum(np.sqrt(np.maximum(a, 0) * np.maximum(b, 0))))**2
+        denominator = float(np.sum(a) * np.sum(b))
+        return numerator / denominator if denominator > 0 else 0.0
+    extraction_shape_retention = intensity_overlap(disk_input_fluence, extraction_fluence)
     if settings.post_disk_distance_m:
         field_out = angular_spectrum_propagate(field_out, grid,
                                                material.signal_wavelength_nm * 1e-9,
                                                settings.post_disk_distance_m)
+    observed_fluence = abs(field_out)**2 * seed_energy_J
     return {
         "grid": grid, "phase_mask": phase,
         "target_phase_mask": np.mod(target_phase, 2 * np.pi),
@@ -671,7 +678,11 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
         "selected_beam": selected_beam,
         "input_fluence_J_m2": input_fluence,
         "disk_input_fluence_J_m2": disk_input_fluence,
-        "output_fluence_J_m2": abs(field_out)**2 * seed_energy_J,
+        "output_fluence_J_m2": observed_fluence,
+        "extraction_fluence_J_m2": extraction_fluence,
+        "extraction_shape_retention": extraction_shape_retention,
+        "observed_shape_retention": intensity_overlap(disk_input_fluence, observed_fluence),
+        "output_distance_m": settings.post_disk_distance_m,
         "input_phase": np.angle(source),
         "disk_input_phase": np.angle(seed),
         "output_phase": np.angle(field_out),

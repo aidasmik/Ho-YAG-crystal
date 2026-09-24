@@ -194,7 +194,7 @@ def calculate_pulsed(data, *, compute_thermal=True, summary_only=False):
         "signal_traversals": proposal["seed"]["signal_traversals"],
         "pump_passes": proposal["pump"]["passes"],
         "waist_mm": 0.6,
-        "distance_m": 0.25,
+        "distance_m": 0.0,
         "phase_strength_rad": math.pi,
         "density_seed": 17,
         "cluster_count": 24,
