@@ -45,7 +45,21 @@ distortion. A separate room-temperature copper-cooler and scalar
 thermoelastic reference is calculated for CW or pulsed heat only when the disk
 stays within the material data's 293.15–300 K range. It omits LuAG
 photoelastic birefringence, which lacks a verified tensor.
-The top section retains the reconstructed cross-section plot and approximate
+The app also offers a six-shape periodic pulse regime using the proposal
+controls; these are six independent seeded runs, not six simultaneous beams.
+Every CW and pulsed shape can overlay a dashed uniform-Yb output profile
+computed with the same pump and seed settings. Yb concentration maps use a
+dark-blue/teal/yellow scale. Thermal heat interpolation is normalized to
+preserve integrated deposited power. For a selected heat load above the
+measured 293.15–300 K material range, the copper-cooler view reports the
+out-of-range constant-property temperature screen only as a risk flag. It
+then shows front/rear disk displacement and optical-path maps for the same
+heat pattern scaled to the proposal's 5 K design rise. Those maps are a
+separate in-range design reference, not a deformation prediction for the
+selected pump case. The generic C10100 copper plate, indium-contact and
+coolant conductances remain assumed hardware parameters in
+`config/ybluag_10at_assembly.json`.
+The separate CW comparison retains the reconstructed cross-section plot and approximate
 output-coupler design screen. All spectra are figure-guided reconstructions,
 and cavity geometry and cooling boundary values are assumptions, not a
 validated device prediction. This is a Yb:LuAG, not a Yb:YAG, material model.

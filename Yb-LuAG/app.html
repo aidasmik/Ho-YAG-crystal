@@ -53,11 +53,13 @@
   <label>Repetition rate (kHz)<input name="repetition_rate_kHz" type="number" min="0.01" max="100" step="any" value="10" required></label>
   <label>Pump passes<input name="pump_passes" type="number" min="1" max="48" step="1" value="10" required></label>
   <label>Signal traversals<input name="signal_traversals" type="number" min="1" max="10" step="1" value="10" required></label>
-  <button type="submit">Calculate Yb pulse</button><p id="pulsedStatus">Ready.</p>
+  <button type="submit">Calculate selected pulsed beam</button><button type="button" id="calculateAllPulsed">Calculate all six pulsed beams</button><p id="pulsedStatus">Ready.</p>
 </form><main class="cards">
   <section class="card"><h2>Pulse energy and inversion</h2><div id="pulseMetrics" class="metrics"></div></section>
-  <section class="card"><h2>Cycle-average heat and copper cooler</h2><div id="pulseHeatMetrics" class="metrics"></div><p id="pulseThermalText"></p><div id="pulseThermalMaps" class="beam-grid" hidden><figure><canvas id="pulseOpdCanvas"></canvas><figcaption>Scalar round-trip optical path change</figcaption></figure><figure><canvas id="pulseDisplacementCanvas"></canvas><figcaption>Front surface displacement</figcaption></figure></div></section>
+  <section class="card"><h2>Copper cooler and disk deformation</h2><div id="pulseHeatMetrics" class="metrics"></div><p id="pulseThermalText"></p><div id="pulseThermalMaps" class="pulse-beam-grid" hidden><figure><canvas id="pulseOpdCanvas"></canvas><figcaption>Scalar round-trip optical path change (nm)</figcaption></figure><figure><canvas id="pulseDisplacementCanvas"></canvas><figcaption>Front surface displacement (nm)</figcaption></figure><figure><canvas id="pulseRearCanvas"></canvas><figcaption>Rear surface displacement (nm)</figcaption></figure><figure><svg id="pulseDeformationProfile" class="spatial-profile" viewBox="0 0 560 160"></svg><figcaption>Front and rear center cuts, displacement relative to their own center (nm); vertical scale enlarged</figcaption></figure></div></section>
+  <section class="card"><h2>Yb distribution at the disk entrance</h2><p>Dark blue = lower Yb density, teal = middle, yellow = higher density; black = outside the disk. Zero cluster contrast is spatially uniform.</p><div class="pulse-beam-grid"><figure><canvas id="pulseDensityCanvas" style="width:100%;aspect-ratio:1;image-rendering:pixelated"></canvas><figcaption>Yb density, shape-normalized color scale</figcaption></figure></div></section>
   <section class="card"><h2>Incoming and outgoing beam</h2><p>Top views show shape-normalized fluence and phase. Side profiles show absolute fluence along horizontal and vertical center cuts, in J/m². Solid orange is the selected crystal; dashed cyan is a uniform-dopant, isothermal reference. At the default zero cluster contrast they overlap. The pulse solver has no thermal optical feedback, so the curves do not show a temperature-induced difference.</p><div id="pulseMaps" class="pulse-beam-grid"></div></section>
+  <section class="card" id="pulseGalleryCard" hidden><h2>Six pulsed structured beams</h2><p id="pulseGalleryScope"></p><div id="pulseGalleryResults" class="pulse-beam-grid"></div></section>
   <section class="card"><h2>Temporal power</h2><svg id="pulseTrace" viewBox="0 0 560 115" class="profile"></svg><small>Blue input; orange output. Time window spans ±3 seed FWHM.</small></section>
   <section class="card"><h2>Proposal targets and model scope</h2><p>Target: &gt;100 µJ output, gain &gt;10,000, pattern fidelity &gt;0.8, phase distortion &lt;0.5 rad. Coating requirements: front AR reflection &lt;0.1% at 1030 nm, rear HR &gt;99.9% over 940–1090 nm, damage threshold &gt;10 J/cm². These are specifications, not measured coating performance.</p><p id="pulseScope"></p></section>
 </main></div>
@@ -79,11 +81,11 @@
   <section class="card"><h2>Output-coupler design screen</h2><svg id="coating" viewBox="0 0 760 280" role="img" aria-label="Output coupler candidate screen"></svg><p id="selected"></p><small>Equal counterpropagating intensity approximation. The plot uses relative screened output intensity; it is not a predicted device output power. Rear reflectance and round-trip survival come from the Yb:LuAG coating configuration.</small></section>
   <section class="card"><h2>Model scope</h2><p id="scope"></p><small>The 20 °C 10 at.% lifetime is 0.965 ms. The inferred fluorescence spectral mean is shown for context; no heat result is claimed because the effective escaping fluorescence yield is unmeasured for this geometry.</small></section>
 </main></div>
-<h2>10 at.% CW structured-beam comparison</h2>
-<p>The six shapes, phase masks, clustered dopant map, irradiance, phase, and side profiles use Yb:LuAG gain and population equations. Select a CW solver and calculate a new set of fields.</p>
+<h2>Six-shape structured beam calculations</h2>
+<p>Select a 10 at.% CW comparison or the 12 at.% periodic seeded-pulse amplifier. The pulsed option uses the proposal controls above and plots all six input/output shapes. CW uses the fields in this form.</p>
 <div class="layout">
 <form id="structuredForm">
-  <label>Solver<select name="solver_mode"><option value="weak_probe">Pump-only weak probe</option><option value="modal_cw">Fixed-mode CW oscillator background</option><option value="saturated_cw">Signal-saturated CW pass</option></select></label>
+  <label>Solver<select name="solver_mode"><option value="weak_probe">Pump-only weak probe</option><option value="modal_cw">Fixed-mode CW oscillator background</option><option value="saturated_cw">Signal-saturated CW pass</option><option value="pulsed">Pulsed seeded amplifier · six shapes</option></select></label>
   <label>Pump power (W)<input name="pump_W" type="number" min="0.001" max="1000" step="any" value="40" required></label>
   <label>Pump radius (mm)<input name="radius_mm" type="number" min="0.1" max="5" step="any" value="0.6" required></label>
   <label>Disk thickness (µm)<input name="thickness_um" type="number" min="1" max="2000" step="any" value="150" required></label>
@@ -96,13 +98,13 @@
   <label>Cluster count<input name="cluster_count" type="number" min="2" max="64" step="1" value="24" required></label>
   <label>Cluster contrast<input name="cluster_contrast" type="number" min="0" max="1" step="any" value="0.27" required></label>
   <label>Assumed escaping fluorescence yield<input name="escape_yield" type="number" min="0" max="1" step="any" value="0" required></label>
-  <small>0 gives an upper bound on deposited heat. The actual escaping yield depends on crystal geometry and reabsorption; 0.9 is an intrinsic emission estimate, not a measured escape yield.</small>
+  <small>Pulsed mode uses the 12 at.% proposal controls above, including seed energy, rate, and pump passes. CW modes use these 10 at.% controls. Zero fluorescence escape gives a heat upper bound.</small>
   <button type="submit">Calculate six Yb beams</button><p id="structuredStatus">Ready.</p>
 </form>
 <main class="cards">
-  <section class="card"><h2>Applied phase mask and Yb concentration</h2><div class="beam-grid"><figure><canvas id="maskCanvas"></canvas><figcaption>Ideal phase mask (0–2π)</figcaption></figure><figure><canvas id="densityCanvas"></canvas><figcaption>Synthetic Yb entrance density (10²⁶ ions/m³)</figcaption></figure><figure><canvas id="densityMiddleCanvas"></canvas><figcaption>Middle Yb concentration slice</figcaption></figure><figure><canvas id="pumpCanvas"></canvas><figcaption>Incident pump irradiance</figcaption></figure></div><figure><canvas id="densityXZCanvas" style="width:100%;height:80px;image-rendering:pixelated"></canvas><figcaption>Yb concentration x–z cut at y≈0</figcaption></figure></section>
-  <section class="card"><h2>Six calculated beam shapes</h2><p id="resonatorText"></p><div id="beamResults"></div></section>
-  <section class="card"><h2>Copper-cooled thermoelastic reference</h2><p id="thermalText">Select saturated CW to calculate a Gaussian reference thermal load.</p><div class="beam-grid" id="thermalMaps" hidden><figure><canvas id="opdCanvas"></canvas><figcaption>Scalar round-trip optical path change</figcaption></figure><figure><canvas id="displacementCanvas"></canvas><figcaption>Front surface displacement</figcaption></figure></div><small>The thermal assembly is limited to a 150 µm disk and 20–26.85 °C. Photoelastic birefringence is omitted because the LuAG tensor is unavailable.</small></section>
+  <section class="card"><h2>Applied phase mask and Yb concentration</h2><p>Yb concentration uses dark blue for lower density, teal for the middle, and yellow for higher density; black is outside the disk.</p><div class="beam-grid"><figure><canvas id="maskCanvas"></canvas><figcaption>Ideal phase mask (0–2π)</figcaption></figure><figure><canvas id="densityCanvas"></canvas><figcaption>Synthetic Yb entrance density (10²⁶ ions/m³)</figcaption></figure><figure><canvas id="densityMiddleCanvas"></canvas><figcaption>Middle Yb concentration slice</figcaption></figure><figure><canvas id="pumpCanvas"></canvas><figcaption>Incident pump irradiance</figcaption></figure></div><figure><canvas id="densityXZCanvas" style="width:100%;height:80px;image-rendering:pixelated"></canvas><figcaption>Yb concentration x–z cut at y≈0</figcaption></figure></section>
+  <section class="card"><h2>Six calculated beam shapes</h2><p>Side profiles: blue input, orange selected synthetic Yb distribution, dashed cyan uniform Yb at the same pump, seed, phase mask, and CW solver settings. Thermal optical feedback is absent from both curves.</p><p id="resonatorText"></p><div id="beamResults"></div></section>
+  <section class="card"><h2>Copper-cooled thermoelastic reference</h2><p id="thermalText">Select saturated CW to calculate a Gaussian reference thermal load.</p><div class="pulse-beam-grid" id="thermalMaps" hidden><figure><canvas id="opdCanvas"></canvas><figcaption>Scalar round-trip optical path change (nm)</figcaption></figure><figure><canvas id="displacementCanvas"></canvas><figcaption>Front surface displacement (nm)</figcaption></figure><figure><canvas id="rearCanvas"></canvas><figcaption>Rear surface displacement (nm)</figcaption></figure><figure><svg id="deformationProfile" class="spatial-profile" viewBox="0 0 560 160"></svg><figcaption>Center cuts, displacement relative to each surface center (nm)</figcaption></figure></div><small>Material validity is 20–26.85 °C. Above that, the displayed deformation is a separate 5 K design-load reference, not the selected pump case. Photoelasticity is omitted.</small></section>
   <section class="card"><h2>Scope</h2><p id="structuredScope"></p></section>
 </main></div>
 <script>
@@ -132,18 +134,20 @@ async function calculate(){
 }
 form.addEventListener('submit',e=>{e.preventDefault();calculate()});calculate();
 const structuredForm=document.getElementById('structuredForm'),structuredStatus=document.getElementById('structuredStatus');
-function drawMap(canvas,values,kind='intensity'){
- const n=values.length,w=values[0].length,flat=values.flat(),max=Math.max(...flat,1e-30);canvas.width=w;canvas.height=n;
+function drawMap(canvas,values,kind='intensity',range=null){
+ const n=values.length,w=values[0].length,flat=values.flat(),max=range?.max??Math.max(...flat,1e-30),positive=flat.filter(v=>v>0),minPositive=range?.min??(positive.length?Math.min(...positive):0),maxAbs=Math.max(...flat.map(Math.abs),1e-30);canvas.width=w;canvas.height=n;
  const ctx=canvas.getContext('2d'),image=ctx.createImageData(w,n);
  for(let j=0;j<n;j++)for(let i=0;i<w;i++){
   const v=values[n-1-j][i],q=kind==='phase'?((v+Math.PI)%(2*Math.PI))/(2*Math.PI):Math.max(0,v/max);
   let rgb;if(kind==='phase'){const a=2*Math.PI*q;rgb=[Math.round(128+127*Math.cos(a)),Math.round(128+127*Math.cos(a-2.094)),Math.round(128+127*Math.cos(a+2.094))]}
+  else if(kind==='density'){const t=max===minPositive?.5:Math.max(0,Math.min(1,(v-minPositive)/(max-minPositive)));rgb=v<=0?[8,13,25]:t<.5?[Math.round(15+20*t),Math.round(35+330*t),Math.round(100+220*t)]:[Math.round(25+450*(t-.5)),Math.round(200+90*(t-.5)),Math.round(210-390*(t-.5))]}
+  else if(kind==='signed'){const t=v/maxAbs;rgb=v===0?[8,13,25]:t<0?[Math.round(210+170*t),Math.round(210+125*t),235]:[235,Math.round(210-135*t),Math.round(210-165*t)]}
   else rgb=[Math.round(255*Math.min(1,q*1.6)),Math.round(200*Math.sqrt(q)),Math.round(255*(1-q)*q)];
   const k=4*(j*w+i);image.data.set([...rgb,255],k);
  }ctx.putImageData(image,0,0);
 }
 function drawFootprint(canvas,density,intensity){
- drawMap(canvas,density);const n=intensity.length,max=Math.max(...intensity.flat(),1e-30),ctx=canvas.getContext('2d'),image=ctx.getImageData(0,0,n,n);
+ drawMap(canvas,density,'density');const n=intensity.length,max=Math.max(...intensity.flat(),1e-30),ctx=canvas.getContext('2d'),image=ctx.getImageData(0,0,n,n);
  for(let j=1;j<n-1;j++)for(let i=1;i<n-1;i++){
   const v=intensity[j][i]/max,right=intensity[j][i+1]/max,down=intensity[j+1][i]/max;
   if([.1,.3,.6,.9].some(t=>(v-t)*(right-t)<0||(v-t)*(down-t)<0)){
@@ -151,9 +155,9 @@ function drawFootprint(canvas,density,intensity){
   }
  }ctx.putImageData(image,0,0);
 }
-function drawProfile(svg,input,output){
- const W=560,H=115,max=Math.max(...input,...output,1e-30),path=a=>a.map((v,i)=>`${i?'L':'M'}${(i/(a.length-1)*W).toFixed(1)},${(H-8-v/max*(H-20)).toFixed(1)}`).join(' ');
- svg.innerHTML=`<path d="${path(input)}" stroke="#73bcff" stroke-width="2" fill="none"/><path d="${path(output)}" stroke="#ffad62" stroke-width="2" fill="none"/><text x="8" y="16" fill="#73bcff" font-size="12">Input</text><text x="65" y="16" fill="#ffad62" font-size="12">Output</text>`;
+function drawProfile(svg,input,output,ideal=null){
+ const W=560,H=115,max=Math.max(...input,...output,...(ideal||[]),1e-30),path=a=>a.map((v,i)=>`${i?'L':'M'}${(i/(a.length-1)*W).toFixed(1)},${(H-8-v/max*(H-20)).toFixed(1)}`).join(' ');
+ svg.innerHTML=`${ideal?`<path d="${path(ideal)}" stroke="#74d5ee" stroke-width="4" stroke-dasharray="8 5" fill="none"/>`:''}<path d="${path(input)}" stroke="#73bcff" stroke-width="2" fill="none"/><path d="${path(output)}" stroke="#ffad62" stroke-width="2" fill="none"/><text x="8" y="16" fill="#73bcff" font-size="12">Input</text><text x="65" y="16" fill="#ffad62" font-size="12">Selected Yb</text>${ideal?'<text x="165" y="16" fill="#74d5ee" font-size="12">Uniform Yb (dashed)</text>':''}`;
 }
 function drawSpatialProfile(svg,coordinates,actual,reference,axis){
  const W=560,H=160,L=58,R=12,T=18,B=30,max=Math.max(...actual,...reference,1e-30)*1.08;
@@ -161,6 +165,25 @@ function drawSpatialProfile(svg,coordinates,actual,reference,axis){
  const path=a=>a.map((v,i)=>`${i?'L':'M'}${xp(i).toFixed(1)},${yp(v).toFixed(1)}`).join(' ');
  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);svg.classList.add('spatial-profile');
  svg.innerHTML=`<line x1="${L}" x2="${W-R}" y1="${H-B}" y2="${H-B}" stroke="#71839c"/><line x1="${L}" x2="${L}" y1="${T}" y2="${H-B}" stroke="#71839c"/><path d="${path(reference)}" stroke="#74d5ee" stroke-width="4" stroke-dasharray="8 5" fill="none"/><path d="${path(actual)}" stroke="#ffad62" stroke-width="2" fill="none"/><text x="${L-5}" y="${T+4}" text-anchor="end" fill="#c5d6ea" font-size="11">${max.toPrecision(2)}</text><text x="${L-5}" y="${H-B+3}" text-anchor="end" fill="#c5d6ea" font-size="11">0</text><text x="${L}" y="${H-8}" fill="#c5d6ea" font-size="11">${coordinates[0].toFixed(1)}</text><text x="${W-R}" y="${H-8}" text-anchor="end" fill="#c5d6ea" font-size="11">${coordinates.at(-1).toFixed(1)}</text><text x="${W/2}" y="${H-8}" text-anchor="middle" fill="#c5d6ea" font-size="11">${axis} (mm)</text><text x="${L+7}" y="${T+13}" fill="#c5d6ea" font-size="11">J/m²</text>`;
+}
+function drawDeformationProfile(svg,x,front,rear){
+ const cy=Math.floor(front.length/2),cx=Math.floor(front[0].length/2),a=front[cy].map(v=>v-front[cy][cx]),b=rear[cy].map(v=>v-rear[cy][cx]);
+ const W=560,H=160,L=58,R=12,T=20,B=30,peak=Math.max(...a.map(Math.abs),...b.map(Math.abs),1e-6)*1.1;
+ const xp=i=>L+i/(x.length-1)*(W-L-R),yp=v=>T+(peak-v)/(2*peak)*(H-T-B),path=arr=>arr.map((v,i)=>`${i?'L':'M'}${xp(i).toFixed(1)},${yp(v).toFixed(1)}`).join(' ');
+ svg.innerHTML=`<line x1="${L}" x2="${W-R}" y1="${yp(0)}" y2="${yp(0)}" stroke="#71839c"/><path d="${path(a)}" stroke="#ffad62" stroke-width="2.5" fill="none"/><path d="${path(b)}" stroke="#74d5ee" stroke-width="2.5" fill="none"/><text x="${L}" y="15" fill="#ffad62" font-size="12">Front</text><text x="${L+52}" y="15" fill="#74d5ee" font-size="12">Rear</text><text x="${L-5}" y="${T+4}" text-anchor="end" fill="#c5d6ea" font-size="11">+${peak.toFixed(1)}</text><text x="${L-5}" y="${H-B}" text-anchor="end" fill="#c5d6ea" font-size="11">−${peak.toFixed(1)}</text><text x="${L}" y="${H-8}" fill="#c5d6ea" font-size="11">${x[0].toFixed(1)}</text><text x="${W-R}" y="${H-8}" text-anchor="end" fill="#c5d6ea" font-size="11">${x.at(-1).toFixed(1)} mm</text>`;
+}
+function renderThermal(thermal,x,prefix){
+ const available=['computed','design_reference'].includes(thermal.status),maps=document.getElementById(prefix==='pulse'?'pulseThermalMaps':'thermalMaps');maps.hidden=!available;
+ const textBox=document.getElementById(prefix==='pulse'?'pulseThermalText':'thermalText');
+ textBox.textContent=available?(thermal.status==='design_reference'?`Selected heat ${thermal.actual_heat_W.toFixed(2)} W exceeds the verified cooler range; no valid temperature or deformation prediction is available for that load. Under the stated generic cooler assumptions, a 5 K design-rise calculation uses ${(100*thermal.design_heat_scale).toFixed(2)}% of the selected heat. The maps below show only that design reference. `:`Disk ${thermal.disk_temperature_min_C.toFixed(2)}–${thermal.disk_temperature_max_C.toFixed(2)} °C. `)+thermal.scope:`Thermal solve unavailable: ${thermal.reason}`;
+ if(!available)return;
+ drawMap(document.getElementById(prefix==='pulse'?'pulseOpdCanvas':'opdCanvas'),thermal.scalar_roundtrip_opd_nm,'signed');
+ drawMap(document.getElementById(prefix==='pulse'?'pulseDisplacementCanvas':'displacementCanvas'),thermal.front_displacement_nm,'signed');
+ drawMap(document.getElementById(prefix==='pulse'?'pulseRearCanvas':'rearCanvas'),thermal.rear_displacement_nm,'signed');
+ for(const [id,values,label] of [[prefix==='pulse'?'pulseOpdCanvas':'opdCanvas',thermal.scalar_roundtrip_opd_nm,'Optical path'],[prefix==='pulse'?'pulseDisplacementCanvas':'displacementCanvas',thermal.front_displacement_nm,'Front displacement'],[prefix==='pulse'?'pulseRearCanvas':'rearCanvas',thermal.rear_displacement_nm,'Rear displacement']]){
+  const flat=values.flat();document.getElementById(id).nextElementSibling.textContent=`${label}: ${Math.min(...flat).toFixed(2)} to ${Math.max(...flat).toFixed(2)} nm`;
+ }
+ drawDeformationProfile(document.getElementById(prefix==='pulse'?'pulseDeformationProfile':'deformationProfile'),x,thermal.front_displacement_nm,thermal.rear_displacement_nm);
 }
 function renderPulseBeam(container,title,fluence,phase,reference,x,y){
  const card=document.createElement('article');card.className='pulse-beam-card';const heading=document.createElement('h3');heading.textContent=title;card.append(heading);
@@ -179,12 +202,20 @@ async function calculateStructured(){
  structuredStatus.textContent='Calculating six Yb:LuAG beams…';structuredStatus.classList.remove('error');
  try{
   const data=Object.fromEntries(new FormData(structuredForm).entries());
+  if(data.solver_mode==='pulsed'){
+   structuredStatus.textContent='Calculating six periodic pulsed beams with the proposal settings above…';
+   await calculatePulseGallery();
+   structuredStatus.textContent='Six pulsed beam shapes calculated below the proposal controls.';
+   document.getElementById('pulseGalleryCard').scrollIntoView({behavior:'smooth',block:'start'});
+   return;
+  }
   const response=await fetch('/api/structured',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
   const r=await response.json();if(!response.ok)throw Error(r.error||'Calculation failed');
   drawMap(document.getElementById('maskCanvas'),r.phase_mask,'phase');
-  drawMap(document.getElementById('densityCanvas'),r.yb_density_entrance_1e26_m3);
-  drawMap(document.getElementById('densityMiddleCanvas'),r.yb_density_middle_1e26_m3);
-  drawMap(document.getElementById('densityXZCanvas'),r.yb_density_xz_1e26_m3);
+  const densitySamples=[...r.yb_density_entrance_1e26_m3.flat(),...r.yb_density_middle_1e26_m3.flat(),...r.yb_density_xz_1e26_m3.flat()].filter(v=>v>0),densityRange={min:Math.min(...densitySamples),max:Math.max(...densitySamples)};
+  drawMap(document.getElementById('densityCanvas'),r.yb_density_entrance_1e26_m3,'density',densityRange);
+  drawMap(document.getElementById('densityMiddleCanvas'),r.yb_density_middle_1e26_m3,'density',densityRange);
+  drawMap(document.getElementById('densityXZCanvas'),r.yb_density_xz_1e26_m3,'density',densityRange);
   drawMap(document.getElementById('pumpCanvas'),r.pump_intensity_W_m2);
   const box=document.getElementById('beamResults');box.replaceChildren();
   const cavity=r.resonator;document.getElementById('resonatorText').textContent=cavity?`Fixed-mode cavity screen: one-direction intracavity ${cavity.intracavity_one_direction_W.toFixed(3)} W, output-coupler ${cavity.output_coupler_power_W.toFixed(3)} W, assumed cavity waist ${(cavity.cavity_waist_m*1e3).toFixed(3)} mm. ${cavity.scope}`:'';
@@ -197,15 +228,9 @@ async function calculateStructured(){
     const figure=document.createElement('figure'),canvas=document.createElement('canvas'),caption=document.createElement('figcaption');
     caption.textContent=label;figure.append(canvas,caption);maps.append(figure);if(kind==='footprint')drawFootprint(canvas,r.yb_density_entrance_1e26_m3,m[key]);else drawMap(canvas,m[key],kind);
    }row.append(maps);
-   const profile=document.createElementNS('http://www.w3.org/2000/svg','svg');profile.setAttribute('viewBox','0 0 560 115');profile.classList.add('profile');drawProfile(profile,m.input_profile,m.output_profile);row.append(profile);box.append(row);
+   const profile=document.createElementNS('http://www.w3.org/2000/svg','svg');profile.setAttribute('viewBox','0 0 560 115');profile.classList.add('profile');drawProfile(profile,m.input_profile,m.output_profile,r.uniform_reference_profiles[name]);row.append(profile);box.append(row);
   }
-  const thermal=r.thermal,thermalMaps=document.getElementById('thermalMaps');
-  thermalMaps.hidden=thermal.status!=='computed';
-  document.getElementById('thermalText').textContent=thermal.status==='computed'?`Gaussian reference: ${thermal.input_heat_W.toFixed(3)} W heat, disk ${thermal.disk_temperature_min_C.toFixed(2)}–${thermal.disk_temperature_max_C.toFixed(2)} °C, energy balance error ${thermal.balance_error_W.toExponential(1)} W. ${thermal.scope}`:`Thermal solve unavailable: ${thermal.reason}`;
-  if(thermal.status==='computed'){
-   drawMap(document.getElementById('opdCanvas'),thermal.scalar_roundtrip_opd_nm);
-   drawMap(document.getElementById('displacementCanvas'),thermal.front_displacement_nm);
-  }
+  renderThermal(r.thermal,r.x_mm,'cw');
   document.getElementById('structuredScope').textContent=r.scope;
   structuredStatus.textContent='Six Yb:LuAG beams calculated.';
  }catch(e){structuredStatus.textContent=e.message;structuredStatus.classList.add('error')}
@@ -220,12 +245,8 @@ async function calculatePulsed(){
   const r=await response.json();if(!response.ok)throw Error(r.error||'Pulse calculation failed');
   document.getElementById('pulseMetrics').innerHTML=metric('Yb doping',r.yb_at_percent.toFixed(0)+' at.%')+metric('Input energy',(r.input_energy_J*1e9).toFixed(3)+' nJ')+metric('Disk exit energy',(r.disk_output_energy_J*1e9).toFixed(3)+' nJ')+metric('Energy gain',(r.disk_output_energy_J/r.input_energy_J).toFixed(2)+'×')+metric('Stretched pulse',r.amplifier_fwhm_ps_assumed.toFixed(2)+' ps')+metric('Stretch factor',r.stretch_factor.toFixed(1)+'×')+metric('Pump passes',String(r.pump_passes))+metric('Peak pump intensity',r.peak_pump_intensity_kW_cm2.toFixed(2)+' kW/cm²')+metric('Grid-mean pre-pulse excitation',(100*r.mean_excited_fraction_before_pulse).toFixed(2)+'%')+metric('Convergence',r.cycles+' cycles');
   document.getElementById('pulseHeatMetrics').innerHTML=metric('Pump absorbed',r.cycle_average_pump_absorbed_W.toFixed(3)+' W')+metric('Signal gain',r.cycle_average_signal_gain_W.toFixed(6)+' W')+metric('Escaping fluorescence',r.cycle_average_escaping_fluorescence_W.toFixed(3)+' W')+metric('Heat upper bound / assumption',r.cycle_average_heat_W_upper_or_assumed.toFixed(3)+' W');
-  const pulseThermal=r.thermal,pulseThermalMaps=document.getElementById('pulseThermalMaps');pulseThermalMaps.hidden=pulseThermal.status!=='computed';
-  document.getElementById('pulseThermalText').textContent=pulseThermal.status==='computed'?`Disk ${pulseThermal.disk_temperature_min_C.toFixed(2)}–${pulseThermal.disk_temperature_max_C.toFixed(2)} °C. ${pulseThermal.scope}`:`Thermal assembly outside supported range: ${pulseThermal.reason}`;
-  if(pulseThermal.status==='computed'){
-   drawMap(document.getElementById('pulseOpdCanvas'),pulseThermal.scalar_roundtrip_opd_nm);
-   drawMap(document.getElementById('pulseDisplacementCanvas'),pulseThermal.front_displacement_nm);
-  }
+  renderThermal(r.thermal,r.x_mm,'pulse');
+  drawMap(document.getElementById('pulseDensityCanvas'),r.yb_density_m3[0],'density');
   const maps=document.getElementById('pulseMaps');maps.replaceChildren();
   renderPulseBeam(maps,'Incoming beam at disk',r.input_fluence_J_m2,r.input_phase,r.input_fluence_J_m2,r.x_mm,r.y_mm);
   renderPulseBeam(maps,'Outgoing beam at observation plane',r.output_fluence_J_m2,r.output_phase,r.uniform_isothermal_output_fluence_J_m2,r.x_mm,r.y_mm);
@@ -235,5 +256,23 @@ async function calculatePulsed(){
  }catch(e){pulsedStatus.textContent=e.message;pulsedStatus.classList.add('error')}
 }
 pulsedForm.addEventListener('submit',e=>{e.preventDefault();calculatePulsed()});calculatePulsed();
+async function calculatePulseGallery(){
+ pulsedStatus.textContent='Calculating six pulsed shapes; this can take about a minute…';pulsedStatus.classList.remove('error');
+ const data=Object.fromEntries(new FormData(pulsedForm).entries());
+ try{
+  const response=await fetch('/api/pulse-gallery',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+  const r=await response.json();if(!response.ok)throw Error(r.error||'Six-shape pulse calculation failed');
+  const card=document.getElementById('pulseGalleryCard'),box=document.getElementById('pulseGalleryResults');card.hidden=false;box.replaceChildren();
+  document.getElementById('pulseGalleryScope').textContent=r.scope;
+  for(const [name,m] of Object.entries(r.modes)){
+   renderPulseBeam(box,`${name} · incoming ${String((m.input_energy_J*1e9).toFixed(2))} nJ`,m.input_fluence_J_m2,m.input_phase,m.input_fluence_J_m2,r.x_mm,r.y_mm);
+   renderPulseBeam(box,`${name} · outgoing plane (disk exit ${(m.disk_output_energy_J*1e9).toFixed(2)} nJ)`,m.output_fluence_J_m2,m.output_phase,m.uniform_output_fluence_J_m2,r.x_mm,r.y_mm);
+  }
+  pulsedStatus.textContent='Six periodic pulsed shapes calculated.';
+  card.scrollIntoView({behavior:'smooth',block:'start'});
+  return r;
+ }catch(e){pulsedStatus.textContent=e.message;pulsedStatus.classList.add('error');throw e}
+}
+document.getElementById('calculateAllPulsed').addEventListener('click',()=>{calculatePulseGallery().catch(()=>{})});
 </script>
 </body></html>

@@ -133,6 +133,10 @@ def calculate_structured(data):
         fluorescence_escape_yield=number(data, "escape_yield", 0, 1),
         solver_mode=mode)
     result = simulate_structured_gallery(YbLuAGMaterial(), settings)
+    ideal = (result if settings.cluster_contrast == 0 else
+             simulate_structured_gallery(YbLuAGMaterial(),
+                                         replace(settings, cluster_contrast=0.0),
+                                         compute_thermal=False))
     grid = result["grid"]
     return {
         "material": "Yb:LuAG", "solver_mode": mode,
@@ -153,10 +157,13 @@ def calculate_structured(data):
         "modes": {name: {key: (value.tolist() if isinstance(value, np.ndarray) else value)
                          for key, value in case.items()}
                   for name, case in result["outcomes"].items()},
+        "uniform_reference_profiles": {
+            name: case["output_profile"].tolist()
+            for name, case in ideal["outcomes"].items()},
     }
 
 
-def calculate_pulsed(data):
+def calculate_pulsed(data, *, compute_thermal=True):
     if not isinstance(data, dict):
         raise ValueError("request must be an object")
     from hoyag.structured_beam_gallery import PHASE_MASKS, BEAM_NAMES
@@ -214,10 +221,11 @@ def calculate_pulsed(data):
     result = simulate_pulsed_seed(
         material,
         settings, beam,
-        *pulse_args, pump_passes=pump_passes)
+        *pulse_args, pump_passes=pump_passes, compute_thermal=compute_thermal)
     reference = (result if settings.cluster_contrast == 0 else
                  simulate_pulsed_seed(material, replace(settings, cluster_contrast=0.0),
-                                      beam, *pulse_args, pump_passes=pump_passes))
+                                      beam, *pulse_args, pump_passes=pump_passes,
+                                      compute_thermal=False))
     wavelength_nm = proposal["optics"]["signal_wavelength_nm"]
     spectral_fwhm_nm = (wavelength_nm * 1e-9)**2 / 299792458.0 * (
         0.441 / (source_fwhm_fs * 1e-15)) * 1e9
@@ -242,6 +250,35 @@ def calculate_pulsed(data):
     }
 
 
+def calculate_pulse_gallery(data):
+    """Six independent seeded pulse shapes with one Gaussian cooler reference."""
+    from hoyag.structured_beam_gallery import BEAM_NAMES
+    if not isinstance(data, dict):
+        raise ValueError("request must be an object")
+    cases = {}
+    thermal = None
+    coordinates = None
+    for index, beam in enumerate(BEAM_NAMES):
+        result = calculate_pulsed({**data, "selected_beam": beam},
+                                  compute_thermal=index == 0)
+        if index == 0:
+            thermal = result["thermal"]
+            coordinates = (result["x_mm"], result["y_mm"])
+        cases[beam] = {
+            "input_fluence_J_m2": result["input_fluence_J_m2"],
+            "output_fluence_J_m2": result["output_fluence_J_m2"],
+            "uniform_output_fluence_J_m2": result["uniform_isothermal_output_fluence_J_m2"],
+            "input_phase": result["input_phase"],
+            "output_phase": result["output_phase"],
+            "input_energy_J": result["input_energy_J"],
+            "disk_output_energy_J": result["disk_output_energy_J"],
+        }
+    return {"material": "12 at.% Yb:LuAG", "regime": "periodic seeded pulse",
+            "x_mm": coordinates[0], "y_mm": coordinates[1], "modes": cases,
+            "thermal": thermal,
+            "scope": "Six independent pulse-shape calculations sharing pump, crystal geometry, and settings. Each shape has its own converged periodic population; the Gaussian heat solve is the common reference, not a six-beam simultaneous thermal load. Dashed lines use a separate uniform-Yb calculation. Thermal optical feedback is omitted."}
+
+
 class Handler(BaseHTTPRequestHandler):
     def respond(self, status, body, content_type):
         self.send_response(status)
@@ -259,7 +296,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         endpoint = urlparse(self.path).path
-        if endpoint not in ("/api/calculate", "/api/structured", "/api/pulsed"):
+        if endpoint not in ("/api/calculate", "/api/structured", "/api/pulsed", "/api/pulse-gallery"):
             self.respond(404, b"Not found", "text/plain; charset=utf-8")
             return
         try:
@@ -270,6 +307,7 @@ class Handler(BaseHTTPRequestHandler):
                 raise ValueError("invalid request size")
             payload = json.loads(self.rfile.read(length))
             response = (calculate_structured(payload) if endpoint == "/api/structured"
+                        else calculate_pulse_gallery(payload) if endpoint == "/api/pulse-gallery"
                         else calculate_pulsed(payload) if endpoint == "/api/pulsed"
                         else calculate(payload))
             status = 200

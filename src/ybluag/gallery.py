@@ -22,7 +22,7 @@ from hoyag.thermal import DiskThermalMesh
 
 from .fluorescence import fluorescence_spectrum
 from .model import YbLuAGMaterial
-from .assembly import solve_yb_assembly
+from .assembly import solve_yb_assembly, solve_yb_cooler_temperature
 from .pulsed import propagate_pulse
 from .multipass_pump import steady_multipass_pump, transport_multipass_pump
 
@@ -76,6 +76,60 @@ def _assembly_configuration(material: YbLuAGMaterial, thickness_m: float):
         configuration["thermal"]["disk"]["conductivity_W_mK"] = 7.2
         configuration["sources"]["conductivity"] = "Korner et al. 2012 12 at.% crystal parameter"
     return configuration
+
+
+def _thermal_payload(assembly, scope: str):
+    screens = assembly.screens
+    return {
+        "status": "computed", "material_range_valid": True,
+        "input_heat_W": assembly.temperature.input_heat_W,
+        "balance_error_W": assembly.temperature.balance_error_W,
+        "disk_temperature_min_C": float(np.min(assembly.temperature.disk_temperature_K) - 273.15),
+        "disk_temperature_max_C": float(np.max(assembly.temperature.disk_temperature_K) - 273.15),
+        "scalar_roundtrip_opd_nm": screens.mean_roundtrip_opd_m * 1e9,
+        "front_displacement_nm": screens.front_uz_m * 1e9,
+        "rear_displacement_nm": screens.rear_uz_m * 1e9,
+        "scope": scope + " Within the stated 20–26.85 °C material range.",
+    }
+
+
+def _thermal_or_design_reference(mesh, heat_polar, grid, configuration, scope):
+    try:
+        return _thermal_payload(solve_yb_assembly(mesh, heat_polar, grid, configuration),
+                                scope)
+    except ValueError as exc:
+        if "outside 293.15–300 K" not in str(exc):
+            raise
+    screen = solve_yb_cooler_temperature(mesh, heat_polar, configuration)
+    coolant = configuration["thermal"]["coolant_temperature_K"]
+    max_rise = float(np.max(screen.disk_temperature_K) - coolant)
+    if max_rise <= 0:
+        raise ValueError("cooler temperature screen has no positive rise")
+    # Scale the *same spatial heat map* into the proposal's 5 K design range.
+    # Mechanical deformation is solved only for this in-range design case.
+    factor = min(1.0, 5.0 / max_rise)
+    design = solve_yb_assembly(mesh, heat_polar * factor, grid, configuration)
+    payload = _thermal_payload(design, scope)
+    payload.update(
+        status="design_reference",
+        material_range_valid=False,
+        actual_heat_W=float(screen.input_heat_W),
+        actual_constant_property_max_C=float(np.max(screen.disk_temperature_K) - 273.15),
+        design_heat_scale=factor,
+        scope=(scope + " The 5 K surfaces are an in-range design reference. "
+               "Thermal optical feedback is not applied to the beam fields."))
+    return payload
+
+
+def _conservative_heat_polar(heat_slices, grid, mesh):
+    """Preserve integrated heat after Cartesian-to-polar interpolation."""
+    polar = _cartesian_to_polar(heat_slices, grid, mesh)
+    target_W = float(np.sum(heat_slices * np.diff(mesh.z_edges_m)[:, None, None]) *
+                     grid.dx * grid.dy)
+    mapped_W = float(np.sum(polar * mesh.volumes_m3))
+    if not np.isfinite(mapped_W) or mapped_W <= 0 or target_W <= 0:
+        raise ValueError("thermal heat mapping requires positive finite power")
+    return polar * (target_W / mapped_W)
 
 
 def _modal_cw_background(material, settings, grid, density_scale, pump):
@@ -150,7 +204,8 @@ def _modal_cw_background(material, settings, grid, density_scale, pump):
 
 
 def simulate_structured_gallery(material: YbLuAGMaterial,
-                                settings: YbGallerySettings):
+                                settings: YbGallerySettings, *,
+                                compute_thermal: bool = True):
     """Calculate six fields with spatial Yb concentration and local CW rates.
 
     In weak mode the pump-only population is reused for each field. Saturated
@@ -248,7 +303,7 @@ def simulate_structured_gallery(material: YbLuAGMaterial,
             reference_heat_slices = (modal["heat_W_m3_by_slice"] if modal is not None
                                      else np.stack(heat_slices))
     thermal = {"status": "not_requested", "reason": "Select saturated or modal CW to calculate the copper cooler and scalar thermoelastic screen."}
-    if settings.solver_mode in ("saturated_cw", "modal_cw"):
+    if compute_thermal and settings.solver_mode in ("saturated_cw", "modal_cw"):
         nominal_thickness = 100e-6 if material.yb_at_percent == 12 else 150e-6
         if not np.isclose(settings.thickness_m, nominal_thickness, atol=1e-12):
             thermal = {"status": "out_of_scope", "reason": f"The assembly configuration is for a {nominal_thickness * 1e6:g} µm disk."}
@@ -256,19 +311,11 @@ def simulate_structured_gallery(material: YbLuAGMaterial,
             configuration = _assembly_configuration(material, settings.thickness_m)
             mesh = DiskThermalMesh.disk(nr=8, nz=settings.z_steps, nphi=12,
                                         radius_m=5e-3, thickness_m=settings.thickness_m)
-            heat_polar = _cartesian_to_polar(reference_heat_slices, grid, mesh)
+            heat_polar = _conservative_heat_polar(reference_heat_slices, grid, mesh)
             try:
-                assembly = solve_yb_assembly(mesh, heat_polar, grid, configuration)
-                screens = assembly.screens
-                thermal = {
-                    "status": "computed", "input_heat_W": assembly.temperature.input_heat_W,
-                    "balance_error_W": assembly.temperature.balance_error_W,
-                    "disk_temperature_min_C": float(np.min(assembly.temperature.disk_temperature_K) - 273.15),
-                    "disk_temperature_max_C": float(np.max(assembly.temperature.disk_temperature_K) - 273.15),
-                    "scalar_roundtrip_opd_nm": (screens.mean_roundtrip_opd_m * 1e9),
-                    "front_displacement_nm": screens.front_uz_m * 1e9,
-                    "scope": "Gaussian CW reference heat; generic C10100 copper cooler; scalar thermal and surface-deformation phase. LuAG photoelastic tensor is unavailable."
-                }
+                thermal = _thermal_or_design_reference(
+                    mesh, heat_polar, grid, configuration,
+                    "Gaussian CW heat on generic C10100 copper; scalar optical path and surface deformation; photoelasticity omitted.")
             except ValueError as exc:
                 thermal = {"status": "out_of_scope", "reason": str(exc)}
     if modal is not None:
@@ -292,7 +339,8 @@ def simulate_structured_gallery(material: YbLuAGMaterial,
 def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
                          selected_beam: str, seed_energy_J: float,
                          seed_fwhm_s: float, repetition_rate_Hz: float,
-                         signal_traversals: int, pump_passes: int = 10):
+                         signal_traversals: int, pump_passes: int = 10,
+                         *, compute_thermal: bool = True):
     """Periodic pulsed seed with fixed pump-only CW profile and ideal relays.
 
     The population is iterated from pulse to pulse. During the short seed the
@@ -380,22 +428,16 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
     fluorescence_W = float(np.sum(fluorescence) * pixel_area)
     nominal_thickness = 100e-6 if material.yb_at_percent == 12 else 150e-6
     thermal = {"status": "out_of_scope", "reason": f"The assembly configuration is for a {nominal_thickness * 1e6:g} µm disk."}
-    if np.isclose(settings.thickness_m, nominal_thickness, atol=1e-12):
+    if not compute_thermal:
+        thermal = {"status": "not_requested", "reason": "Thermal calculation was shared from the Gaussian reference case."}
+    if compute_thermal and np.isclose(settings.thickness_m, nominal_thickness, atol=1e-12):
         configuration = _assembly_configuration(material, settings.thickness_m)
         mesh = DiskThermalMesh.disk(nr=8, nz=settings.z_steps, nphi=12,
                                     radius_m=5e-3, thickness_m=settings.thickness_m)
         try:
-            assembly = solve_yb_assembly(mesh, _cartesian_to_polar(heat_slices, grid, mesh),
-                                         grid, configuration)
-            thermal = {
-                "status": "computed", "input_heat_W": assembly.temperature.input_heat_W,
-                "balance_error_W": assembly.temperature.balance_error_W,
-                "disk_temperature_min_C": float(np.min(assembly.temperature.disk_temperature_K) - 273.15),
-                "disk_temperature_max_C": float(np.max(assembly.temperature.disk_temperature_K) - 273.15),
-                "scalar_roundtrip_opd_nm": assembly.screens.mean_roundtrip_opd_m * 1e9,
-                "front_displacement_nm": assembly.screens.front_uz_m * 1e9,
-                "scope": "Fixed pump-profile periodic heat estimate on generic C10100 copper; scalar phase only. Photoelasticity omitted."
-            }
+            thermal = _thermal_or_design_reference(
+                mesh, _conservative_heat_polar(heat_slices, grid, mesh), grid, configuration,
+                "Fixed pump-profile periodic heat on generic C10100 copper; scalar optical path and surface deformation; photoelasticity omitted.")
         except ValueError as exc:
             thermal = {"status": "out_of_scope", "reason": str(exc)}
     fluence_out = np.trapezoid(signal, time, axis=0)

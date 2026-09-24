@@ -17,6 +17,7 @@ class YbAssemblyResult:
     temperature: object
     displacement: object
     screens: HotDiskScreens
+    material_range_valid: bool = True
     scope: str = ("steady linear thermal and isotropic elastic assembly; "
                   "host thermo-optic proxy; LuAG photoelasticity omitted")
 
@@ -70,18 +71,11 @@ def scalar_yb_screens(fem, displacement, mesh: DiskThermalMesh,
                           front.reshape(shape), rear.reshape(shape), wavelength_m)
 
 
-def solve_yb_assembly(mesh: DiskThermalMesh, heat_W_m3, grid, configuration):
-    """Solve measured-material/assumed-hardware assembly from explicit config.
-
-    A configured room-temperature material is accepted only while the computed
-    disk stays within 293.15–300 K. Above that, doped high-temperature k and
-    thermo-optic data are unavailable and the run is rejected.
-    """
+def solve_yb_cooler_temperature(mesh: DiskThermalMesh, heat_W_m3, configuration):
+    """Linear constant-property copper-cooler screen, before validity check."""
     cfg = configuration
     geometry = cfg["geometry"]
     thermal_cfg = cfg["thermal"]
-    mechanical = cfg["mechanical"]
-    optics = cfg["optics"]
     numerics = cfg["numerics"]
     if (not np.isclose(mesh.r_edges_m[-1], geometry["disk_radius_m"], atol=1e-12, rtol=0)
             or not np.isclose(mesh.z_edges_m[-1], geometry["disk_thickness_m"], atol=1e-12, rtol=0)):
@@ -98,8 +92,23 @@ def solve_yb_assembly(mesh: DiskThermalMesh, heat_W_m3, grid, configuration):
         disk_material=ThermalMaterial(**thermal_cfg["disk"]),
         plate_material=ThermalMaterial(**thermal_cfg["plate"]))
     temperature = solver.steady(heat)
-    if (np.min(temperature.disk_temperature_K) < 293.15 or
-            np.max(temperature.disk_temperature_K) > 300.0):
+    return temperature
+
+
+def solve_yb_assembly(mesh: DiskThermalMesh, heat_W_m3, grid, configuration):
+    """Solve assembly only inside the 293.15–300 K material data range."""
+    cfg = configuration
+    geometry = cfg["geometry"]
+    mechanical = cfg["mechanical"]
+    optics = cfg["optics"]
+    numerics = cfg["numerics"]
+    plate = cooling_plate_mesh(mesh, radius_m=geometry["plate_radius_m"],
+                               thickness_m=geometry["plate_thickness_m"],
+                               nz=numerics["plate_thermal_nz"])
+    temperature = solve_yb_cooler_temperature(mesh, heat_W_m3, cfg)
+    material_range_valid = bool(np.min(temperature.disk_temperature_K) >= 293.15 and
+                                np.max(temperature.disk_temperature_K) <= 300.0)
+    if not material_range_valid:
         raise ValueError("Yb:LuAG disk outside 293.15–300 K assembly-material range")
     fem = DiskPlateMesh.make(
         radius_m=geometry["disk_radius_m"],
@@ -127,4 +136,5 @@ def solve_yb_assembly(mesh: DiskThermalMesh, heat_W_m3, grid, configuration):
         wavelength_m=optics["wavelength_m"],
         dn_dT_K1=optics["dn_dT_K1"],
         reference_temperature_K=optics["reference_temperature_K"])
-    return YbAssemblyResult(temperature, displacement, screens)
+    return YbAssemblyResult(temperature, displacement, screens,
+                            material_range_valid=material_range_valid)

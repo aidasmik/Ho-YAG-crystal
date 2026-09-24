@@ -35,6 +35,14 @@ class YbLuAGPhysicsTests(unittest.TestCase):
                                    result["output_fluence_J_m2"])
         self.assertEqual(len(result["x_mm"]), len(result["output_fluence_J_m2"][0]))
         self.assertEqual(len(result["y_mm"]), len(result["output_fluence_J_m2"]))
+        thermal = result["thermal"]
+        self.assertEqual(thermal["status"], "design_reference")
+        self.assertLessEqual(thermal["disk_temperature_max_C"], 25.01)
+        self.assertGreater(thermal["actual_constant_property_max_C"], 26.85)
+        self.assertAlmostEqual(thermal["actual_heat_W"],
+                               result["cycle_average_heat_W_upper_or_assumed"], places=7)
+        self.assertEqual(np.asarray(thermal["front_displacement_nm"]).shape,
+                         np.asarray(thermal["rear_displacement_nm"]).shape)
         with self.assertRaisesRegex(ValueError, "at least as long"):
             calculate_pulsed({"source_fwhm_fs": 500, "seed_fwhm_ps": 0.3})
 
@@ -62,6 +70,24 @@ class YbLuAGPhysicsTests(unittest.TestCase):
         uniform = np.asarray(result["uniform_isothermal_output_fluence_J_m2"])
         self.assertEqual(actual.shape, uniform.shape)
         self.assertGreater(float(np.max(abs(actual - uniform))), 0)
+
+    def test_six_cw_shapes_include_same_conditions_uniform_reference(self):
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "examples"))
+        from ybluag_app import calculate_structured
+        result = calculate_structured({
+            "solver_mode": "weak_probe", "pump_W": 40, "radius_mm": 0.6,
+            "thickness_um": 150, "signal_W": 1, "waist_mm": 0.408,
+            "distance_m": 0.25, "phase_mask": "none",
+            "phase_strength_rad": np.pi, "density_seed": 17,
+            "cluster_count": 24, "cluster_contrast": 0.27,
+            "escape_yield": 0})
+        self.assertEqual(len(result["modes"]), 6)
+        for name, case in result["modes"].items():
+            self.assertEqual(len(case["output_profile"]),
+                             len(result["uniform_reference_profiles"][name]))
+        self.assertGreater(float(np.max(np.abs(
+            np.asarray(result["modes"]["Gaussian TEM00"]["output_profile"]) -
+            np.asarray(result["uniform_reference_profiles"]["Gaussian TEM00"])))), 0)
 
     def test_yb_gallery_phase_power_and_saturation(self):
         material = YbLuAGMaterial()
