@@ -196,6 +196,14 @@ def _cartesian_to_polar(values, grid: Grid2D, mesh: DiskThermalMesh) -> np.ndarr
     return interp(points).reshape(mesh.shape)
 
 
+def _plane_to_polar(values, grid: Grid2D, mesh: DiskThermalMesh) -> np.ndarray:
+    rr,pp=np.meshgrid(mesh.r_m,mesh.phi_rad,indexing='ij')
+    points=np.column_stack(((rr*np.sin(pp)).ravel(),(rr*np.cos(pp)).ravel()))
+    interp=RegularGridInterpolator((grid.y,grid.x),np.asarray(values,float),
+                                   bounds_error=False,fill_value=0.)
+    return interp(points).reshape(mesh.nr,mesh.nphi)
+
+
 def _hot_solver_context(snapshot: ScientificSnapshot):
     """Load the audited Stage 7 assembly and cavity configuration beside a snapshot."""
     case_dir=Path(str(snapshot.metadata['run_id']))
@@ -226,15 +234,20 @@ def _run_full_seeded_modal(snapshot: ScientificSnapshot, grid: Grid2D,
     Jones screen are recomputed for the generated Ho map. It does not perform a
     cavity eigenfield solve for the externally imposed seed.
     """
-    case,thermal_mesh,cavity,assembly_cfg,geometry=_hot_solver_context(snapshot)
-    x,y=grid.mesh; active=np.hypot(x,y)<=geometry['disk_radius_m']
-    indices=np.flatnonzero(active.ravel())
-    areas=np.full(indices.size,grid.dx*grid.dy)
-    mode_values=np.asarray([np.abs(field.ravel()[indices])**2 for field in seeds.values()])
+    case,thermal_mesh,cavity,assembly_cfg,_geometry=_hot_solver_context(snapshot)
+    # Reuse the audited polar control volumes for the stiff four-manifold ODE.
+    # The optical display grid has far too many sites for a bounded BDF cycle.
+    areas=thermal_mesh.face_areas_m2.ravel()
+    mode_values=np.asarray([_plane_to_polar(np.abs(field)**2,grid,thermal_mesh).ravel()
+                            for field in seeds.values()])
     mode_values/=mode_values@areas[:,None]
-    pump=np.exp(-2*(x.ravel()[indices]**2+y.ravel()[indices]**2)/case['physics']['pump']['waist_m']**2)
+    pump=np.broadcast_to(np.exp(-2*thermal_mesh.r_m[:,None]**2/
+                       case['physics']['pump']['waist_m']**2),
+                       (thermal_mesh.nr,thermal_mesh.nphi)).ravel().copy()
     pump/=float(pump@areas)
-    density_active=density.values_m3.reshape(density.nz,-1)[:,indices]
+    density_active=_cartesian_to_polar(density.values_m3,grid,thermal_mesh).reshape(density.nz,-1)
+    if np.any(density_active<=0):
+        raise ValueError('generated Ho density did not cover every polar control volume')
     params=HoYAGFourLevelParams()
     model=ModalThinDiskLaser(cavity,areas,density_active,mode_values,pump,params=params,
                              mode_labels=tuple(seeds),spontaneous_fraction_per_mode=1e-8)
@@ -245,18 +258,25 @@ def _run_full_seeded_modal(snapshot: ScientificSnapshot, grid: Grid2D,
         raise RuntimeError('full seeded modal solver did not reach a periodic pump state')
     heat,mean_fractions=sample_cycle_heat(model,optical,pump_energy,repetition,
                                           return_mean_fractions=True)
-    heat_cart=np.zeros((density.nz,*grid.shape),float)
-    heat_cart.reshape(density.nz,-1)[:,indices]=heat.heat_W_m3
-    assembly_heat=_cartesian_to_polar(heat_cart,grid,thermal_mesh)
     thermal_assembly=PlateAssembly(thermal_mesh,grid,assembly_cfg)
-    temperature,displacement,screens=thermal_assembly.solve(assembly_heat)
+    temperature,displacement,screens=thermal_assembly.solve(heat.heat_W_m3.reshape(thermal_mesh.shape))
     populations=np.zeros((4,density.nz,*grid.shape),float)
-    populations.reshape(4,density.nz,-1)[:,:,indices]=mean_fractions
+    polar_fractions=mean_fractions.reshape(4,*thermal_mesh.shape)
+    for level in range(4):
+        for iz in range(density.nz):
+            populations[level,iz]=polar_to_cartesian(thermal_mesh,polar_fractions[level,iz],grid,outside=0.)
+    populations=np.clip(populations,0,None)
+    totals=populations.sum(axis=0)
+    np.divide(populations,totals[None],out=populations,where=totals[None]>0)
+    populations*=density.values_m3[None]
+    validate_populations(populations,density.values_m3)
     outcomes={}
     for name,field in seeds.items():
         material=propagate_structured_signal_small_signal(field,grid,populations,density,params=params)
         vector=np.stack((material.field_out,np.zeros_like(material.field_out)),axis=-1)
         vector=apply_jones(vector,screens.inward_jones)
+        vector*=np.exp(1j*np.pi*screens.geometry_roundtrip_opd_m/
+                       float(snapshot.metadata['wavelength_m']))[...,None]
         output_vector=np.asarray([angular_spectrum_propagate(vector[...,pol],grid,
             float(snapshot.metadata['wavelength_m']),settings.post_disk_distance_m)
             for pol in range(2)])

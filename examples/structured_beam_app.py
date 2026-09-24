@@ -15,6 +15,7 @@ import json
 import math
 from pathlib import Path
 import mimetypes
+import shutil
 import sys
 import time
 from urllib.parse import urlparse
@@ -90,19 +91,65 @@ def build_gallery_command(values, output_directory):
     ]
 
 
+def budget_status():
+    ledger = BudgetLedger(ROOT / '.local_runtime' / 'budget.json', Limits())
+    data = ledger._read()
+    used_seconds = sum(float(row['elapsed_s']) for row in data['attempts'])
+    coupled = sum(row.get('category', 'coupled') == 'coupled' for row in data['attempts'])
+    return {
+        'remaining_seconds': max(0., ledger.limits.total_seconds-used_seconds),
+        'coupled_attempts_used': coupled,
+        'coupled_attempts_limit': ledger.limits.max_attempts,
+        'coupled_exhausted': (used_seconds >= ledger.limits.total_seconds or
+                              coupled >= ledger.limits.max_attempts),
+        'active': data['active'] is not None,
+    }
+
+
+def start_new_budget():
+    """Archive the exhausted global ledger after an explicit UI action."""
+    ledger = BudgetLedger(ROOT / '.local_runtime' / 'budget.json', Limits())
+    ledger._acquire()
+    try:
+        data = ledger._read()
+        if data['active'] is not None:
+            raise RuntimeError('a supervised calculation is still active')
+        used_seconds = sum(float(row['elapsed_s']) for row in data['attempts'])
+        coupled = sum(row.get('category', 'coupled') == 'coupled' for row in data['attempts'])
+        if used_seconds < ledger.limits.total_seconds and coupled < ledger.limits.max_attempts:
+            raise RuntimeError('the coupled budget is still available')
+        archive = ledger.path.with_name(
+            f'budget.archived.{time.strftime("%Y%m%d_%H%M%S")}.{uuid.uuid4().hex[:8]}.json')
+        shutil.copy2(ledger.path, archive)
+        from hoyag.local_supervisor import atomic_json
+        atomic_json(ledger.path, {'schema': 1, 'total_seconds': ledger.limits.total_seconds,
+                                  'max_attempts': ledger.limits.max_attempts,
+                                  'attempts': [], 'active': None})
+        return {'archive': str(archive.resolve()), 'status': budget_status()}
+    finally:
+        ledger.release()
+
+
 def run_calculation(values):
     run_id = time.strftime('%Y%m%d_%H%M%S') + '_' + uuid.uuid4().hex[:8]
     output = ROOT / 'results' / 'structured_beams' / 'runs' / run_id
     output.mkdir(parents=True, exist_ok=False)
     execution = output / 'execution.json'
     full_solver = values['solver_mode'] == 'full_seeded_modal'
-    result = run_bounded(
-        build_gallery_command(values, output), cwd=ROOT,
-        log_path=output / 'execution.log', summary_path=execution,
-        ledger=BudgetLedger(ROOT / '.local_runtime' / 'budget.json', Limits()),
-        label=f'interactive_gallery_{run_id}',
-        configured_seconds=900 if full_solver else 180,
-        category='coupled' if full_solver else 'profile')
+    try:
+        result = run_bounded(
+            build_gallery_command(values, output), cwd=ROOT,
+            log_path=output / 'execution.log', summary_path=execution,
+            ledger=BudgetLedger(ROOT / '.local_runtime' / 'budget.json', Limits()),
+            label=f'interactive_gallery_{run_id}',
+            configured_seconds=900 if full_solver else 180,
+            category='coupled' if full_solver else 'profile')
+    except Exception:
+        # A reservation can fail before the worker creates any files. Do not
+        # leave an empty run directory for a rejected calculation.
+        if output.is_dir() and not any(output.iterdir()):
+            output.rmdir()
+        raise
     if result['status'] != 'completed' or result.get('exit_code') != 0:
         raise RuntimeError(json.dumps(result))
     summary = json.loads((output / 'summary.json').read_text())
@@ -137,10 +184,21 @@ class AppHandler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def do_POST(self):
-        if urlparse(self.path).path != '/calculate':
+        endpoint = urlparse(self.path).path
+        if endpoint not in ('/calculate', '/budget/new'):
             self._send_json(404, {'error': 'unknown endpoint'})
             return
         try:
+            if endpoint == '/budget/new':
+                if self.headers.get('Content-Type', '').split(';')[0] != 'application/json':
+                    raise ValueError('JSON content type required')
+                length = int(self.headers.get('Content-Length', '0'))
+                if length <= 0 or length > 1000:
+                    raise ValueError('invalid request body')
+                if json.loads(self.rfile.read(length)) != {'action': 'start_new_budget'}:
+                    raise ValueError('explicit budget action required')
+                self._send_json(200, start_new_budget())
+                return
             length = int(self.headers.get('Content-Length', '0'))
             if length <= 0 or length > 32_000:
                 raise ValueError('request body must be 1–32000 bytes')
@@ -154,10 +212,15 @@ class AppHandler(BaseHTTPRequestHandler):
             values = validate_request(payload)
             self._send_json(200, run_calculation(values))
         except Exception as exc:
-            self._send_json(400, {'error': str(exc)})
+            code = 'budget_exhausted' if str(exc) == 'budget_exhausted' else 'calculation_error'
+            self._send_json(429 if code == 'budget_exhausted' else 400,
+                            {'error': str(exc), 'code': code})
 
     def do_GET(self):
         path = urlparse(self.path).path
+        if path == '/budget/status':
+            self._send_json(200, budget_status())
+            return
         if path == '/':
             path = '/results/structured_beams/index.html'
         target = (ROOT / path.lstrip('/')).resolve()

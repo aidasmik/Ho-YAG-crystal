@@ -422,4 +422,7 @@ four-manifold pump/population saturation cycle, heat, cooling plate,
 thermoelastic displacement, and photoelastic Jones screens for the selected Ho
 map. The six structured inputs are a fixed external seed basis; the solver does
 not update a cavity eigenfield. Full mode is bounded by the local supervisor
-and can take substantially longer.
+and can take substantially longer. After the four coupled attempts are used,
+the calculator offers **Start new bounded compute budget**. Clicking it
+archives the old ledger and starts a new bounded session; restarting the app
+alone does not reset the budget.

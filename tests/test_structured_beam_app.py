@@ -1,7 +1,9 @@
+import json
 from pathlib import Path
 
 import pytest
 
+import examples.structured_beam_app as app
 from examples.structured_beam_app import ROOT, build_gallery_command, validate_request
 
 
@@ -31,3 +33,19 @@ def test_app_validates_custom_calculation_parameters(tmp_path):
 def test_app_rejects_invalid_parameters(payload):
     with pytest.raises(ValueError):
         validate_request(payload)
+
+
+def test_explicit_budget_renewal_archives_the_exhausted_ledger(tmp_path, monkeypatch):
+    monkeypatch.setattr(app, 'ROOT', tmp_path)
+    ledger_path=tmp_path/'.local_runtime'/'budget.json'
+    ledger_path.parent.mkdir()
+    old={'schema':1,'total_seconds':7200,'max_attempts':4,'active':None,
+         'attempts':[{'category':'coupled','elapsed_s':10.} for _ in range(4)]}
+    ledger_path.write_text(json.dumps(old))
+    assert app.budget_status()['coupled_exhausted']
+    reset=app.start_new_budget()
+    assert json.loads(ledger_path.read_text())['attempts']==[]
+    assert json.loads(Path(reset['archive']).read_text())==old
+    assert not app.budget_status()['coupled_exhausted']
+    with pytest.raises(RuntimeError, match='still available'):
+        app.start_new_budget()

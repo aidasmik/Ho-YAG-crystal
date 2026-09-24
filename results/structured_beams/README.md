@@ -57,7 +57,9 @@ pump/population saturation, heat, cooling plate, thermoelastic displacement,
 and photoelasticity are recalculated before each beam is propagated. The six
 input fields remain a fixed external transverse seed basis, so this mode does
 not claim a cavity eigenfield update. It is bounded by the local supervisor
-and may take substantially longer than the weak probe.
+and may take substantially longer than the weak probe. When the four coupled
+slots are used, press **Start new bounded compute budget** in the calculator;
+the old ledger is archived before a fresh bounded session is opened.
 
 The beam overlay is calculated from each input complex field and the generated
 entrance-slice concentration. In this weak-probe model the concentration map
@@ -78,6 +80,6 @@ source/state hashes, and power values are in `summary.json`; complex fields
 and the 3-D Ho map are in the default `fields.npz`. The `vortex+1` example
 also includes its complex fields; the other precomputed masks use
 `--plots-only` and retain plots and summaries. Rerun a selected mask without
-that flag to save its field arrays. The full regression suite passed
-**333 tests** after this addition; see the local regression log for the latest
-run.
+that flag to save its field arrays. The live calculator's full seeded modal
+path completed a bounded default-parameter run on 24 September 2026; each
+new Ho map must be computed separately.

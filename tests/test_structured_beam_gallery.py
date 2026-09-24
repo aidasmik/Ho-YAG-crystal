@@ -5,7 +5,8 @@ import pytest
 
 from hoyag.propagation import Grid2D, optical_power
 from hoyag.structured_beam_gallery import (GallerySettings, nonuniform_density,
-    frozen_populations_on_grid, input_modes, phase_pattern)
+    frozen_populations_on_grid, input_modes, phase_pattern,
+    _cartesian_to_polar, _plane_to_polar)
 from hoyag.seeded_amplifier import apply_phase_modulator
 from hoyag.thermal import DiskThermalMesh
 
@@ -71,3 +72,17 @@ def test_vortex_mask_has_declared_charge_and_invalid_choice_is_rejected():
                                    np.exp(1j*charge*np.arctan2(y,x)))
     with pytest.raises(ValueError,match='phase mask'):
         GallerySettings(phase_mask_name='unknown')
+
+
+def test_full_modal_inputs_use_positive_polar_control_volumes():
+    grid=Grid2D.square(64,12e-3)
+    mesh=DiskThermalMesh.disk(nr=6,nz=3,nphi=8,radius_m=5e-3)
+    density=nonuniform_density(grid,mesh.z_edges_m,5e-3)
+    polar_density=_cartesian_to_polar(density.values_m3,grid,mesh)
+    assert polar_density.shape==mesh.shape
+    assert np.min(polar_density)>0
+    areas=mesh.face_areas_m2.ravel()
+    for field in input_modes(grid).values():
+        sampled=_plane_to_polar(abs(field)**2,grid,mesh).ravel()
+        assert np.isfinite(sampled).all()
+        assert sampled@areas>0

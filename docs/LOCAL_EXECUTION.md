@@ -117,7 +117,9 @@ The `--solver-mode weak_probe` default uses the archived fractions. Set
 pump/saturation cycle, cycle heat, bonded cooling-plate/thermoelastic solve,
 and photoelastic Jones screen for the selected Ho map before propagating the
 six fixed external seed fields. This mode has no cavity eigenfield update and
-is subject to the bounded local supervisor budget.
+is subject to the bounded local supervisor budget. If the four coupled-run
+slots are exhausted, the calculator offers an explicit action to archive the
+old ledger and start a new bounded session.
 Use `--help` for all density, phase-mask, and output-plane parameters.
 Open `results/structured_beams/index.html` in a browser to switch among the
 seven precomputed ideal-mask results for density seed 17. This selector changes
