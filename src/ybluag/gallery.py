@@ -45,6 +45,7 @@ class YbGallerySettings:
     solver_mode: str = "weak_probe"
     fluorescence_escape_yield: float = 0.0
     grid_n: int = 64
+    field_size_m: float = 8e-3
     z_steps: int = 4
 
     def __post_init__(self):
@@ -63,7 +64,9 @@ class YbGallerySettings:
                 self.cluster_count < 2 or self.cluster_count > 64 or
                 self.cluster_radius_min_m <= 0 or
                 self.cluster_radius_max_m < self.cluster_radius_min_m or
-                self.grid_n not in (64, 96) or not 1 <= self.z_steps <= 16):
+                self.grid_n not in (64, 96) or
+                not 8e-3 <= self.field_size_m <= 16e-3 or
+                not 1 <= self.z_steps <= 16):
             raise ValueError("invalid structured-gallery settings")
 
 
@@ -205,14 +208,17 @@ def _modal_cw_background(material, settings, grid, density_scale, pump):
 
 def simulate_structured_gallery(material: YbLuAGMaterial,
                                 settings: YbGallerySettings, *,
+                                selected_beam: str = "Gaussian TEM00",
                                 compute_thermal: bool = True):
-    """Calculate six fields with spatial Yb concentration and local CW rates.
+    """Calculate one selected field with spatial Yb concentration and local CW rates.
 
     In weak mode the pump-only population is reused for each field. Saturated
     mode recomputes the two-manifold population from each signal intensity.
     The signal is transported coherently and diffracted between slices.
     """
-    grid = Grid2D.square(settings.grid_n, 8e-3)
+    if selected_beam not in BEAM_NAMES:
+        raise ValueError("unknown selected beam")
+    grid = Grid2D.square(settings.grid_n, settings.field_size_m)
     common = GallerySettings(mean_ho_density_m3=material.number_density_m3,
                              density_seed=settings.density_seed,
                              cluster_count=settings.cluster_count,
@@ -239,7 +245,7 @@ def simulate_structured_gallery(material: YbLuAGMaterial,
              if settings.solver_mode == "modal_cw" else None)
     outcomes = {}
     reference_heat_slices = None
-    for name in BEAM_NAMES:
+    for name in (selected_beam,):
         before = seeds[name]
         field = before * np.exp(1j * phase)
         field_in = field.copy()
@@ -273,7 +279,10 @@ def simulate_structured_gallery(material: YbLuAGMaterial,
                 emitted = (material.number_density_m3 * scale * beta /
                            material.lifetime_s * settings.fluorescence_escape_yield *
                            fluorescence_energy * dz)
-            heat_sheet = (pump_step - pump_next) - (abs(field_next)**2 - signal) - emitted
+            # The weak probe does not deplete inversion, so its gain cannot be
+            # subtracted from the pump-only heat balance.
+            heat_sheet = ((pump_step - pump_next) - emitted if settings.solver_mode == "weak_probe"
+                          else (pump_step - pump_next) - (abs(field_next)**2 - signal) - emitted)
             heat += heat_sheet
             heat_slices.append(heat_sheet / dz)
             beta_sum += beta
@@ -296,14 +305,14 @@ def simulate_structured_gallery(material: YbLuAGMaterial,
             "output_power_W": optical_power(field, grid),
             "mean_excited_fraction": float(np.mean(beta_sum / settings.z_steps)),
             "pump_absorbed_W": float(np.sum(pump - pump_step) * grid.dx * grid.dy),
-            "net_heat_W_upper_or_assumed": (float(np.sum(heat) * grid.dx * grid.dy)
-                                            if settings.solver_mode == "saturated_cw" else None),
+            "net_heat_W_upper_or_assumed": float(
+                np.sum(modal["heat_W_m3_by_slice"]) * dz * grid.dx * grid.dy
+                if modal is not None else np.sum(heat) * grid.dx * grid.dy),
         }
-        if name == "Gaussian TEM00":
-            reference_heat_slices = (modal["heat_W_m3_by_slice"] if modal is not None
-                                     else np.stack(heat_slices))
-    thermal = {"status": "not_requested", "reason": "Select saturated or modal CW to calculate the copper cooler and scalar thermoelastic screen."}
-    if compute_thermal and settings.solver_mode in ("saturated_cw", "modal_cw"):
+        reference_heat_slices = (modal["heat_W_m3_by_slice"] if modal is not None
+                                 else np.stack(heat_slices))
+    thermal = {"status": "not_requested", "reason": "Thermal calculation disabled."}
+    if compute_thermal:
         nominal_thickness = 100e-6 if material.yb_at_percent == 12 else 150e-6
         if not np.isclose(settings.thickness_m, nominal_thickness, atol=1e-12):
             thermal = {"status": "out_of_scope", "reason": f"The assembly configuration is for a {nominal_thickness * 1e6:g} µm disk."}
@@ -315,7 +324,10 @@ def simulate_structured_gallery(material: YbLuAGMaterial,
             try:
                 thermal = _thermal_or_design_reference(
                     mesh, heat_polar, grid, configuration,
-                    "Gaussian CW heat on generic C10100 copper; scalar optical path and surface deformation; photoelasticity omitted.")
+                    ("Fixed Gaussian cavity heat" if modal is not None else
+                     "Pump-only weak-probe heat" if settings.solver_mode == "weak_probe" else
+                     f"{selected_beam} saturated-CW heat") +
+                    " on generic C10100 copper; scalar optical path and surface deformation; photoelasticity omitted.")
             except ValueError as exc:
                 thermal = {"status": "out_of_scope", "reason": str(exc)}
     if modal is not None:
@@ -326,13 +338,13 @@ def simulate_structured_gallery(material: YbLuAGMaterial,
             "thermal": thermal,
             "resonator": modal,
             "fluorescence_escape_yield_assumed": settings.fluorescence_escape_yield,
-            "scope": ("Six separate CW single-pass Yb:LuAG calculations. The clustered Yb map is "
+            "scope": ("One selected CW single-pass Yb:LuAG calculation. The clustered Yb map is "
                       "synthetic, not a measured crystal. The weak probe does not deplete "
                       "inversion; saturated CW includes local signal depletion. Modal CW "
                       "uses one fixed Gaussian cavity background and probes each shape "
-                      "without depletion. Heat is reported only for the saturated CW "
-                      "signal pass. Saturated and modal CW solve a Gaussian "
-                      "reference copper-cooled assembly within its material range. Free-space diffraction "
+                      "without depletion. Weak-probe heat is a pump-only estimate; saturated CW heat includes signal extraction. "
+                      "Modal CW uses its fixed Gaussian cavity heat. All modes screen a "
+                      "copper-cooled assembly within its material range. Free-space diffraction "
                       "follows the disk. Fluorescence escape yield is assumed by the user.")}
 
 
@@ -356,7 +368,7 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
             isinstance(pump_passes, bool) or not isinstance(pump_passes, int) or
             not 1 <= pump_passes <= 48):
         raise ValueError("invalid pulsed seed settings")
-    grid = Grid2D.square(settings.grid_n, 8e-3)
+    grid = Grid2D.square(settings.grid_n, settings.field_size_m)
     common = GallerySettings(mean_ho_density_m3=material.number_density_m3,
                              density_seed=settings.density_seed,
                              cluster_count=settings.cluster_count,

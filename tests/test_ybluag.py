@@ -71,23 +71,29 @@ class YbLuAGPhysicsTests(unittest.TestCase):
         self.assertEqual(actual.shape, uniform.shape)
         self.assertGreater(float(np.max(abs(actual - uniform))), 0)
 
-    def test_six_cw_shapes_include_same_conditions_uniform_reference(self):
+    def test_selected_cw_shape_includes_uniform_reference_and_cooler(self):
         sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "examples"))
         from ybluag_app import calculate_structured
         result = calculate_structured({
-            "solver_mode": "weak_probe", "pump_W": 40, "radius_mm": 0.6,
+            "solver_mode": "weak_probe", "selected_beam": "Helical LG(0,+1)",
+            "pump_W": 40, "radius_mm": 0.6,
             "thickness_um": 150, "signal_W": 1, "waist_mm": 0.408,
             "distance_m": 0.25, "phase_mask": "none",
             "phase_strength_rad": np.pi, "density_seed": 17,
             "cluster_count": 24, "cluster_contrast": 0.27,
             "escape_yield": 0})
-        self.assertEqual(len(result["modes"]), 6)
+        self.assertEqual(list(result["modes"]), ["Helical LG(0,+1)"])
+        self.assertGreater(max(result["x_mm"]), 5)
+        self.assertLess(min(result["x_mm"]), -5)
+        self.assertIn(result["thermal"]["status"], ("computed", "design_reference"))
         for name, case in result["modes"].items():
             self.assertEqual(len(case["output_profile"]),
                              len(result["uniform_reference_profiles"][name]))
         self.assertGreater(float(np.max(np.abs(
-            np.asarray(result["modes"]["Gaussian TEM00"]["output_profile"]) -
-            np.asarray(result["uniform_reference_profiles"]["Gaussian TEM00"])))), 0)
+            np.asarray(result["modes"]["Helical LG(0,+1)"]["output_profile"]) -
+            np.asarray(result["uniform_reference_profiles"]["Helical LG(0,+1)"])))), 0)
+        self.assertEqual(np.asarray(result["uniform_reference_intensity"]).shape,
+                         np.asarray(result["modes"]["Helical LG(0,+1)"]["output_intensity"]).shape)
 
     def test_yb_gallery_phase_power_and_saturation(self):
         material = YbLuAGMaterial()
@@ -100,7 +106,7 @@ class YbLuAGPhysicsTests(unittest.TestCase):
         b = vortex["outcomes"]["Gaussian TEM00"]
         np.testing.assert_allclose(a["input_intensity"], b["input_intensity"], rtol=1e-13)
         self.assertAlmostEqual(a["disk_output_power_W"], a["output_power_W"], places=10)
-        self.assertIsNone(a["net_heat_W_upper_or_assumed"])
+        self.assertGreater(a["net_heat_W_upper_or_assumed"], 0)
         saturated = simulate_structured_gallery(material, YbGallerySettings(
             **base, solver_mode="saturated_cw"))
         self.assertLess(saturated["outcomes"]["Gaussian TEM00"]["disk_output_power_W"],
@@ -137,7 +143,7 @@ class YbLuAGPhysicsTests(unittest.TestCase):
         self.assertGreater(resonator["small_signal_roundtrip_log_margin"], 0)
         self.assertGreater(resonator["output_coupler_power_W"], 0)
         self.assertLess(abs(resonator["roundtrip_log_residual"]), 1e-8)
-        self.assertIsNone(result["outcomes"]["Gaussian TEM00"]["net_heat_W_upper_or_assumed"])
+        self.assertGreater(result["outcomes"]["Gaussian TEM00"]["net_heat_W_upper_or_assumed"], 0)
 
     def test_pulse_density_scaling_changes_gain(self):
         material = YbLuAGMaterial()
