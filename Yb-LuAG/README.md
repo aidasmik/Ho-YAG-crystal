@@ -8,10 +8,22 @@ On Windows, from the repository root in Command Prompt:
     "C:\Users\Aidas\AppData\Local\Programs\Python\Python311\python.exe" examples\ybluag_app.py
 
 Open <http://127.0.0.1:8781/>. This is a separate Yb:LuAG app from the
-Ho:YAG structured-beam calculator on port 8780. It shows a fixed 20 C,
-10 at.% CW single-pass calculation, reconstructed model cross sections, and
-an approximate output-coupler design screen. It does not represent a coupled
-thermal/resonator prediction or a Yb:YAG material model.
+Ho:YAG structured-beam calculator on port 8780. It provides the same six
+structured seed shapes, ideal phase masks, synthetic clustered dopant maps,
+irradiance/phase/side-profile views, and output-plane diffraction. Three CW
+options are available: pump-only weak probe, a fixed Gaussian cavity-mode
+background with separate weak probes, and a signal-saturated single pass.
+The pulse section evolves the two-manifold population over a periodic seed
+train, supports ideal relayed signal traversals, and reports a cycle-average
+first-law heat estimate using a fixed pump profile and declared fluorescence
+escape yield. A separate room-temperature copper-cooler and scalar
+thermoelastic reference is calculated for CW or pulsed heat only when the disk
+stays within the material data's 293.15–300 K range. It omits LuAG
+photoelastic birefringence, which lacks a verified tensor.
+The top section retains the reconstructed cross-section plot and approximate
+output-coupler design screen. All spectra are figure-guided reconstructions,
+and cavity geometry and cooling boundary values are assumptions, not a
+validated device prediction. This is a Yb:LuAG, not a Yb:YAG, material model.
 
 Physics-based Yb:LuAG material data for thin-disk laser, amplifier, resonator, thermal, elastic-deformation, and phase-propagation simulations.
 

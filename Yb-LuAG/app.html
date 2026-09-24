@@ -8,18 +8,24 @@
   body{max-width:1200px;margin:auto;padding:24px}h1{margin:0 0 5px}p{line-height:1.5;color:#c4d0df}
   a{color:#8ac9ff}.layout{display:grid;grid-template-columns:290px 1fr;gap:22px}
   form,.card{background:#182436;border:1px solid #36465c;border-radius:11px;padding:18px}
-  label{display:block;margin:11px 0 4px}input,button{box-sizing:border-box;width:100%;padding:8px;font:inherit;border:1px solid #61748d;border-radius:6px;background:#101927;color:#fff}
+  label{display:block;margin:11px 0 4px}input,select,button{box-sizing:border-box;width:100%;padding:8px;font:inherit;border:1px solid #61748d;border-radius:6px;background:#101927;color:#fff}
   button{background:#2075b4;font-weight:700;cursor:pointer;margin-top:18px}button:disabled{opacity:.6}
   .cards{display:grid;gap:15px}.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:12px}
   .metric{padding:10px;border-radius:7px;background:#111b2a}.metric strong{display:block;font-size:1.3rem;color:#97d5ff}
   svg{width:100%;height:auto;background:#111b2a;border-radius:7px}small{color:#abbcd1}
   #status{min-height:1.5em;color:#a9e5bf}.error{color:#ffaaaa!important}
+  .beam-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+  .beam-grid figure{margin:0;min-width:0}.beam-grid canvas{width:100%;aspect-ratio:1;background:#101927;image-rendering:pixelated}
+  .beam-grid figcaption{font-size:12px;color:#b8c9df}.beam-row{border-top:1px solid #36465c;padding-top:14px;margin-top:16px}
+  .beam-row h3{margin:0 0 6px}.profile{width:100%;height:115px}
+  [hidden]{display:none!important}
+  @media(max-width:700px){.beam-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
   @media(max-width:760px){.layout{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 <h1>Yb:LuAG local calculator</h1>
-<p>Ytterbium-doped <strong>lutetium aluminum garnet</strong>. This is the separate 10 at.% room-temperature CW material model and output-coupler design screen. <a href="http://127.0.0.1:8780/results/structured_beams/index.html">Ho:YAG structured-beam app</a></p>
+<p>Ytterbium-doped <strong>lutetium aluminum garnet</strong>. Separate 10 at.% room-temperature CW, structured-beam, cavity-screen, and periodic-seed calculations. <a href="http://127.0.0.1:8780/results/structured_beams/index.html">Ho:YAG structured-beam app</a></p>
 <div class="layout">
 <form id="form">
   <label>Pump wavelength (nm)<input name="pump_nm" type="number" min="880" max="1150" step="0.5" value="938" required></label>
@@ -36,6 +42,59 @@
   <section class="card"><h2>20 °C model cross sections</h2><svg id="spectra" viewBox="0 0 760 280" role="img" aria-label="Absorption and emission spectra"></svg><small>Blue: absorption; orange: McCumber-consistent emission. Figure-guided reconstructed input data, not measured arrays.</small></section>
   <section class="card"><h2>Output-coupler design screen</h2><svg id="coating" viewBox="0 0 760 280" role="img" aria-label="Output coupler candidate screen"></svg><p id="selected"></p><small>Equal counterpropagating intensity approximation. The plot uses relative screened output intensity; it is not a predicted device output power. Rear reflectance and round-trip survival come from the Yb:LuAG coating configuration.</small></section>
   <section class="card"><h2>Model scope</h2><p id="scope"></p><small>The 20 °C 10 at.% lifetime is 0.965 ms. The inferred fluorescence spectral mean is shown for context; no heat result is claimed because the effective escaping fluorescence yield is unmeasured for this geometry.</small></section>
+</main></div>
+<h2>Structured-beam calculations</h2>
+<p>The six shapes, phase masks, clustered dopant map, irradiance, phase, and side profiles use Yb:LuAG gain and population equations. Select a CW solver and calculate a new set of fields.</p>
+<div class="layout">
+<form id="structuredForm">
+  <label>Solver<select name="solver_mode"><option value="weak_probe">Pump-only weak probe</option><option value="modal_cw">Fixed-mode CW oscillator background</option><option value="saturated_cw">Signal-saturated CW pass</option></select></label>
+  <label>Pump power (W)<input name="pump_W" type="number" min="0.001" max="1000" step="any" value="40" required></label>
+  <label>Pump radius (mm)<input name="radius_mm" type="number" min="0.1" max="5" step="any" value="0.6" required></label>
+  <label>Disk thickness (µm)<input name="thickness_um" type="number" min="1" max="2000" step="any" value="150" required></label>
+  <label>Input power per beam (W)<input name="signal_W" type="number" min="0.001" max="100" step="any" value="1" required></label>
+  <label>Signal waist (mm)<input name="waist_mm" type="number" min="0.1" max="2" step="any" value="0.408" required></label>
+  <label>Output distance (m)<input name="distance_m" type="number" min="0" max="2" step="any" value="0.25" required></label>
+  <label>Phase mask<select name="phase_mask"><option value="none">None</option><option value="vortex+1">Vortex +1</option><option value="vortex-1">Vortex −1</option><option value="vortex+2">Vortex +2</option><option value="defocus">Defocus</option><option value="astigmatic">Astigmatic</option><option value="axicon">Axicon</option></select></label>
+  <label>Phase strength (rad)<input name="phase_strength_rad" type="number" min="-50" max="50" step="any" value="3.14159265" required></label>
+  <label>Yb cluster seed<input name="density_seed" type="number" min="-2000000000" max="2000000000" step="1" value="17" required></label>
+  <label>Cluster count<input name="cluster_count" type="number" min="2" max="64" step="1" value="24" required></label>
+  <label>Cluster contrast<input name="cluster_contrast" type="number" min="0" max="1" step="any" value="0.27" required></label>
+  <label>Assumed escaping fluorescence yield<input name="escape_yield" type="number" min="0" max="1" step="any" value="0" required></label>
+  <small>0 gives an upper bound on deposited heat. The actual escaping yield depends on crystal geometry and reabsorption; 0.9 is an intrinsic emission estimate, not a measured escape yield.</small>
+  <button type="submit">Calculate six Yb beams</button><p id="structuredStatus">Ready.</p>
+</form>
+<main class="cards">
+  <section class="card"><h2>Applied phase mask and Yb concentration</h2><div class="beam-grid"><figure><canvas id="maskCanvas"></canvas><figcaption>Ideal phase mask (0–2π)</figcaption></figure><figure><canvas id="densityCanvas"></canvas><figcaption>Synthetic Yb entrance density (10²⁶ ions/m³)</figcaption></figure><figure><canvas id="densityMiddleCanvas"></canvas><figcaption>Middle Yb concentration slice</figcaption></figure><figure><canvas id="pumpCanvas"></canvas><figcaption>Incident pump irradiance</figcaption></figure></div><figure><canvas id="densityXZCanvas" style="width:100%;height:80px;image-rendering:pixelated"></canvas><figcaption>Yb concentration x–z cut at y≈0</figcaption></figure></section>
+  <section class="card"><h2>Six calculated beam shapes</h2><p id="resonatorText"></p><div id="beamResults"></div></section>
+  <section class="card"><h2>Copper-cooled thermoelastic reference</h2><p id="thermalText">Select saturated CW to calculate a Gaussian reference thermal load.</p><div class="beam-grid" id="thermalMaps" hidden><figure><canvas id="opdCanvas"></canvas><figcaption>Scalar round-trip optical path change</figcaption></figure><figure><canvas id="displacementCanvas"></canvas><figcaption>Front surface displacement</figcaption></figure></div><small>The thermal assembly is limited to a 150 µm disk and 20–26.85 °C. Photoelastic birefringence is omitted because the LuAG tensor is unavailable.</small></section>
+  <section class="card"><h2>Scope</h2><p id="structuredScope"></p></section>
+</main></div>
+<h2>Periodic seeded pulse</h2>
+<p>A separate Yb:LuAG pulse calculation for one selected shape. It iterates the two-manifold population between seed pulses, with an ideal image relay between traversals.</p>
+<div class="layout"><form id="pulsedForm">
+  <label>Seed beam<select name="selected_beam"><option>Gaussian TEM00</option><option>Helical LG(0,+1)</option><option>Double helix LG(0,+2)</option><option>Hermite-Gaussian HG(1,1)</option><option>Needle Bessel-Gaussian</option><option>Flattop super-Gaussian</option></select></label>
+  <label>Pump power (W)<input name="pump_W" type="number" min="0.001" max="1000" step="any" value="40" required></label>
+  <label>Pump radius (mm)<input name="radius_mm" type="number" min="0.1" max="5" step="any" value="0.6" required></label>
+  <label>Disk thickness (µm)<input name="thickness_um" type="number" min="1" max="2000" step="any" value="150" required></label>
+  <label>Signal waist (mm)<input name="waist_mm" type="number" min="0.1" max="2" step="any" value="0.408" required></label>
+  <label>Output distance (m)<input name="distance_m" type="number" min="0" max="2" step="any" value="0.25" required></label>
+  <label>Phase mask<select name="phase_mask"><option value="none">None</option><option value="vortex+1">Vortex +1</option><option value="vortex-1">Vortex −1</option><option value="vortex+2">Vortex +2</option><option value="defocus">Defocus</option><option value="astigmatic">Astigmatic</option><option value="axicon">Axicon</option></select></label>
+  <label>Phase strength (rad)<input name="phase_strength_rad" type="number" min="-50" max="50" step="any" value="3.14159265" required></label>
+  <label>Yb cluster seed<input name="density_seed" type="number" min="-2000000000" max="2000000000" step="1" value="17" required></label>
+  <label>Cluster count<input name="cluster_count" type="number" min="2" max="64" step="1" value="24" required></label>
+  <label>Cluster contrast<input name="cluster_contrast" type="number" min="0" max="1" step="any" value="0.27" required></label>
+  <label>Assumed escaping fluorescence yield<input name="escape_yield" type="number" min="0" max="1" step="any" value="0" required></label>
+  <label>Seed energy (nJ)<input name="seed_energy_nj" type="number" min="0.001" max="100000" step="any" value="10" required></label>
+  <label>Seed FWHM (ps)<input name="seed_fwhm_ps" type="number" min="0.1" max="1000" step="any" value="10" required></label>
+  <label>Repetition rate (kHz)<input name="repetition_rate_kHz" type="number" min="0.01" max="100" step="any" value="10" required></label>
+  <label>Signal traversals<input name="signal_traversals" type="number" min="1" max="10" step="1" value="10" required></label>
+  <button type="submit">Calculate Yb pulse</button><p id="pulsedStatus">Ready.</p>
+</form><main class="cards">
+  <section class="card"><h2>Pulse energy and inversion</h2><div id="pulseMetrics" class="metrics"></div></section>
+  <section class="card"><h2>Cycle-average heat and copper cooler</h2><div id="pulseHeatMetrics" class="metrics"></div><p id="pulseThermalText"></p><div id="pulseThermalMaps" class="beam-grid" hidden><figure><canvas id="pulseOpdCanvas"></canvas><figcaption>Scalar round-trip optical path change</figcaption></figure><figure><canvas id="pulseDisplacementCanvas"></canvas><figcaption>Front surface displacement</figcaption></figure></div></section>
+  <section class="card"><h2>Input and output fluence and phase</h2><div id="pulseMaps" class="beam-grid"></div></section>
+  <section class="card"><h2>Temporal power</h2><svg id="pulseTrace" viewBox="0 0 560 115" class="profile"></svg><small>Blue input; orange output. Time window spans ±3 seed FWHM.</small></section>
+  <section class="card"><h2>Scope</h2><p id="pulseScope"></p></section>
 </main></div>
 <script>
 const form=document.getElementById('form'), status=document.getElementById('status');
@@ -63,5 +122,90 @@ async function calculate(){
  }catch(e){status.textContent=e.message;status.classList.add('error')}
 }
 form.addEventListener('submit',e=>{e.preventDefault();calculate()});calculate();
+const structuredForm=document.getElementById('structuredForm'),structuredStatus=document.getElementById('structuredStatus');
+function drawMap(canvas,values,kind='intensity'){
+ const n=values.length,w=values[0].length,flat=values.flat(),max=Math.max(...flat,1e-30);canvas.width=w;canvas.height=n;
+ const ctx=canvas.getContext('2d'),image=ctx.createImageData(w,n);
+ for(let j=0;j<n;j++)for(let i=0;i<w;i++){
+  const v=values[n-1-j][i],q=kind==='phase'?((v+Math.PI)%(2*Math.PI))/(2*Math.PI):Math.max(0,v/max);
+  let rgb;if(kind==='phase'){const a=2*Math.PI*q;rgb=[Math.round(128+127*Math.cos(a)),Math.round(128+127*Math.cos(a-2.094)),Math.round(128+127*Math.cos(a+2.094))]}
+  else rgb=[Math.round(255*Math.min(1,q*1.6)),Math.round(200*Math.sqrt(q)),Math.round(255*(1-q)*q)];
+  const k=4*(j*w+i);image.data.set([...rgb,255],k);
+ }ctx.putImageData(image,0,0);
+}
+function drawFootprint(canvas,density,intensity){
+ drawMap(canvas,density);const n=intensity.length,max=Math.max(...intensity.flat(),1e-30),ctx=canvas.getContext('2d'),image=ctx.getImageData(0,0,n,n);
+ for(let j=1;j<n-1;j++)for(let i=1;i<n-1;i++){
+  const v=intensity[j][i]/max,right=intensity[j][i+1]/max,down=intensity[j+1][i]/max;
+  if([.1,.3,.6,.9].some(t=>(v-t)*(right-t)<0||(v-t)*(down-t)<0)){
+   const k=4*((n-1-j)*n+i);image.data[k]=255;image.data[k+1]=255;image.data[k+2]=255;
+  }
+ }ctx.putImageData(image,0,0);
+}
+function drawProfile(svg,input,output){
+ const W=560,H=115,max=Math.max(...input,...output,1e-30),path=a=>a.map((v,i)=>`${i?'L':'M'}${(i/(a.length-1)*W).toFixed(1)},${(H-8-v/max*(H-20)).toFixed(1)}`).join(' ');
+ svg.innerHTML=`<path d="${path(input)}" stroke="#73bcff" stroke-width="2" fill="none"/><path d="${path(output)}" stroke="#ffad62" stroke-width="2" fill="none"/><text x="8" y="16" fill="#73bcff" font-size="12">Input</text><text x="65" y="16" fill="#ffad62" font-size="12">Output</text>`;
+}
+async function calculateStructured(){
+ structuredStatus.textContent='Calculating six Yb:LuAG beams…';structuredStatus.classList.remove('error');
+ try{
+  const data=Object.fromEntries(new FormData(structuredForm).entries());
+  const response=await fetch('/api/structured',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+  const r=await response.json();if(!response.ok)throw Error(r.error||'Calculation failed');
+  drawMap(document.getElementById('maskCanvas'),r.phase_mask,'phase');
+  drawMap(document.getElementById('densityCanvas'),r.yb_density_entrance_1e26_m3);
+  drawMap(document.getElementById('densityMiddleCanvas'),r.yb_density_middle_1e26_m3);
+  drawMap(document.getElementById('densityXZCanvas'),r.yb_density_xz_1e26_m3);
+  drawMap(document.getElementById('pumpCanvas'),r.pump_intensity_W_m2);
+  const box=document.getElementById('beamResults');box.replaceChildren();
+  const cavity=r.resonator;document.getElementById('resonatorText').textContent=cavity?`Fixed-mode cavity screen: one-direction intracavity ${cavity.intracavity_one_direction_W.toFixed(3)} W, output-coupler ${cavity.output_coupler_power_W.toFixed(3)} W, assumed cavity waist ${(cavity.cavity_waist_m*1e3).toFixed(3)} mm. ${cavity.scope}`:'';
+  for(const [name,m] of Object.entries(r.modes)){
+   const row=document.createElement('div');row.className='beam-row';
+   const title=document.createElement('h3');title.textContent=name;row.append(title);
+   const note=document.createElement('p');note.textContent=`Input ${m.input_power_W.toFixed(3)} W · disk exit ${m.disk_output_power_W.toFixed(3)} W · output plane ${m.output_power_W.toFixed(3)} W · pump absorbed ${m.pump_absorbed_W.toFixed(3)} W`+(m.net_heat_W_upper_or_assumed===null?' · heat requires saturated CW':` · deposited heat ${m.net_heat_W_upper_or_assumed.toFixed(3)} W (${r.fluorescence_escape_yield_assumed===0?'upper bound':'assumed escape yield'})`);row.append(note);
+   const maps=document.createElement('div');maps.className='beam-grid';
+   for(const [key,label,kind] of [['input_intensity','Input irradiance','intensity'],['output_intensity','Output irradiance','intensity'],['input_phase','Input phase','phase'],['output_phase','Output phase','phase'],['input_intensity','Beam on Yb density (white 10–90% contours)','footprint']]){
+    const figure=document.createElement('figure'),canvas=document.createElement('canvas'),caption=document.createElement('figcaption');
+    caption.textContent=label;figure.append(canvas,caption);maps.append(figure);if(kind==='footprint')drawFootprint(canvas,r.yb_density_entrance_1e26_m3,m[key]);else drawMap(canvas,m[key],kind);
+   }row.append(maps);
+   const profile=document.createElementNS('http://www.w3.org/2000/svg','svg');profile.setAttribute('viewBox','0 0 560 115');profile.classList.add('profile');drawProfile(profile,m.input_profile,m.output_profile);row.append(profile);box.append(row);
+  }
+  const thermal=r.thermal,thermalMaps=document.getElementById('thermalMaps');
+  thermalMaps.hidden=thermal.status!=='computed';
+  document.getElementById('thermalText').textContent=thermal.status==='computed'?`Gaussian reference: ${thermal.input_heat_W.toFixed(3)} W heat, disk ${thermal.disk_temperature_min_C.toFixed(2)}–${thermal.disk_temperature_max_C.toFixed(2)} °C, energy balance error ${thermal.balance_error_W.toExponential(1)} W. ${thermal.scope}`:`Thermal solve unavailable: ${thermal.reason}`;
+  if(thermal.status==='computed'){
+   drawMap(document.getElementById('opdCanvas'),thermal.scalar_roundtrip_opd_nm);
+   drawMap(document.getElementById('displacementCanvas'),thermal.front_displacement_nm);
+  }
+  document.getElementById('structuredScope').textContent=r.scope;
+  structuredStatus.textContent='Six Yb:LuAG beams calculated.';
+ }catch(e){structuredStatus.textContent=e.message;structuredStatus.classList.add('error')}
+}
+structuredForm.addEventListener('submit',e=>{e.preventDefault();calculateStructured()});calculateStructured();
+const pulsedForm=document.getElementById('pulsedForm'),pulsedStatus=document.getElementById('pulsedStatus');
+async function calculatePulsed(){
+ pulsedStatus.textContent='Converging Yb pulse train…';pulsedStatus.classList.remove('error');
+ try{
+  const data=Object.fromEntries(new FormData(pulsedForm).entries());
+  const response=await fetch('/api/pulsed',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+  const r=await response.json();if(!response.ok)throw Error(r.error||'Pulse calculation failed');
+  document.getElementById('pulseMetrics').innerHTML=metric('Input energy',(r.input_energy_J*1e9).toFixed(3)+' nJ')+metric('Disk exit energy',(r.disk_output_energy_J*1e9).toFixed(3)+' nJ')+metric('Output plane energy',(r.output_energy_J*1e9).toFixed(3)+' nJ')+metric('Grid-mean pre-pulse excitation',(100*r.mean_excited_fraction_before_pulse).toFixed(2)+'%')+metric('Convergence',r.cycles+' cycles');
+  document.getElementById('pulseHeatMetrics').innerHTML=metric('Pump absorbed',r.cycle_average_pump_absorbed_W.toFixed(3)+' W')+metric('Signal gain',r.cycle_average_signal_gain_W.toFixed(6)+' W')+metric('Escaping fluorescence',r.cycle_average_escaping_fluorescence_W.toFixed(3)+' W')+metric('Deposited heat',r.cycle_average_heat_W_upper_or_assumed.toFixed(3)+' W');
+  const pulseThermal=r.thermal,pulseThermalMaps=document.getElementById('pulseThermalMaps');pulseThermalMaps.hidden=pulseThermal.status!=='computed';
+  document.getElementById('pulseThermalText').textContent=pulseThermal.status==='computed'?`Disk ${pulseThermal.disk_temperature_min_C.toFixed(2)}–${pulseThermal.disk_temperature_max_C.toFixed(2)} °C. ${pulseThermal.scope}`:`Thermal assembly outside supported range: ${pulseThermal.reason}`;
+  if(pulseThermal.status==='computed'){
+   drawMap(document.getElementById('pulseOpdCanvas'),pulseThermal.scalar_roundtrip_opd_nm);
+   drawMap(document.getElementById('pulseDisplacementCanvas'),pulseThermal.front_displacement_nm);
+  }
+  const maps=document.getElementById('pulseMaps');maps.replaceChildren();
+  for(const [key,label,kind] of [['input_fluence_J_m2','Input fluence','intensity'],['output_fluence_J_m2','Output fluence','intensity'],['input_phase','Input phase','phase'],['output_phase','Output phase','phase']]){
+   const figure=document.createElement('figure'),canvas=document.createElement('canvas'),caption=document.createElement('figcaption');caption.textContent=label;figure.append(canvas,caption);maps.append(figure);drawMap(canvas,r[key],kind);
+  }
+  drawProfile(document.getElementById('pulseTrace'),r.input_power_trace_W,r.output_power_trace_W);
+  document.getElementById('pulseScope').textContent=r.scope;
+  pulsedStatus.textContent='Periodic pulse calculation complete.';
+ }catch(e){pulsedStatus.textContent=e.message;pulsedStatus.classList.add('error')}
+}
+pulsedForm.addEventListener('submit',e=>{e.preventDefault();calculatePulsed()});calculatePulsed();
 </script>
 </body></html>

@@ -16,9 +16,73 @@ from ybluag import (YbLuAGMaterial, propagate_cw,
                     periodic_pump_state, periodic_pulse_heat,
                     fluorescence_spectrum, scan_output_coupler)
 from ybluag import solve_yb_assembly
+from ybluag import YbGallerySettings, simulate_structured_gallery, simulate_pulsed_seed
 
 
 class YbLuAGPhysicsTests(unittest.TestCase):
+    def test_yb_gallery_phase_power_and_saturation(self):
+        material = YbLuAGMaterial()
+        base = dict(pump_power_W=40, input_power_W=1, grid_n=64,
+                    cluster_count=4, z_steps=2, post_disk_distance_m=0.25)
+        plain = simulate_structured_gallery(material, YbGallerySettings(**base))
+        vortex = simulate_structured_gallery(material, YbGallerySettings(
+            **base, phase_mask_name="vortex+1"))
+        a = plain["outcomes"]["Gaussian TEM00"]
+        b = vortex["outcomes"]["Gaussian TEM00"]
+        np.testing.assert_allclose(a["input_intensity"], b["input_intensity"], rtol=1e-13)
+        self.assertAlmostEqual(a["disk_output_power_W"], a["output_power_W"], places=10)
+        self.assertIsNone(a["net_heat_W_upper_or_assumed"])
+        saturated = simulate_structured_gallery(material, YbGallerySettings(
+            **base, solver_mode="saturated_cw"))
+        self.assertLess(saturated["outcomes"]["Gaussian TEM00"]["disk_output_power_W"],
+                        a["disk_output_power_W"])
+
+    def test_yb_periodic_seed_energy_integral(self):
+        material = YbLuAGMaterial()
+        result = simulate_pulsed_seed(
+            material, YbGallerySettings(pump_power_W=40, grid_n=64,
+                                        cluster_count=4, z_steps=2),
+            "Gaussian TEM00", 10e-9, 10e-12, 10_000, 1)
+        self.assertAlmostEqual(
+            float(np.trapezoid(result["output_power_trace_W"], result["time_ps"] * 1e-12)) /
+            result["disk_output_energy_J"], 1, places=10)
+        self.assertAlmostEqual(result["output_energy_J"] / result["disk_output_energy_J"],
+                               1, places=10)
+        self.assertLess(result["residual"], 1e-6)
+        self.assertAlmostEqual(
+            result["cycle_average_heat_W_upper_or_assumed"],
+            result["cycle_average_pump_absorbed_W"] -
+            result["cycle_average_signal_gain_W"] -
+            result["cycle_average_escaping_fluorescence_W"], places=10)
+        self.assertAlmostEqual(
+            result["cycle_average_signal_gain_W"],
+            (result["disk_output_energy_J"] - result["input_energy_J"]) * 10_000,
+            places=7)
+
+    def test_yb_modal_cw_roundtrip_balance(self):
+        result = simulate_structured_gallery(
+            YbLuAGMaterial(), YbGallerySettings(
+                pump_power_W=40, solver_mode="modal_cw", grid_n=64,
+                cluster_count=4, z_steps=2))
+        resonator = result["resonator"]
+        self.assertGreater(resonator["small_signal_roundtrip_log_margin"], 0)
+        self.assertGreater(resonator["output_coupler_power_W"], 0)
+        self.assertLess(abs(resonator["roundtrip_log_residual"]), 1e-8)
+        self.assertIsNone(result["outcomes"]["Gaussian TEM00"]["net_heat_W_upper_or_assumed"])
+
+    def test_pulse_density_scaling_changes_gain(self):
+        material = YbLuAGMaterial()
+        time = np.linspace(-20e-12, 20e-12, 21)
+        signal = 1e9 * np.exp(-4 * np.log(2) * (time / 10e-12)**2)
+        beta = np.array([0.2, 0.2])
+        full = propagate_pulse(material, time, np.zeros_like(signal), signal,
+                               150e-6, 2, initial_excited_fraction=beta)
+        dilute = propagate_pulse(material, time, np.zeros_like(signal), signal,
+                                 150e-6, 2, initial_excited_fraction=beta,
+                                 density_scale_by_slice=np.array([0.5, 0.5]))
+        self.assertGreater(float(np.trapezoid(full.signal_out_W_m2, time)),
+                           float(np.trapezoid(dilute.signal_out_W_m2, time)))
+
     def test_material_anchors_and_units(self):
         material = YbLuAGMaterial()
         self.assertAlmostEqual(material.number_density_m3 / 1.42e27, 1.0)

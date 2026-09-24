@@ -19,7 +19,9 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from ybluag import YbLuAGMaterial, fluorescence_spectrum, propagate_cw, scan_output_coupler
+from ybluag import (YbLuAGMaterial, YbGallerySettings, fluorescence_spectrum,
+                    propagate_cw, scan_output_coupler, simulate_structured_gallery,
+                    simulate_pulsed_seed)
 from ybluag.model import _spectra
 
 PAGE = ROOT / "Yb-LuAG" / "app.html"
@@ -37,6 +39,25 @@ def number(data, key, low, high):
     if not math.isfinite(result) or not low <= result <= high:
         raise ValueError(f"{key} must be between {low} and {high}")
     return result
+
+
+def integer(data, key, low, high):
+    value = number(data, key, low, high)
+    if not value.is_integer():
+        raise ValueError(f"{key} must be an integer")
+    return int(value)
+
+
+def jsonable(value):
+    if isinstance(value, np.ndarray):
+        return value.tolist()
+    if isinstance(value, np.generic):
+        return value.item()
+    if isinstance(value, dict):
+        return {key: jsonable(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [jsonable(item) for item in value]
+    return value
 
 
 def calculate(data):
@@ -85,6 +106,83 @@ def calculate(data):
     }
 
 
+def calculate_structured(data):
+    if not isinstance(data, dict):
+        raise ValueError("request must be an object")
+    from hoyag.structured_beam_gallery import PHASE_MASKS
+    mask = data.get("phase_mask", "none")
+    if mask not in PHASE_MASKS:
+        raise ValueError("unknown phase mask")
+    mode = data.get("solver_mode", "weak_probe")
+    if mode not in ("weak_probe", "saturated_cw", "modal_cw"):
+        raise ValueError("unknown solver mode")
+    settings = YbGallerySettings(
+        pump_power_W=number(data, "pump_W", 0.001, 1000),
+        pump_radius_m=number(data, "radius_mm", 0.1, 5) * 1e-3,
+        thickness_m=number(data, "thickness_um", 1, 2000) * 1e-6,
+        input_power_W=number(data, "signal_W", 0.001, 100),
+        waist_m=number(data, "waist_mm", 0.1, 2) * 1e-3,
+        post_disk_distance_m=number(data, "distance_m", 0, 2),
+        phase_mask_name=mask,
+        phase_strength_rad=number(data, "phase_strength_rad", -50, 50),
+        density_seed=integer(data, "density_seed", -2e9, 2e9),
+        cluster_count=integer(data, "cluster_count", 2, 64),
+        cluster_contrast=number(data, "cluster_contrast", 0, 1),
+        fluorescence_escape_yield=number(data, "escape_yield", 0, 1),
+        solver_mode=mode)
+    result = simulate_structured_gallery(YbLuAGMaterial(), settings)
+    grid = result["grid"]
+    return {
+        "material": "Yb:LuAG", "solver_mode": mode,
+        "grid_n": grid.nx, "x_mm": (grid.x * 1e3).tolist(),
+        "phase_mask": result["phase_mask"].tolist(),
+        "yb_density_entrance_1e26_m3":
+            (result["yb_density_m3"][0] / 1e26).tolist(),
+        "yb_density_middle_1e26_m3":
+            (result["yb_density_m3"][len(result["yb_density_m3"]) // 2] / 1e26).tolist(),
+        "yb_density_xz_1e26_m3":
+            (result["yb_density_m3"][:, grid.ny // 2, :] / 1e26).tolist(),
+        "pump_intensity_W_m2": result["pump_intensity_W_m2"].tolist(),
+        "fluorescence_escape_yield_assumed": result["fluorescence_escape_yield_assumed"],
+        "scope": result["scope"],
+        "thermal": {key: (value.tolist() if isinstance(value, np.ndarray) else value)
+                    for key, value in result["thermal"].items()},
+        "resonator": result["resonator"],
+        "modes": {name: {key: (value.tolist() if isinstance(value, np.ndarray) else value)
+                         for key, value in case.items()}
+                  for name, case in result["outcomes"].items()},
+    }
+
+
+def calculate_pulsed(data):
+    if not isinstance(data, dict):
+        raise ValueError("request must be an object")
+    from hoyag.structured_beam_gallery import PHASE_MASKS, BEAM_NAMES
+    mask = data.get("phase_mask", "none")
+    beam = data.get("selected_beam", "Gaussian TEM00")
+    if mask not in PHASE_MASKS or beam not in BEAM_NAMES:
+        raise ValueError("unknown phase mask or seed beam")
+    settings = YbGallerySettings(
+        pump_power_W=number(data, "pump_W", 0.001, 1000),
+        pump_radius_m=number(data, "radius_mm", 0.1, 5) * 1e-3,
+        thickness_m=number(data, "thickness_um", 1, 2000) * 1e-6,
+        waist_m=number(data, "waist_mm", 0.1, 2) * 1e-3,
+        post_disk_distance_m=number(data, "distance_m", 0, 2),
+        phase_mask_name=mask,
+        phase_strength_rad=number(data, "phase_strength_rad", -50, 50),
+        density_seed=integer(data, "density_seed", -2e9, 2e9),
+        cluster_count=integer(data, "cluster_count", 2, 64),
+        cluster_contrast=number(data, "cluster_contrast", 0, 1),
+        fluorescence_escape_yield=number(data, "escape_yield", 0, 1))
+    result = simulate_pulsed_seed(
+        YbLuAGMaterial(), settings, beam,
+        number(data, "seed_energy_nj", 0.001, 100000) * 1e-9,
+        number(data, "seed_fwhm_ps", 0.1, 1000) * 1e-12,
+        number(data, "repetition_rate_kHz", 0.01, 100) * 1e3,
+        integer(data, "signal_traversals", 1, 10))
+    return {key: jsonable(value) for key, value in result.items() if key != "grid"}
+
+
 class Handler(BaseHTTPRequestHandler):
     def respond(self, status, body, content_type):
         self.send_response(status)
@@ -101,7 +199,8 @@ class Handler(BaseHTTPRequestHandler):
         self.respond(200, PAGE.read_bytes(), "text/html; charset=utf-8")
 
     def do_POST(self):
-        if urlparse(self.path).path != "/api/calculate":
+        endpoint = urlparse(self.path).path
+        if endpoint not in ("/api/calculate", "/api/structured", "/api/pulsed"):
             self.respond(404, b"Not found", "text/plain; charset=utf-8")
             return
         try:
@@ -110,9 +209,12 @@ class Handler(BaseHTTPRequestHandler):
             length = int(self.headers.get("Content-Length", "0"))
             if not 0 < length <= 4096:
                 raise ValueError("invalid request size")
-            response = calculate(json.loads(self.rfile.read(length)))
+            payload = json.loads(self.rfile.read(length))
+            response = (calculate_structured(payload) if endpoint == "/api/structured"
+                        else calculate_pulsed(payload) if endpoint == "/api/pulsed"
+                        else calculate(payload))
             status = 200
-        except (ValueError, TypeError, json.JSONDecodeError) as exc:
+        except (ValueError, TypeError, RuntimeError, json.JSONDecodeError) as exc:
             response, status = {"error": str(exc)}, 400
         body = json.dumps(response, allow_nan=False).encode("utf-8")
         self.respond(status, body, "application/json; charset=utf-8")

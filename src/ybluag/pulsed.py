@@ -23,7 +23,8 @@ class PulseResult:
 
 def propagate_pulse(material: YbLuAGMaterial, time_s, pump_in_W_m2,
                     signal_in_W_m2, thickness_m: float, steps: int, *,
-                    initial_excited_fraction=0.0) -> PulseResult:
+                    initial_excited_fraction=0.0,
+                    density_scale_by_slice=1.0) -> PulseResult:
     """Transport intensity samples and evolve one shared Yb population per z cell.
 
     Time samples include both pulse tails. During each optical pass the local
@@ -48,6 +49,10 @@ def propagate_pulse(material: YbLuAGMaterial, time_s, pump_in_W_m2,
     shape = pump.shape[1:]
     beta = np.broadcast_to(np.asarray(initial_excited_fraction, dtype=float),
                            (steps, *shape)).copy()
+    density_scale = np.broadcast_to(np.asarray(density_scale_by_slice, dtype=float),
+                                    beta.shape)
+    if np.any(~np.isfinite(density_scale)) or np.any(density_scale < 0):
+        raise ValueError("density_scale_by_slice must be finite and nonnegative")
     if np.any(~np.isfinite(beta)) or np.any((beta < 0) | (beta > 1)):
         raise ValueError("initial excited fraction must be in [0, 1]")
     dz = thickness_m / steps
@@ -63,6 +68,8 @@ def propagate_pulse(material: YbLuAGMaterial, time_s, pump_in_W_m2,
         signal_change = np.empty_like(current_beta) if ledger else None
         for iz in range(steps):
             alpha, gain = material.coefficients_m1(current_beta[iz])
+            alpha = alpha * density_scale[iz]
+            gain = gain * density_scale[iz]
             next_p = p * np.exp(-alpha * dz)
             next_s = s * np.exp(gain * dz)
             if ledger:
