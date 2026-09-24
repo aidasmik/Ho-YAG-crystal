@@ -27,6 +27,19 @@ states, heat, temperature, and hot phase in `fields.npz` for later mesh checks.
 The first 96-pixel verification run predates this archive switch and retains
 its plots, summary, and execution record only.
 
+The dark-recovery ODE is independent across transverse cells. The app can
+split it over 1-16 worker processes; four is the measured default on the local
+22-logical-CPU host. A 20-cycle, 96-pixel profile took 20.48 s with one worker,
+10.10 s with four, and 9.82 s with eight. These are kernel benchmarks, not
+promises for a complete thermo-mechanical run. Pump and signal visits remain
+sequential because they update the same crystal state.
+
+For the same 96-pixel Gaussian case, the complete bounded app calculation took
+416.54 s on one worker and 225.22 s on four (1.85x speedup). Peak RSS rose
+from 334.8 MB to 770.1 MB. Both runs used 202 population cycles and returned
+16.90753637 nJ output, 1.48851707 W heat, and 318.07138 K peak disk
+temperature. The four-worker run archived 23 raw arrays in `fields.npz`.
+
 The seed is a **short-pulse fluence approximation**. Its picosecond duration is
 recorded and checked against the repetition period, but the temporal envelope,
 group-velocity dispersion, Kerr effects, spectral gain reshaping, pulse overlap,

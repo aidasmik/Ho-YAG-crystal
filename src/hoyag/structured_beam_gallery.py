@@ -54,6 +54,7 @@ class GallerySettings:
     seed_fwhm_s: float = 10e-12
     signal_traversals: int = 10
     relay_distance_m: float = 0.
+    cpu_workers: int = 4
     dn_dHo_m3: float | None = None
     dn_dExcited_m3: float | None = None
     index_provenance: str = ''
@@ -81,6 +82,8 @@ class GallerySettings:
             raise ValueError('unknown selected beam')
         if self.seed_energy_J<=0 or self.seed_fwhm_s<=0 or self.signal_traversals<1 or self.relay_distance_m<0:
             raise ValueError('invalid seeded-amplifier settings')
+        if isinstance(self.cpu_workers,bool) or not isinstance(self.cpu_workers,int) or not 1<=self.cpu_workers<=16:
+            raise ValueError('cpu_workers must be an integer from 1 to 16')
         HoIndexResponse(self.dn_dHo_m3,self.dn_dExcited_m3,self.index_provenance)
 
 
@@ -333,7 +336,7 @@ def _run_periodic_seeded(snapshot, grid, density, seeds_before_slm, seeds, setti
         pump_energy_J=pump['energy_J'],pump_fwhm_s=pump['duration_s'],pump_waist_m=pump['waist_m'],
         signal_traversals=settings.signal_traversals,
         pump_reflectivity=cavity.pump_hr_reflectivity,
-        relay_distance_m=settings.relay_distance_m)
+        relay_distance_m=settings.relay_distance_m,cpu_workers=settings.cpu_workers)
     name=settings.selected_beam
     assembly=PlateAssembly(mesh,grid,assembly_cfg)
     index_response=HoIndexResponse(settings.dn_dHo_m3,settings.dn_dExcited_m3,
@@ -389,6 +392,7 @@ def _run_periodic_seeded(snapshot, grid, density, seeds_before_slm, seeds, setti
                     'output_pulse_energy_J':output_energy}}
     diag={'solver_mode':'periodic_seeded_amplifier','status':'periodic_and_thermal_fixed_point',
           'population_cycles':pulse['cycles'],'population_residual':pulse['population_residual'],
+          'cpu_workers':pulse['cpu_workers'],
           'thermal_outer_iterations':outer+1,'thermal_peak_disk_K':float(temperature.disk_temperature_K.max()),
           'phase_closure_rms_rad':error,'power_closure_relative':power_error,
           'pump_absorbed_W':pulse['pump_absorbed_J']*cfg.repetition_rate_Hz,

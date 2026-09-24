@@ -217,6 +217,7 @@ def main():
     p.add_argument('--seed-fwhm-ps',type=float,default=10.)
     p.add_argument('--signal-traversals',type=int,default=10)
     p.add_argument('--relay-distance-m',type=float,default=0.)
+    p.add_argument('--cpu-workers',type=int,default=4)
     p.add_argument('--dn-dho-m3',type=float)
     p.add_argument('--dn-dexcited-m3',type=float)
     p.add_argument('--index-provenance',default='')
@@ -232,7 +233,7 @@ def main():
         post_disk_distance_m=args.post_disk_distance_m,solver_mode=args.solver_mode,
         selected_beam=args.selected_beam,seed_energy_J=args.seed_energy_nj*1e-9,
         seed_fwhm_s=args.seed_fwhm_ps*1e-12,signal_traversals=args.signal_traversals,
-        relay_distance_m=args.relay_distance_m,dn_dHo_m3=args.dn_dho_m3,
+        relay_distance_m=args.relay_distance_m,cpu_workers=args.cpu_workers,dn_dHo_m3=args.dn_dho_m3,
         dn_dExcited_m3=args.dn_dexcited_m3,index_provenance=args.index_provenance)
     result=simulate_gallery(snapshot,settings)
     result['z_edges_m']=snapshot.arrays['z_edges_m']

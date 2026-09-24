@@ -49,6 +49,8 @@
       <input id="signal_traversals" name="signal_traversals" type="number" value="10" min="1" max="20" step="1">
       <label for="relay_distance_m">Free-space relay distance (m; 0 = ideal image relay)</label>
       <input id="relay_distance_m" name="relay_distance_m" type="number" value="0" min="0" max="2" step="0.01">
+      <label for="cpu_workers">CPU workers (seeded amplifier)</label>
+      <input id="cpu_workers" name="cpu_workers" type="number" value="4" min="1" max="16" step="1">
       <label for="dn_dHo_m3">Measured dn/dN(Ho) (m³/ion; optional)</label>
       <input id="dn_dHo_m3" name="dn_dHo_m3" type="text" placeholder="Leave blank until measured">
       <label for="dn_dExcited_m3">Measured dn/dN(excited) (m³/ion; optional)</label>
@@ -114,6 +116,7 @@
       const s=result.summary;
       document.getElementById('solver_mode').value=s.solver_mode;
       if(s.settings.selected_beam)document.getElementById('selected_beam').value=s.settings.selected_beam;
+      if(s.settings.cpu_workers)document.getElementById('cpu_workers').value=s.settings.cpu_workers;
       document.getElementById('phaseImage').src=image(result.images.phase);
       document.getElementById('beamsImage').src=image(result.images.beams);
       document.getElementById('profilesImage').src=image(result.images.profiles);
@@ -132,7 +135,7 @@
     }
     calculateButton.addEventListener('click',async ()=>{
       calculateButton.disabled=true;statusBox.className='status';statusBox.textContent='Calculating numerical propagation…';
-      const payload={solver_mode:value('solver_mode'),selected_beam:value('selected_beam'),seed_energy_nj:value('seed_energy_nj'),seed_fwhm_ps:value('seed_fwhm_ps'),signal_traversals:value('signal_traversals'),relay_distance_m:value('relay_distance_m'),dn_dHo_m3:value('dn_dHo_m3'),dn_dExcited_m3:value('dn_dExcited_m3'),index_provenance:value('index_provenance'),phase_mask:value('phase_mask'),phase_strength_rad:value('phase_strength_rad'),density_seed:value('density_seed'),cluster_count:value('cluster_count'),cluster_contrast:value('cluster_contrast'),cluster_min_radius_mm:value('cluster_min_radius_mm'),cluster_max_radius_mm:value('cluster_max_radius_mm'),post_disk_distance_m:value('post_disk_distance_m')};
+      const payload={solver_mode:value('solver_mode'),selected_beam:value('selected_beam'),seed_energy_nj:value('seed_energy_nj'),seed_fwhm_ps:value('seed_fwhm_ps'),signal_traversals:value('signal_traversals'),relay_distance_m:value('relay_distance_m'),cpu_workers:value('cpu_workers'),dn_dHo_m3:value('dn_dHo_m3'),dn_dExcited_m3:value('dn_dExcited_m3'),index_provenance:value('index_provenance'),phase_mask:value('phase_mask'),phase_strength_rad:value('phase_strength_rad'),density_seed:value('density_seed'),cluster_count:value('cluster_count'),cluster_contrast:value('cluster_contrast'),cluster_min_radius_mm:value('cluster_min_radius_mm'),cluster_max_radius_mm:value('cluster_max_radius_mm'),post_disk_distance_m:value('post_disk_distance_m')};
       try{const response=await fetch('/calculate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const result=await response.json();if(!response.ok)throw new Error(result.error||'calculation failed');renderResult(result);statusBox.className='status ok';statusBox.textContent='Calculation complete. The plots and metrics above are from the new run.';}
       catch(error){
         const detail=String(error.message||error);

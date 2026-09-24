@@ -32,6 +32,24 @@ def test_invalid_seed_pulse_parameters_rejected():
         PeriodicAmplifierSettings(seed_fwhm_s=1e-3)
     with pytest.raises(ValueError):
         PeriodicAmplifierSettings(signal_traversals=0)
+    with pytest.raises(ValueError):
+        PeriodicAmplifierSettings(cpu_workers=0)
+
+
+def test_spatial_worker_tiles_match_serial_population_and_heat():
+    grid=Grid2D.square(8,2e-3)
+    density=uniform_ho_density_field(grid,2,1e-3,1.52e26)
+    x,y=grid.mesh
+    seed=np.exp(-(x*x+y*y)/(0.4e-3)**2)
+    base=dict(seed_energy_J=10e-9,pump_energy_J=.1e-3,
+              signal_traversals=2,max_cycles=3)
+    serial=solve_periodic_seeded_amplifier(seed,grid,density,
+                    PeriodicAmplifierSettings(**base,cpu_workers=1))
+    parallel=solve_periodic_seeded_amplifier(seed,grid,density,
+                    PeriodicAmplifierSettings(**base,cpu_workers=2))
+    for key in ('populations_before_pump','field_out','heat_W_m3'):
+        np.testing.assert_allclose(parallel[key],serial[key],rtol=1e-12,atol=1e-20)
+    assert parallel['cpu_workers']==2
 
 
 def test_ho_index_increment_requires_coefficient_provenance_and_correct_depth_integral():

@@ -8,6 +8,8 @@ envelope or a measured amplifier assembly.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from concurrent.futures import ProcessPoolExecutor
+from contextlib import nullcontext
 import numpy as np
 
 from .heat import HeatSpectroscopy, fluorescence_power_density, ion_energy_density
@@ -34,6 +36,7 @@ class PeriodicAmplifierSettings:
     relay_distance_m: float = 0.  # ideal unit-magnification relay when zero
     max_cycles: int = 400
     population_tolerance: float = 2e-5
+    cpu_workers: int = 1
 
     def __post_init__(self):
         positive = ('seed_energy_J','seed_fwhm_s','repetition_rate_Hz',
@@ -42,6 +45,8 @@ class PeriodicAmplifierSettings:
             raise ValueError('pulse, pump, repetition, and tolerance values must be positive and finite')
         if self.signal_traversals<1 or self.pump_traversals<1 or self.max_cycles<1:
             raise ValueError('traversal and cycle counts must be positive')
+        if isinstance(self.cpu_workers,bool) or not isinstance(self.cpu_workers,int) or not 1<=self.cpu_workers<=16:
+            raise ValueError('cpu_workers must be an integer from 1 to 16')
         if not 0<self.pump_reflectivity<=1 or not 0<self.signal_relay_transmission<=1:
             raise ValueError('reflectivity/transmission must be in (0,1]')
         if not np.isfinite(self.relay_distance_m) or self.relay_distance_m<0:
@@ -66,6 +71,25 @@ def _kick(fluence, state, density, dz, sigma_em, sigma_abs, photon_energy):
     state[I8]+=delta
     validate_populations(state,density,error_type=FloatingPointError)
     return after
+
+
+def _relax_tile(task):
+    state,density,duration,params=task
+    return relax_inhomogeneous_populations_dark(state,density,duration,params)
+
+
+def _dark_recovery(state,density,duration,params,workers,executor):
+    if workers==1:
+        return relax_inhomogeneous_populations_dark(state,density,duration,params)
+    ny=density.shape[1]
+    edges=np.linspace(0,ny,workers+1,dtype=int)
+    tasks=((np.ascontiguousarray(state[:,:,lo:hi,:]),
+            np.ascontiguousarray(density[:,lo:hi,:]),duration,params)
+           for lo,hi in zip(edges[:-1],edges[1:]))
+    result=np.empty_like(state)
+    for (lo,hi),tile in zip(zip(edges[:-1],edges[1:]),executor.map(_relax_tile,tasks)):
+        result[:,:,lo:hi,:]=tile
+    return result
 
 
 def _one_cycle(seed, pump_profile, grid, density, state, cfg, params, hot_phase,
@@ -141,23 +165,27 @@ def solve_periodic_seeded_amplifier(seed, grid: Grid2D, density: HoDensityField,
     pump_absorption=pump_source.effective_absorption_m2()
     period=1/cfg.repetition_rate_Hz
     converged=False
-    for cycle in range(1,cfg.max_cycles+1):
-        before=state.copy()
-        out,input_f,pump_net,signal_net,records,before_signal=_one_cycle(
-            seed,pump,grid,density,state,cfg,params,hot_phase_rad,pump_absorption)
-        after_signal=state.copy()
-        state=relax_inhomogeneous_populations_dark(state,density.values_m3,
-                                                    period-cfg.seed_fwhm_s,params)
-        active=density.values_m3>0
-        residual=float(np.max(np.abs(state-before)[:,active]/density.values_m3[active]))
-        if residual<=cfg.population_tolerance:
-            converged=True
-            break
+    workers=min(cfg.cpu_workers,grid.ny)
+    context=(ProcessPoolExecutor(max_workers=workers) if workers>1 else nullcontext())
+    with context as executor:
+        for cycle in range(1,cfg.max_cycles+1):
+            before=state.copy()
+            out,input_f,pump_net,signal_net,records,before_signal=_one_cycle(
+                seed,pump,grid,density,state,cfg,params,hot_phase_rad,pump_absorption)
+            after_signal=state.copy()
+            state=_dark_recovery(state,density.values_m3,period-cfg.seed_fwhm_s,
+                                 params,workers,executor)
+            active=density.values_m3>0
+            residual=float(np.max(np.abs(state-before)[:,active]/density.values_m3[active]))
+            if residual<=cfg.population_tolerance:
+                converged=True
+                break
     fluorescence=.5*(fluorescence_power_density(after_signal,params,spectroscopy)+
                      fluorescence_power_density(state,params,spectroscopy))*(period-cfg.seed_fwhm_s)
     stored=ion_energy_density(state,spectroscopy)-ion_energy_density(before,spectroscopy)
     heat_J_m3=pump_net-signal_net-stored-fluorescence
     return {'converged':converged,'cycles':cycle,'population_residual':residual,
+            'cpu_workers':workers,
             'field_out':out,'input_fluence_J_m2':input_f,'output_fluence_J_m2':np.abs(out)**2,
             'input_energy_J':cfg.seed_energy_J,
             'output_energy_J':float(np.sum(np.abs(out)**2)*grid.dx*grid.dy),
