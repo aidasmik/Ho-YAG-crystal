@@ -45,8 +45,16 @@ class YbLuAGPhysicsTests(unittest.TestCase):
                          np.asarray(thermal["rear_displacement_nm"]).shape)
         timeline = result["thermal_timeline"]
         self.assertEqual(timeline["time_s"][-1], 30.0)
+        self.assertTrue(timeline["stabilized"])
+        self.assertAlmostEqual(timeline["requested_time_s"], 30.0)
+        self.assertLess(abs(timeline["disk_max_C"][-1] - timeline["steady_disk_max_C"]),
+                        timeline["stabilization_tolerance_K"])
+        self.assertEqual(timeline["cooling_mode"], "feedback")
+        self.assertGreater(timeline["coolant_conductance_W_m2K"][-1],
+                           timeline["coolant_conductance_W_m2K"][0])
         self.assertFalse(timeline["material_range_valid"][-1])
         self.assertFalse(result["thermal_feedback_applied"])
+        self.assertLess(result["phase_residual_rms_rad"], 1e-12)
         self.assertLess(timeline["energy_balance_relative_max"], 1e-7)
         with self.assertRaisesRegex(ValueError, "at least as long"):
             calculate_pulsed({"source_fwhm_fs": 500, "seed_fwhm_ps": 0.3})
@@ -76,6 +84,7 @@ class YbLuAGPhysicsTests(unittest.TestCase):
         uniform = np.asarray(result["uniform_isothermal_output_fluence_J_m2"])
         self.assertEqual(actual.shape, uniform.shape)
         self.assertGreater(float(np.max(abs(actual - uniform))), 0)
+        self.assertGreater(result["phase_residual_rms_rad"], 0)
 
     def test_valid_transient_opd_changes_output_phase_not_pulse_energy(self):
         sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "examples"))
@@ -84,6 +93,7 @@ class YbLuAGPhysicsTests(unittest.TestCase):
         cold = calculate_pulsed({"pump_W": 0.2, "operation_duration_s": 0})
         self.assertTrue(hot["thermal_timeline"]["material_range_valid"][-1])
         self.assertTrue(hot["thermal_feedback_applied"])
+        self.assertGreater(hot["phase_residual_rms_rad"], 0)
         self.assertAlmostEqual(hot["output_energy_J"], cold["output_energy_J"], places=12)
         self.assertGreater(float(np.max(np.abs(
             np.asarray(hot["output_phase"]) - np.asarray(cold["output_phase"])))), 0)

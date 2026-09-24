@@ -43,13 +43,23 @@ and vertical center cuts. Dashed cuts come from a separate uniform-dopant,
 isothermal solve with the same pump and seed. The pulsed UI defaults to a
 synthetic 0.27 cluster contrast to expose that comparison. The temperature
 timeline advances one disk, contact and finite copper plate from a uniform
-20 °C start for the selected operating duration (30 s by default), using the
-periodic pulse heat as a constant source. Each sampled temperature drives a
+20 °C start for the selected operating duration (30 s by default), then
+continues toward a constant-heat steady solution. A bounded water-side
+conductance controller can increase an assumed coolant-flow proxy from
+10 to at most 100 kW/m²K when disk temperature exceeds a selected target;
+fixed conductance is also available. The controller slope (3 kW/m²K per K),
+instantaneous response, and constant-temperature coolant bath are assumptions,
+not a measured cooling-system design. Short pulses at 10 kHz deposit average
+heat continuously, while the finite coolant conductance removes increasing
+power as the plate warms, so this model approaches a steady temperature.
+Each sampled temperature drives a
 bonded elastic solve and round-trip OPD. The first pump/population startup
 interval is approximated. Under ideal image relays, the thermal phase is
 accumulated over the signal traversals and propagated to the output plane
 only if the requested-time state remains inside the available room-temperature
-thermomechanical parameter range. Beam-reshaping feedback into gain, photoelastic
+thermomechanical parameter range. The output phase residual is the wrapped,
+fluence-weighted piston-removed difference from an otherwise identical
+uniform-Yb, isothermal run. Beam-reshaping feedback into gain, photoelastic
 birefringence, and an actual relay geometry are omitted.
 The app simulates one selected pulse shape at a time.
 Every CW and pulsed shape can overlay a dashed uniform-Yb output profile

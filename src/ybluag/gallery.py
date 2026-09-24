@@ -7,6 +7,7 @@ gain, population, and heat quantities here use the Yb two-manifold model.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from copy import deepcopy
 import json
 import math
 from pathlib import Path
@@ -136,24 +137,66 @@ def _conservative_heat_polar(heat_slices, grid, mesh):
     return polar * (target_W / mapped_W)
 
 
-def _pulsed_thermal_timeline(mesh, heat_polar, grid, configuration, duration_s):
-    """Cycle-averaged heating of one disk and finite copper plate from a cold start."""
-    solver = yb_cooler_solver(mesh, configuration)
+def _pulsed_thermal_timeline(mesh, heat_polar, grid, configuration, duration_s,
+                             cooling_mode="fixed", cooling_target_C=40.0,
+                             cooling_h_max_W_m2K=100000.0):
+    """Finite-capacity startup with a bounded coolant-side flow-control proxy."""
+    h_min = configuration["thermal"]["coolant_conductance_W_m2K"]
     bath = configuration["thermal"]["coolant_temperature_K"]
+    gain_h_per_K = 3000.0  # Assumed controller slope; no measured flow curve.
+
+    def solver_at(h):
+        controlled = deepcopy(configuration)
+        controlled["thermal"]["coolant_conductance_W_m2K"] = float(h)
+        return yb_cooler_solver(mesh, controlled)
+
+    def command_h(max_disk_K):
+        if cooling_mode == "fixed":
+            return h_min
+        return float(np.clip(h_min + gain_h_per_K *
+                             (max_disk_K - 273.15 - cooling_target_C),
+                             h_min, cooling_h_max_W_m2K))
+
+    # A steady solution exists because the bath has fixed temperature and
+    # positive conductance. Solve the controller's fixed point at steady state.
+    if cooling_mode == "feedback":
+        low, high = h_min, cooling_h_max_W_m2K
+        for _ in range(20):
+            mid = 0.5 * (low + high)
+            candidate = solver_at(mid).steady(heat_polar)
+            if mid < command_h(float(np.max(candidate.disk_temperature_K))):
+                low = mid
+            else:
+                high = mid
+        steady_h = 0.5 * (low + high)
+    else:
+        steady_h = h_min
+    steady = solver_at(steady_h).steady(heat_polar)
+    steady_disk_max_C = float(np.max(steady.disk_temperature_K) - 273.15)
+    tolerance_K = max(0.05, 0.005 * max(steady_disk_max_C - (bath - 273.15), 0))
+    solver = solver_at(h_min)
     disk = np.full(mesh.shape, bath)
     plate = np.full(solver.plate.shape, bath)
     x, y = grid.mesh
     inside = x*x + y*y <= (5e-3)**2
-    times = np.r_[0.0, np.geomspace(min(2.5e-5, duration_s / 1000), duration_s, 16)]
+    startup = np.geomspace(min(2.5e-5, duration_s / 1000), duration_s, 16)
+    end_s = max(30.0, min(300.0, 10 * duration_s))
+    continuation = np.geomspace(duration_s * 1.5, end_s, 10) if end_s > duration_s * 1.5 else np.array([])
+    times = np.r_[0.0, startup, continuation]
     max_temperature = [bath - 273.15]
     opd_pv = [0.0]
     front_pv = [0.0]
     valid = [True]
+    conductance = [h_min]
     balance = []
-    final = None
     latest_valid = None
     latest_valid_time = 0.0
+    requested = None
+    stabilized_at = None
     for previous, now in zip(times[:-1], times[1:]):
+        h = command_h(float(np.max(disk)))
+        if h != solver.coolant.conductance_W_m2K:
+            solver = solver_at(h)
         step = solver.advance(disk, plate, heat_polar, float(now - previous))
         disk, plate = step.disk_temperature_K, step.plate_temperature_K
         assembly = solve_yb_assembly(mesh, heat_polar, grid, configuration,
@@ -164,29 +207,52 @@ def _pulsed_thermal_timeline(mesh, heat_polar, grid, configuration, duration_s):
         opd_pv.append(float(np.ptp(screen) * 1e9))
         front_pv.append(float(np.ptp(face) * 1e9))
         valid.append(assembly.material_range_valid)
+        conductance.append(h)
         balance.append(step.relative_balance_error)
-        final = assembly
+        if np.isclose(now, duration_s, rtol=0, atol=1e-12):
+            requested = assembly
         if assembly.material_range_valid:
             latest_valid = assembly
             latest_valid_time = float(now)
+        if (now >= duration_s and
+                np.max(np.abs(disk - steady.disk_temperature_K)) <= tolerance_K and
+                np.max(np.abs(plate - steady.plate_temperature_K)) <= tolerance_K and
+                abs(h - steady_h) <= max(1.0, 0.01 * steady_h)):
+            stabilized_at = float(now)
+            break
+    times = times[:len(max_temperature)]
+    requested_valid = requested.material_range_valid
     return {
         "time_s": times, "disk_max_C": np.asarray(max_temperature),
         "roundtrip_opd_pv_nm": np.asarray(opd_pv),
         "front_displacement_pv_nm": np.asarray(front_pv),
         "material_range_valid": valid,
+        "coolant_conductance_W_m2K": np.asarray(conductance),
+        "cooling_mode": cooling_mode, "cooling_target_C": cooling_target_C,
+        "cooling_h_max_W_m2K": cooling_h_max_W_m2K,
+        "requested_time_s": duration_s,
+        "requested_disk_max_C": float(np.max(requested.temperature.disk_temperature_K) - 273.15),
+        "requested_material_range_valid": requested_valid,
+        "steady_disk_max_C": steady_disk_max_C,
+        "steady_coolant_conductance_W_m2K": steady_h,
+        "stabilization_tolerance_K": tolerance_K,
+        "stabilization_time_s": stabilized_at,
+        "stabilized": stabilized_at is not None,
         "energy_balance_relative_max": float(max(balance)),
-        "final_roundtrip_opd_m": final.screens.mean_roundtrip_opd_m,
+        "final_roundtrip_opd_m": requested.screens.mean_roundtrip_opd_m,
         "latest_valid_time_s": latest_valid_time,
         "latest_valid_roundtrip_opd_m": (latest_valid.screens.mean_roundtrip_opd_m
                                           if latest_valid is not None else np.zeros(grid.shape)),
-        "final_front_displacement_nm": final.screens.front_uz_m * 1e9,
-        "final_rear_displacement_nm": final.screens.rear_uz_m * 1e9,
+        "final_front_displacement_nm": requested.screens.front_uz_m * 1e9,
+        "final_rear_displacement_nm": requested.screens.rear_uz_m * 1e9,
         "scope": ("Finite startup from uniform coolant temperature with cycle-averaged periodic pulse heat "
                   "applied from t=0; the first population-recovery interval is approximated. "
                   "Disk, contact, and copper heat capacities are integrated by backward Euler; each recorded "
-                  "temperature drives a bonded elastic solve and round-trip OPD. Constant material properties "
-                  "outside the currently supported 20–26.85 °C thermo-mechanical parameter range "
-                  "are an unvalidated extrapolation, not a crystal failure claim or device prediction."),
+                  "temperature drives a bonded elastic solve and round-trip OPD. "
+                  "The optional flow controller changes only the water-side conductance; its slope and "
+                  "instantaneous response are assumptions. The fixed-temperature coolant bath is idealized. "
+                  "Results outside the currently supported 20–26.85 °C thermo-mechanical parameter "
+                  "range are unvalidated extrapolations, not crystal failure claims or device predictions."),
     }
 
 
@@ -408,7 +474,9 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
                          seed_fwhm_s: float, repetition_rate_Hz: float,
                          signal_traversals: int, pump_passes: int = 10,
                          *, compute_thermal: bool = True,
-                         operation_duration_s: float = 0.0):
+                         operation_duration_s: float = 0.0,
+                         cooling_mode: str = "fixed", cooling_target_C: float = 40.0,
+                         cooling_h_max_W_m2K: float = 100000.0):
     """Periodic pulsed seed with fixed pump-only CW profile and ideal relays.
 
     The population is iterated from pulse to pulse. During the short seed the
@@ -424,7 +492,11 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
             isinstance(pump_passes, bool) or not isinstance(pump_passes, int) or
             not 1 <= pump_passes <= 48 or
             not np.isfinite(operation_duration_s) or
-            not 0 <= operation_duration_s <= 120):
+            not 0 <= operation_duration_s <= 120 or
+            cooling_mode not in ("fixed", "feedback") or
+            not np.isfinite(cooling_target_C) or not 20 <= cooling_target_C <= 250 or
+            not np.isfinite(cooling_h_max_W_m2K) or
+            not 10000 <= cooling_h_max_W_m2K <= 200000):
         raise ValueError("invalid pulsed seed settings")
     grid = Grid2D.square(settings.grid_n, settings.field_size_m)
     common = GallerySettings(mean_ho_density_m3=material.number_density_m3,
@@ -514,13 +586,15 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
             thermal = {"status": "out_of_scope", "reason": str(exc)}
         if operation_duration_s:
             timeline = _pulsed_thermal_timeline(mesh, heat_polar, grid,
-                                                 configuration, operation_duration_s)
+                                                 configuration, operation_duration_s,
+                                                 cooling_mode, cooling_target_C,
+                                                 cooling_h_max_W_m2K)
     fluence_out = np.trapezoid(signal, time, axis=0)
     disk_output_J = float(np.sum(fluence_out) * grid.dx * grid.dy)
     gain_amplitude = np.sqrt(np.maximum(fluence_out, 0) / np.maximum(input_fluence, 1e-30))
     field_out = seed * gain_amplitude
     thermal_feedback_applied = bool(timeline is not None and
-                                    timeline["material_range_valid"][-1])
+                                    timeline["requested_material_range_valid"])
     if thermal_feedback_applied:
         # An ideal image relay returns the same transverse coordinate to the
         # same physical disk. Two thickness traversals make one active-mirror

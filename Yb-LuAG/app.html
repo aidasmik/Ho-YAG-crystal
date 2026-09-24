@@ -38,10 +38,10 @@
   details.card summary{cursor:pointer;font-weight:700;font-size:1.2rem}details.card[open] summary{margin-bottom:12px}
   .control-title{font-size:1rem;margin:18px 0 3px;color:#97d5ff}.advanced{margin-top:16px;border-top:1px solid #36465c;padding-top:12px}.advanced summary{cursor:pointer;color:#c4d0df}
   #pulseResults>#pulseDensityCard{order:0}#pulseResults>#pulseBeamCard{order:1}#pulseResults>#pulsePhaseCard{order:2}#pulseResults>#thermalTimelineCard{order:3}#pulseResults>#pulseMetricsCard{order:4}#pulseResults>#pulseCoolerCard{order:5}#pulseResults>*{order:6}
-  .timeline-chart{height:auto;width:100%;background:#111b2a}.timeline-grid{display:grid;gap:16px}.validity-warning{border-left:4px solid #f0a95c;padding:10px 13px;background:#32291f;color:#ffe1b5}
+  .timeline-chart{height:auto;width:100%;background:#111b2a}.timeline-grid{display:grid;gap:16px}.phase-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.phase-grid figure{margin:0;min-width:0}.phase-grid figure:first-child{grid-column:1/-1;max-width:400px}.phase-grid canvas{width:100%;aspect-ratio:1}.validity-warning{border-left:4px solid #f0a95c;padding:10px 13px;background:#32291f;color:#ffe1b5}
   @media(max-width:1100px){.beam-pair{grid-template-columns:1fr}}
   @media(max-width:700px){.beam-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-  @media(max-width:760px){.layout,.pulse-beam-grid{grid-template-columns:1fr}}
+  @media(max-width:760px){.layout,.pulse-beam-grid,.phase-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -59,6 +59,9 @@
   <label>Phase mask<select name="phase_mask"><option value="none">None</option><option value="vortex+1">Vortex +1</option><option value="vortex-1">Vortex −1</option><option value="vortex+2">Vortex +2</option><option value="defocus">Defocus</option><option value="astigmatic">Astigmatic</option><option value="axicon">Axicon</option></select></label>
   <label>Phase strength (rad)<input name="phase_strength_rad" type="number" min="-50" max="50" step="any" value="3.14159265" required></label>
   <label>Operating time (s)<input name="operation_duration_s" type="number" min="0.001" max="120" step="any" value="30" required></label>
+  <h3 class="control-title">4 · Cooler flow</h3>
+  <label>Water-side control<select name="cooling_mode"><option value="feedback">Automatic bounded flow</option><option value="fixed">Fixed flow</option></select></label>
+  <label>Target disk temperature (°C)<input name="cooling_target_C" type="number" min="20" max="250" step="any" value="40" required></label>
   <details class="advanced"><summary>Pump, crystal, and seed assumptions</summary>
   <label>Assumed incident pump power (W)<input name="pump_W" type="number" min="0.001" max="1000" step="any" value="40" required></label>
   <label>Pump radius (mm), 2 mm diameter<input name="radius_mm" type="number" min="0.1" max="5" step="any" value="1" required></label>
@@ -73,6 +76,7 @@
   <label>Repetition rate (kHz)<input name="repetition_rate_kHz" type="number" min="0.01" max="100" step="any" value="10" required></label>
   <label>Pump passes<input name="pump_passes" type="number" min="1" max="48" step="1" value="10" required></label>
   <label>Signal traversals<input name="signal_traversals" type="number" min="1" max="10" step="1" value="10" required></label>
+  <label>Maximum coolant conductance (W/m²K)<input name="cooling_h_max_W_m2K" type="number" min="10000" max="200000" step="any" value="100000" required></label>
   </details>
   <button type="submit">Calculate selected pulsed beam</button><p id="pulsedStatus">Ready.</p>
 </form><main class="cards" id="pulseResults">
@@ -80,8 +84,8 @@
   <details class="card" id="pulseCoolerCard"><summary>Steady copper design reference and surface maps</summary><div id="pulseHeatMetrics" class="metrics"></div><p id="pulseThermalText"></p><div id="pulseThermalMaps" class="pulse-beam-grid" hidden><figure><canvas id="pulseOpdCanvas"></canvas><figcaption>Scalar round-trip optical path change (nm)</figcaption></figure><figure><canvas id="pulseDisplacementCanvas"></canvas><figcaption>Front surface displacement (nm)</figcaption></figure><figure><canvas id="pulseRearCanvas"></canvas><figcaption>Rear surface displacement (nm)</figcaption></figure><figure><svg id="pulseDeformationProfile" class="spatial-profile" viewBox="0 0 560 160"></svg><figcaption>Front and rear center cuts, displacement relative to their own center (nm); vertical scale enlarged</figcaption></figure></div></details>
   <section class="card" id="pulseDensityCard"><h2>Yb distribution</h2><p>Dark blue = lower Yb density, teal = middle, yellow = higher density; black = outside the 10 mm disk. This spatial map is synthetic until measured crystal data are supplied.</p><div class="pulse-beam-grid"><figure><canvas id="pulseDensityCanvas" style="width:100%;aspect-ratio:1;image-rendering:pixelated"></canvas><figcaption>Yb density at the disk entrance</figcaption></figure></div></section>
   <section class="card" id="pulseBeamCard"><h2>Seed and amplified beam</h2><p id="pulseBeamScope">The outgoing field includes the selected phase mask and the latest thermally valid optical-path screen.</p><div id="pulseMaps" class="beam-pair"></div></section>
-  <section class="card" id="pulsePhaseCard"><h2>Phase before and after the disk</h2><p>Wrapped phase (−π to π rad) is shown only where fluence exceeds 1% of each beam's peak. Output phase includes free-space propagation and, when valid, thermal OPD.</p><div class="pulse-beam-grid"><figure><canvas id="inputPhaseCanvas" style="width:100%;aspect-ratio:1"></canvas><figcaption>Seed phase at disk</figcaption></figure><figure><canvas id="outputPhaseCanvas" style="width:100%;aspect-ratio:1"></canvas><figcaption>Output phase at observation plane</figcaption></figure></div></section>
-  <section class="card" id="thermalTimelineCard"><h2>Temperature, deformation, and OPD over time</h2><p id="timelineStatus"></p><button type="button" id="thermalDemo" hidden>Try an in-range 0.2 W pump example (low gain)</button><div class="timeline-grid"><svg id="temperatureTimeline" class="timeline-chart" viewBox="0 0 650 210" aria-label="Maximum crystal temperature versus operating time"></svg><svg id="opdTimeline" class="timeline-chart" viewBox="0 0 650 210" aria-label="Round-trip OPD versus operating time"></svg><svg id="deformationTimeline" class="timeline-chart" viewBox="0 0 650 210" aria-label="Crystal front displacement versus operating time"></svg></div><small id="timelineAssumptions">The 26.85 °C division is the current thermo-mechanical parameter limit, not crystal damage. The spectroscopic reconstruction reaches 200 °C. The assumed indium contact melts near 156.6 °C; 250 °C is shown as your crystal temperature reference, not an assembly rating. Solid green uses room-temperature properties within range; dashed amber extrapolates them. Horizontal time axis is logarithmic after t = 0.</small></section>
+  <section class="card" id="pulsePhaseCard"><h2>Phase before and after amplification</h2><p>Wrapped phase (−π to π rad) appears where fluence exceeds 1% of peak. The residual compares the amplified field with the same seed and optics, uniform Yb, and no thermal phase; a constant piston is removed.</p><div class="phase-grid"><figure><canvas id="inputPhaseCanvas"></canvas><figcaption>Seed phase at disk</figcaption></figure><figure><canvas id="outputPhaseCanvas"></canvas><figcaption>Amplified phase at observation plane</figcaption></figure><figure><canvas id="residualPhaseCanvas"></canvas><figcaption id="residualPhaseLabel">Amplified phase residual (rad)</figcaption></figure></div></section>
+  <section class="card" id="thermalTimelineCard"><h2>Heating, cooling control, and stabilization</h2><p id="timelineStatus"></p><button type="button" id="thermalDemo" hidden>Try an in-range 0.2 W pump example (low gain)</button><div class="timeline-grid"><svg id="temperatureTimeline" class="timeline-chart" viewBox="0 0 650 210" aria-label="Maximum crystal temperature versus operating time"></svg><svg id="opdTimeline" class="timeline-chart" viewBox="0 0 650 210" aria-label="Round-trip OPD versus operating time"></svg><svg id="deformationTimeline" class="timeline-chart" viewBox="0 0 650 210" aria-label="Crystal front displacement versus operating time"></svg><svg id="coolingTimeline" class="timeline-chart" viewBox="0 0 650 210" aria-label="Water-side heat transfer conductance versus time"></svg></div><small id="timelineAssumptions">The 26.85 °C division is the current thermo-mechanical parameter limit, not crystal damage. The spectroscopic reconstruction reaches 200 °C. The assumed indium contact melts near 156.6 °C; 250 °C is shown as your crystal temperature reference, not an assembly rating. Solid green uses room-temperature properties within range; dashed amber extrapolates them. Horizontal time axis is logarithmic after t = 0.</small></section>
   <details class="card"><summary>Power during the stretched seed pulse</summary><svg id="pulseTrace" viewBox="0 0 560 115" class="profile"></svg><small>Blue input; orange output. Time window spans ±3 stretched-seed FWHM in picoseconds.</small></details>
   <details class="card"><summary>Proposal targets and model scope</summary><p>Target: &gt;100 µJ output, gain &gt;10,000, pattern fidelity &gt;0.8, phase distortion &lt;0.5 rad. These are design targets, not achieved performance.</p><p id="pulseScope"></p></details>
 </main></div>
@@ -195,6 +199,21 @@ function drawMaskedPhaseMap(canvas,phase,fluence){
  }ctx.putImageData(image,0,0);
  ctx.beginPath();ctx.arc(w/2,n/2,5/diskExtentMm*w,0,2*Math.PI);ctx.strokeStyle='#20242c';ctx.lineWidth=1;ctx.stroke();
 }
+function drawResidualPhaseMap(canvas,residual,fluence){
+ const n=residual.length,w=residual[0].length,maxFluence=Math.max(...fluence.flat(),1e-30);
+ const sampled=[];for(let j=0;j<n;j++)for(let i=0;i<w;i++)if(fluence[j][i]>=.01*maxFluence)sampled.push(Math.abs(residual[j][i]));
+ const limit=Math.max(...sampled,1e-6);canvas.width=w;canvas.height=n;
+ const ctx=canvas.getContext('2d'),image=ctx.createImageData(w,n);
+ for(let j=0;j<n;j++)for(let i=0;i<w;i++){
+  let rgb=[250,251,253];if(fluence[n-1-j][i]>=.01*maxFluence){
+   const a=Math.min(1,Math.abs(residual[n-1-j][i])/limit);
+   const edge=residual[n-1-j][i]<0?[48,103,193]:[205,67,62];
+   rgb=edge.map(v=>Math.round(247*(1-a)+v*a));
+  }image.data.set([...rgb,255],4*(j*w+i));
+ }ctx.putImageData(image,0,0);
+ ctx.beginPath();ctx.arc(w/2,n/2,5/diskExtentMm*w,0,2*Math.PI);ctx.strokeStyle='#20242c';ctx.lineWidth=1;ctx.stroke();
+ return limit;
+}
 function cutProfile(svg,actual,ideal,vertical){
  const W=vertical?52:400,H=vertical?400:58,max=Math.max(...actual,...ideal,1e-30)*1.06;
  const points=a=>a.map((v,i)=>{const x=vertical?W-5-v/max*(W-9):i/(a.length-1)*W;
@@ -246,7 +265,7 @@ function drawDeformationProfile(svg,x,front,rear){
  const xp=i=>L+i/(x.length-1)*(W-L-R),yp=v=>T+(peak-v)/(2*peak)*(H-T-B),path=arr=>arr.map((v,i)=>`${i?'L':'M'}${xp(i).toFixed(1)},${yp(v).toFixed(1)}`).join(' ');
  svg.innerHTML=`<line x1="${L}" x2="${W-R}" y1="${yp(0)}" y2="${yp(0)}" stroke="#71839c"/><path d="${path(a)}" stroke="#ffad62" stroke-width="2.5" fill="none"/><path d="${path(b)}" stroke="#74d5ee" stroke-width="2.5" fill="none"/><text x="${L}" y="15" fill="#ffad62" font-size="12">Front</text><text x="${L+52}" y="15" fill="#74d5ee" font-size="12">Rear</text><text x="${L-5}" y="${T+4}" text-anchor="end" fill="#c5d6ea" font-size="11">+${peak.toFixed(1)}</text><text x="${L-5}" y="${H-B}" text-anchor="end" fill="#c5d6ea" font-size="11">−${peak.toFixed(1)}</text><text x="${L}" y="${H-8}" fill="#c5d6ea" font-size="11">${x[0].toFixed(1)}</text><text x="${W-R}" y="${H-8}" text-anchor="end" fill="#c5d6ea" font-size="11">${x.at(-1).toFixed(1)} mm</text>`;
 }
-function drawTimelinePlot(svg,times,values,valid,label){
+function drawTimelinePlot(svg,times,values,valid,label,requestedTime,steadyValue){
  const W=650,H=210,L=60,R=18,T=27,B=38,top=Math.max(...values,1e-9)*1.08;
  const tx=t=>L+Math.log1p(t/1e-4)/Math.log1p(times.at(-1)/1e-4)*(W-L-R);
  const vy=v=>H-B-v/top*(H-T-B);
@@ -254,24 +273,26 @@ function drawTimelinePlot(svg,times,values,valid,label){
  const firstInvalid=valid.findIndex(v=>!v),end=firstInvalid<0?values.length-1:firstInvalid-1;
  const ticks=[0,1e-4,1e-3,.01,.1,1,10,times.at(-1)].filter((v,i,a)=>v<=times.at(-1)&&a.indexOf(v)===i);
  const references=label.startsWith('Maximum')?[[250,'250°C crystal reference']].filter(([v])=>v<=top):[];
+ if(Number.isFinite(steadyValue)&&steadyValue<=top)references.push([steadyValue,'steady solution']);
  svg.innerHTML=`<text x="${L}" y="17" fill="#e6eef8" font-size="14">${label}</text>`+
   `<line x1="${L}" y1="${H-B}" x2="${W-R}" y2="${H-B}" stroke="#71839c"/>`+
   [0,.5,1].map(f=>`<line x1="${L}" y1="${vy(f*top)}" x2="${W-R}" y2="${vy(f*top)}" stroke="#34455a"/><text x="${L-6}" y="${vy(f*top)+4}" text-anchor="end" fill="#c5d6ea" font-size="11">${(f*top).toFixed(top<10?1:0)}</text>`).join('')+
   ticks.map(v=>`<line x1="${tx(v)}" y1="${H-B}" x2="${tx(v)}" y2="${H-B+5}" stroke="#71839c"/><text x="${tx(v)}" y="${H-13}" text-anchor="middle" fill="#c5d6ea" font-size="10">${v===0?'0':v<.001?`${(v*1e6).toFixed(0)}µs`:v<1?`${(v*1e3).toFixed(0)}ms`:`${v.toFixed(0)}s`}</text>`).join('')+
   references.map(([v,tag])=>`<line x1="${L}" y1="${vy(v)}" x2="${W-R}" y2="${vy(v)}" stroke="#c792a5" stroke-dasharray="3 4"/><text x="${W-R-2}" y="${vy(v)-3}" text-anchor="end" fill="#efb3c5" font-size="10">${tag}</text>`).join('')+
+  `<line x1="${tx(requestedTime)}" y1="${T}" x2="${tx(requestedTime)}" y2="${H-B}" stroke="#89bfff" stroke-dasharray="3 3"/><text x="${tx(requestedTime)-3}" y="${T+12}" text-anchor="end" fill="#a9d1ff" font-size="10">beam time</text>`+
   `<path d="${segment(0,Math.max(0,end))}" fill="none" stroke="#59d49d" stroke-width="3"/>`+
   (firstInvalid<0?'':`<path d="${segment(Math.max(0,end),values.length-1)}" fill="none" stroke="#f0a95c" stroke-width="2.5" stroke-dasharray="7 5"/>`);
 }
 function renderTimeline(t){
  const last=t.time_s.length-1,lastValid=t.material_range_valid.lastIndexOf(true);
  const text=document.getElementById('timelineStatus');
- text.className=t.material_range_valid[last]?'':'validity-warning';
- text.textContent=t.material_range_valid[last]?
-  `At ${t.time_s[last].toFixed(2)} s: maximum disk ${t.disk_max_C[last].toFixed(2)} °C, OPD peak-to-valley ${t.roundtrip_opd_pv_nm[last].toFixed(2)} nm. The material model remains in range.`:
-  `Thermo-mechanical parameter range exceeded after ${t.time_s[lastValid].toPrecision(3)} s; this is not a crystal failure temperature. Later dashed values extrapolate fixed properties and are not a validated device prediction. Thermal phase is not applied to the beam at the requested operating time.`;
- document.getElementById('thermalDemo').hidden=t.material_range_valid[last];
- for(const [id,values,label] of [['temperatureTimeline',t.disk_max_C,'Maximum disk temperature (°C)'],['opdTimeline',t.roundtrip_opd_pv_nm,'Round-trip OPD peak-to-valley (nm)'],['deformationTimeline',t.front_displacement_pv_nm,'Front displacement peak-to-valley (nm)']])
-  drawTimelinePlot(document.getElementById(id),t.time_s,values,t.material_range_valid,label);
+ text.className=t.requested_material_range_valid?'':'validity-warning';
+ const stabilization=t.stabilized?`Stabilized near ${t.stabilization_time_s.toPrecision(3)} s (within ${t.stabilization_tolerance_K.toFixed(2)} K).`:`Not within ${t.stabilization_tolerance_K.toFixed(2)} K of steady state by ${t.time_s[last].toPrecision(3)} s.`;
+ const saturated=t.cooling_mode==='feedback'&&t.steady_coolant_conductance_W_m2K>=.999*t.cooling_h_max_W_m2K&&t.steady_disk_max_C>t.cooling_target_C;
+ text.textContent=`At selected ${t.requested_time_s.toPrecision(3)} s: ${t.requested_material_range_valid?'disk peak':'formal constant-property disk peak'} ${t.requested_disk_max_C.toFixed(2)} °C. ${t.requested_material_range_valid?'Constant-heat steady solution':'Formal constant-property steady solution'} ${t.steady_disk_max_C.toFixed(2)} °C; ${stabilization} ${t.cooling_mode==='feedback'?'Steady water-side conductance '+t.steady_coolant_conductance_W_m2K.toFixed(0)+' W/m²K.':'Fixed water-side conductance.'} ${saturated?'Cooling control saturates and does not reach its target. ':''}${t.requested_material_range_valid?'Thermal phase is applied to the selected beam.':`Thermo-mechanical property range was passed after ${t.time_s[lastValid].toPrecision(3)} s; later dashed values are extrapolations and thermal phase is withheld.`}`;
+ document.getElementById('thermalDemo').hidden=t.requested_material_range_valid;
+ for(const [id,values,label,steady] of [['temperatureTimeline',t.disk_max_C,'Maximum disk temperature (°C)',t.steady_disk_max_C],['opdTimeline',t.roundtrip_opd_pv_nm,'Round-trip OPD peak-to-valley (nm)',null],['deformationTimeline',t.front_displacement_pv_nm,'Front displacement peak-to-valley (nm)',null],['coolingTimeline',t.coolant_conductance_W_m2K.map(v=>v/1000),'Water-side conductance (kW/m²K)',t.steady_coolant_conductance_W_m2K/1000]])
+  drawTimelinePlot(document.getElementById(id),t.time_s,values,t.material_range_valid,label,t.requested_time_s,steady);
 }
 function renderThermal(thermal,x,prefix){
  const available=['computed','design_reference'].includes(thermal.status),maps=document.getElementById(prefix==='pulse'?'pulseThermalMaps':'thermalMaps');maps.hidden=!available;
@@ -331,13 +352,15 @@ async function calculatePulsed(){
   document.getElementById('pulseHeatMetrics').innerHTML=metric('Pump absorbed',r.cycle_average_pump_absorbed_W.toFixed(3)+' W')+metric('Signal gain',r.cycle_average_signal_gain_W.toFixed(6)+' W')+metric('Escaping fluorescence',r.cycle_average_escaping_fluorescence_W.toFixed(3)+' W')+metric('Heat upper bound / assumption',r.cycle_average_heat_W_upper_or_assumed.toFixed(3)+' W');
   renderThermal(r.thermal,r.x_mm,'pulse');
   if(r.thermal_timeline)renderTimeline(r.thermal_timeline);
-  document.getElementById('timelineAssumptions').textContent=`${r.fluorescence_escape_yield_assumed===0?'Zero escaping fluorescence makes deposited heat an upper estimate.':'Deposited heat uses the entered escaping-fluorescence assumption.'} The 26.85 °C division is the current thermo-mechanical parameter limit, not crystal damage. Published spectral reconstructions reach 200 °C. The assumed indium contact melts near 156.6 °C; 250 °C marks your crystal temperature reference, not an assembly rating. Solid green uses room-temperature properties within range; dashed amber extrapolates them. Time is logarithmic after t = 0.`;
+  document.getElementById('timelineAssumptions').textContent=`${r.fluorescence_escape_yield_assumed===0?'Zero escaping fluorescence makes deposited heat an upper estimate.':'Deposited heat uses the entered escaping-fluorescence assumption.'} Flow control changes an assumed water-side conductance with instantaneous response and an ideal constant-temperature bath; pump heat is cycle averaged. The 26.85 °C division is the current thermo-mechanical parameter limit, not crystal damage. Published spectral reconstructions reach 200 °C. The assumed indium contact melts near 156.6 °C; 250 °C marks your crystal temperature reference, not an assembly rating. Solid green uses room-temperature properties within range; dashed amber extrapolates them. Time is logarithmic after t = 0.`;
   drawMap(document.getElementById('pulseDensityCanvas'),r.yb_density_m3[0],'density');
   const maps=document.getElementById('pulseMaps');maps.replaceChildren();
   renderBeamView(maps,`${data.selected_beam} · incoming at disk`,r.input_fluence_J_m2,r.input_fluence_J_m2,r.x_mm,'J/m²');
   renderBeamView(maps,'Outgoing at observation plane',r.output_fluence_J_m2,r.uniform_isothermal_output_fluence_J_m2,r.x_mm,'J/m²');
   drawMaskedPhaseMap(document.getElementById('inputPhaseCanvas'),r.input_phase,r.input_fluence_J_m2);
   drawMaskedPhaseMap(document.getElementById('outputPhaseCanvas'),r.output_phase,r.output_fluence_J_m2);
+  const residualLimit=drawResidualPhaseMap(document.getElementById('residualPhaseCanvas'),r.phase_residual_rad,r.output_fluence_J_m2);
+  document.getElementById('residualPhaseLabel').textContent=`Phase residual: blue negative, red positive; ±${residualLimit.toFixed(3)} rad · weighted RMS ${r.phase_residual_rms_rad.toFixed(3)} rad`;
   document.getElementById('pulseBeamScope').textContent=r.thermal_feedback_applied?
    `Calculated thermal OPD is applied at each ideal-relayed disk encounter using the ${r.thermal_feedback_time_s.toPrecision(3)} s thermal state. Dashed profiles use uniform Yb and no thermal phase. Optical gain is not recalculated after beam reshaping.`:
    'No validated thermal phase was available for this operating point; the beam is shown without thermal correction. Dashed profiles use uniform Yb and no thermal phase.';

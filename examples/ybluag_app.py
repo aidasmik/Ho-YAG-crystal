@@ -196,6 +196,9 @@ def calculate_pulsed(data, *, compute_thermal=True):
         "cluster_contrast": 0.0,
         "escape_yield": 0.0,
         "operation_duration_s": 30.0,
+        "cooling_mode": "feedback",
+        "cooling_target_C": 40.0,
+        "cooling_h_max_W_m2K": 100000.0,
         **data,
     }
     source_fwhm_fs = number(data, "source_fwhm_fs", 50, 10000)
@@ -226,15 +229,29 @@ def calculate_pulsed(data, *, compute_thermal=True):
         number(data, "repetition_rate_kHz", 0.01, 100) * 1e3,
         integer(data, "signal_traversals", 1, 10))
     pump_passes = integer(data, "pump_passes", 1, 48)
+    cooling_mode = data.get("cooling_mode", "feedback")
+    if cooling_mode not in ("fixed", "feedback"):
+        raise ValueError("unknown cooling mode")
     result = simulate_pulsed_seed(
         material,
         settings, beam,
         *pulse_args, pump_passes=pump_passes, compute_thermal=compute_thermal,
-        operation_duration_s=number(data, "operation_duration_s", 0, 120))
-    reference = (result if settings.cluster_contrast == 0 else
+        operation_duration_s=number(data, "operation_duration_s", 0, 120),
+        cooling_mode=cooling_mode,
+        cooling_target_C=number(data, "cooling_target_C", 20, 250),
+        cooling_h_max_W_m2K=number(data, "cooling_h_max_W_m2K", 10000, 200000))
+    reference = (result if settings.cluster_contrast == 0 and not result["thermal_feedback_applied"] else
                  simulate_pulsed_seed(material, replace(settings, cluster_contrast=0.0),
                                       beam, *pulse_args, pump_passes=pump_passes,
                                       compute_thermal=False))
+    actual_phase = result["output_phase"]
+    reference_phase = reference["output_phase"]
+    weights = result["output_fluence_J_m2"]
+    mask = weights >= 0.01 * float(weights.max())
+    raw_residual = np.angle(np.exp(1j * (actual_phase - reference_phase)))
+    piston = float(np.angle(np.sum(weights[mask] * np.exp(1j * raw_residual[mask]))))
+    phase_residual = np.angle(np.exp(1j * (raw_residual - piston)))
+    phase_residual_rms = float(np.sqrt(np.average(phase_residual[mask]**2, weights=weights[mask])))
     wavelength_nm = proposal["optics"]["signal_wavelength_nm"]
     spectral_fwhm_nm = (wavelength_nm * 1e-9)**2 / 299792458.0 * (
         0.441 / (source_fwhm_fs * 1e-15)) * 1e9
@@ -254,6 +271,9 @@ def calculate_pulsed(data, *, compute_thermal=True):
         "x_mm": jsonable(result["grid"].x * 1e3),
         "y_mm": jsonable(result["grid"].y * 1e3),
         "uniform_isothermal_output_fluence_J_m2": jsonable(reference["output_fluence_J_m2"]),
+        "uniform_isothermal_output_phase": jsonable(reference_phase),
+        "phase_residual_rad": jsonable(phase_residual),
+        "phase_residual_rms_rad": phase_residual_rms,
         "reference_scope": "Dashed profiles use the same pump and seed with uniform Yb concentration and no thermal phase. The selected-beam profile receives the transient thermal OPD only if its final temperature is within the stated material range; temperature-dependent gain and relay feedback remain omitted.",
         "spectral_scope": "Pulse gain uses the 1030 nm center cross sections. The femtosecond source bandwidth, chirp, gain narrowing, dispersion and nonlinear phase are not propagated spectrally; pulse energy is a monochromatic engineering estimate.",
     }
