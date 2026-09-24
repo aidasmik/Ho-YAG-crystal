@@ -12,7 +12,7 @@ In PowerShell use `cd 'F:\BAKALAUSKARAS\YbYag Studeis\Ho-YAG-crystal'` and
 
 Open <http://127.0.0.1:8781/>. This is a separate Yb:LuAG app from the
 Ho:YAG structured-beam calculator on port 8780. It provides the same six
-structured seed shapes, ideal phase masks, synthetic clustered dopant maps,
+structured target shapes, phase-only SLM masks, synthetic clustered dopant maps,
 irradiance/phase/side-profile views, and output-plane diffraction. Three CW
 options are available: pump-only weak probe, a fixed Gaussian cavity-mode
 background with separate weak probes, and a signal-saturated single pass.
@@ -27,6 +27,22 @@ is interpolated from the 10 and 15 at.% pinhole data; it is not a measured
 12 at.% value. The exact inputs and their status are in
 `config/ybslam_proposal_luag.json`.
 
+The source seed is always a Gaussian TEM00. The selected target determines a
+phase-only mask at an assumed SLM/phase-plate plane; an optional aberration or
+correction is added to that mask. The field propagates over an editable
+SLM-to-disk distance (default 0.25 m) before it enters the amplifier. Spiral
+phases make the two vortex targets, a quadrant phase makes the HG-like target,
+a converging axicon makes the finite-aperture Bessel-like needle, and a
+48-iteration scalar alternating-projection hologram makes the approximate
+flat-top target. A phase-only mask does not change intensity in its own plane;
+the disk-input and outgoing views show the structure formed by propagation.
+These targets are approximate spatial fields, not pure-mode guarantees. The
+coherent source is propagated at the 1030 nm center wavelength; chromatic SLM
+response and broadband shaping of the femtosecond seed remain unmodeled.
+The flat-top design follows the phase-only Gaussian reshaping approach of
+[Gerchberg–Saxton holograms](https://www.sciencedirect.com/science/article/pii/S0030401818308654);
+the needle uses the established [Gaussian-plus-axicon mechanism](https://opg.optica.org/josaa/abstract.cfm?uri=josaa-22-11-2542).
+
 The pulse solver evolves the two-manifold population over a periodic seed
 train, supports ideal relayed signal traversals, and reports a cycle-average
 first-law heat estimate using a fixed multipass pump profile and declared
@@ -38,9 +54,10 @@ fidelity targets. The uniform-dopant 40 W run gives about 39 nJ at the disk
 exit, well below the energy target; the UI's synthetic nonuniform map changes
 that result. The UI keeps the existing 10 at.% CW
 comparison separate from this proposal pulse setup. The enlarged pulse
-figures show one selected input and output transverse fluence with horizontal
-and vertical center cuts. Dashed cuts come from a separate uniform-dopant,
-isothermal solve with the same pump and seed. The pulsed UI defaults to a
+figures show the Gaussian source, shaped disk input, and outgoing transverse
+fluence with horizontal and vertical center cuts. Dashed output cuts come
+from a separate uniform-dopant, isothermal solve with the same pump, Gaussian
+source, and phase mask. The pulsed UI defaults to a
 synthetic 0.27 cluster contrast to expose that comparison. The temperature
 timeline advances one disk, contact and finite copper plate from a uniform
 20 °C start for the selected operating duration (30 s by default), then

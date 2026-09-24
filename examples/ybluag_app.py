@@ -111,6 +111,7 @@ def calculate(data):
 def calculate_structured(data):
     if not isinstance(data, dict):
         raise ValueError("request must be an object")
+    data = {"slm_to_disk_m": 0.25, **data}
     from hoyag.structured_beam_gallery import PHASE_MASKS, BEAM_NAMES
     mask = data.get("phase_mask", "none")
     if mask not in PHASE_MASKS:
@@ -128,6 +129,7 @@ def calculate_structured(data):
         input_power_W=number(data, "signal_W", 0.001, 100),
         waist_m=number(data, "waist_mm", 0.1, 2) * 1e-3,
         post_disk_distance_m=number(data, "distance_m", 0, 2),
+        slm_to_disk_distance_m=number(data, "slm_to_disk_m", 0.001, 2),
         phase_mask_name=mask,
         phase_strength_rad=number(data, "phase_strength_rad", -50, 50),
         density_seed=integer(data, "density_seed", -2e9, 2e9),
@@ -147,6 +149,8 @@ def calculate_structured(data):
         "grid_n": grid.nx, "selected_beam": beam,
         "x_mm": (grid.x * 1e3).tolist(), "y_mm": (grid.y * 1e3).tolist(),
         "phase_mask": result["phase_mask"].tolist(),
+        "target_phase_mask": result["target_phase_mask"].tolist(),
+        "aberration_phase_mask": result["aberration_phase_mask"].tolist(),
         "yb_density_entrance_1e26_m3":
             (result["yb_density_m3"][0] / 1e26).tolist(),
         "yb_density_middle_1e26_m3":
@@ -196,6 +200,7 @@ def calculate_pulsed(data, *, compute_thermal=True):
         "cluster_contrast": 0.0,
         "escape_yield": 0.0,
         "operation_duration_s": 30.0,
+        "slm_to_disk_m": 0.25,
         "cooling_mode": "feedback",
         "cooling_target_C": 40.0,
         "cooling_h_max_W_m2K": 100000.0,
@@ -211,6 +216,7 @@ def calculate_pulsed(data, *, compute_thermal=True):
         thickness_m=number(data, "thickness_um", 1, 2000) * 1e-6,
         waist_m=number(data, "waist_mm", 0.1, 2) * 1e-3,
         post_disk_distance_m=number(data, "distance_m", 0, 2),
+        slm_to_disk_distance_m=number(data, "slm_to_disk_m", 0.001, 2),
         phase_mask_name=mask,
         phase_strength_rad=number(data, "phase_strength_rad", -50, 50),
         density_seed=integer(data, "density_seed", -2e9, 2e9),
@@ -274,7 +280,7 @@ def calculate_pulsed(data, *, compute_thermal=True):
         "uniform_isothermal_output_phase": jsonable(reference_phase),
         "phase_residual_rad": jsonable(phase_residual),
         "phase_residual_rms_rad": phase_residual_rms,
-        "reference_scope": "Dashed profiles use the same pump and seed with uniform Yb concentration and no thermal phase. The selected-beam profile receives the transient thermal OPD only if its final temperature is within the stated material range; temperature-dependent gain and relay feedback remain omitted.",
+        "reference_scope": "Dashed output profiles use the same Gaussian source, target-shaping mask, added phase, SLM-to-disk propagation, and pump with uniform Yb concentration and no thermal phase. The selected output receives transient thermal OPD only when the requested-time temperature is within the stated material range; temperature-dependent gain and relay feedback remain omitted.",
         "spectral_scope": "Pulse gain uses the 1030 nm center cross sections. The femtosecond source bandwidth, chirp, gain narrowing, dispersion and nonlinear phase are not propagated spectrally; pulse energy is a monochromatic engineering estimate.",
     }
 

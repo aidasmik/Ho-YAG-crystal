@@ -19,9 +19,40 @@ from ybluag import (YbLuAGMaterial, propagate_cw,
 from ybluag import solve_yb_assembly
 from ybluag import YbGallerySettings, simulate_structured_gallery, simulate_pulsed_seed
 from ybluag.multipass_pump import steady_multipass_pump, transport_multipass_pump
+from ybluag.beam_shaping import gaussian_seed_and_target_mask
 
 
 class YbLuAGPhysicsTests(unittest.TestCase):
+    def test_phase_only_mask_shapes_gaussian_after_propagation(self):
+        grid = Grid2D.square(96, 0.012)
+        x, y = grid.mesh
+        radius = np.hypot(x, y)
+        waist = 0.6e-3
+        center = radius < 0.12e-3
+        ring = (radius > 0.25e-3) & (radius < 0.38e-3)
+        core = radius < 0.45e-3
+        fields = {}
+        for target in ("Gaussian TEM00", "Helical LG(0,+1)",
+                       "Double helix LG(0,+2)", "Hermite-Gaussian HG(1,1)",
+                       "Needle Bessel-Gaussian", "Flattop super-Gaussian"):
+            source, mask = gaussian_seed_and_target_mask(
+                grid, waist, 1.0, target, 1030e-9, 0.25)
+            np.testing.assert_allclose(abs(source * np.exp(1j * mask))**2,
+                                       abs(source)**2, rtol=1e-14, atol=1e-9)
+            fields[target] = abs(angular_spectrum_propagate(
+                source * np.exp(1j * mask), grid, 1030e-9, 0.25))**2
+            self.assertAlmostEqual(float(np.sum(fields[target]) * grid.dx * grid.dy),
+                                   1.0, places=12)
+        gaussian = fields["Gaussian TEM00"]
+        vortex = fields["Helical LG(0,+1)"]
+        needle = fields["Needle Bessel-Gaussian"]
+        flat = fields["Flattop super-Gaussian"]
+        self.assertGreater(float(gaussian[center].mean() / gaussian[ring].mean()), 1)
+        self.assertLess(float(vortex[center].mean() / vortex[ring].mean()), 0.3)
+        self.assertGreater(float(needle[center].mean() / needle[ring].mean()), 5)
+        self.assertLess(float(flat[core].std() / flat[core].mean()),
+                        0.5 * float(gaussian[core].std() / gaussian[core].mean()))
+
     def test_proposal_pulse_defaults_and_stretch_validation(self):
         sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "examples"))
         from ybluag_app import calculate_pulsed
@@ -132,6 +163,8 @@ class YbLuAGPhysicsTests(unittest.TestCase):
         a = plain["outcomes"]["Gaussian TEM00"]
         b = vortex["outcomes"]["Gaussian TEM00"]
         np.testing.assert_allclose(a["input_intensity"], b["input_intensity"], rtol=1e-13)
+        self.assertGreater(float(np.max(abs(a["disk_input_intensity"] -
+                                            b["disk_input_intensity"]))), 0)
         self.assertAlmostEqual(a["disk_output_power_W"], a["output_power_W"], places=10)
         self.assertGreater(a["net_heat_W_upper_or_assumed"], 0)
         saturated = simulate_structured_gallery(material, YbGallerySettings(
@@ -160,6 +193,22 @@ class YbLuAGPhysicsTests(unittest.TestCase):
             result["cycle_average_signal_gain_W"],
             (result["disk_output_energy_J"] - result["input_energy_J"]) * 10_000,
             places=7)
+
+    def test_pulsed_target_uses_gaussian_source_and_additive_correction(self):
+        result = simulate_pulsed_seed(
+            YbLuAGMaterial(),
+            YbGallerySettings(pump_power_W=40, grid_n=64, z_steps=2,
+                              cluster_count=4, phase_mask_name="defocus"),
+            "Helical LG(0,+1)", 10e-9, 10e-12, 10_000, 1,
+            compute_thermal=False)
+        source = result["input_fluence_J_m2"]
+        disk = result["disk_input_fluence_J_m2"]
+        self.assertGreater(float(np.max(abs(source - disk))), 0)
+        np.testing.assert_allclose(result["phase_mask"],
+                                   np.mod(result["target_phase_mask"] +
+                                          result["aberration_phase_mask"], 2 * np.pi),
+                                   atol=1e-12)
+        self.assertAlmostEqual(float(np.sum(source)), float(np.sum(disk)), places=9)
 
     def test_yb_modal_cw_roundtrip_balance(self):
         result = simulate_structured_gallery(

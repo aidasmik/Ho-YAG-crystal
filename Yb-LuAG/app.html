@@ -38,7 +38,7 @@
   details.card summary{cursor:pointer;font-weight:700;font-size:1.2rem}details.card[open] summary{margin-bottom:12px}
   .control-title{font-size:1rem;margin:18px 0 3px;color:#97d5ff}.advanced{margin-top:16px;border-top:1px solid #36465c;padding-top:12px}.advanced summary{cursor:pointer;color:#c4d0df}
   #pulseResults>#pulseDensityCard{order:0}#pulseResults>#pulseBeamCard{order:1}#pulseResults>#pulsePhaseCard{order:2}#pulseResults>#thermalTimelineCard{order:3}#pulseResults>#pulseMetricsCard{order:4}#pulseResults>#pulseCoolerCard{order:5}#pulseResults>*{order:6}
-  .timeline-chart{height:auto;width:100%;background:#111b2a}.timeline-grid{display:grid;gap:16px}.phase-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.phase-grid figure{margin:0;min-width:0}.phase-grid figure:first-child{grid-column:1/-1;max-width:400px}.phase-grid canvas{width:100%;aspect-ratio:1}.validity-warning{border-left:4px solid #f0a95c;padding:10px 13px;background:#32291f;color:#ffe1b5}
+  .timeline-chart{height:auto;width:100%;background:#111b2a}.timeline-grid{display:grid;gap:16px}.phase-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.phase-grid figure{margin:0;min-width:0}.phase-grid canvas{width:100%;aspect-ratio:1}.validity-warning{border-left:4px solid #f0a95c;padding:10px 13px;background:#32291f;color:#ffe1b5}
   @media(max-width:1100px){.beam-pair{grid-template-columns:1fr}}
   @media(max-width:700px){.beam-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
   @media(max-width:760px){.layout,.pulse-beam-grid,.phase-grid{grid-template-columns:1fr}}
@@ -48,16 +48,16 @@
 <h1>Yb:LuAG local calculator</h1>
 <p>Ytterbium-doped <strong>lutetium aluminum garnet</strong>. The proposal setup is a femtosecond laser seed stretched to a picosecond pulse before the 12 at.% Yb:LuAG disk. <a href="#proposal-pulse">Go to pulsed proposal setup</a> · <a href="http://127.0.0.1:8780/results/structured_beams/index.html">Ho:YAG structured-beam app</a></p>
 <h2 id="proposal-pulse">Yb:LuAG pulsed disk</h2>
-<p>Choose the Yb distribution, seed, and phase. The model follows the 10 kHz pulse train through one 100 µm disk and a generic copper cooler for the selected operating time. Pump and relay assumptions are available below.</p>
+<p>The source is always a Gaussian TEM00 seed. Choose the target field at the crystal; a phase-only SLM mask is applied to the Gaussian and the beam propagates to the disk. Optional phase corrections are added to that mask. The model follows the 10 kHz pulse train through one 100 µm disk and a generic copper cooler.</p>
 <div class="layout"><form id="pulsedForm">
   <h3 class="control-title">1 · Yb distribution</h3>
   <label>Cluster contrast (0 = uniform)<input name="cluster_contrast" type="number" min="0" max="1" step="any" value="0.27" required></label>
   <h3 class="control-title">2 · Seed</h3>
-  <label>Seed beam<select name="selected_beam"><option>Gaussian TEM00</option><option>Helical LG(0,+1)</option><option>Double helix LG(0,+2)</option><option>Hermite-Gaussian HG(1,1)</option><option>Needle Bessel-Gaussian</option><option>Flattop super-Gaussian</option></select></label>
+  <label>Target shape at disk<select name="selected_beam"><option>Gaussian TEM00</option><option>Helical LG(0,+1)</option><option>Double helix LG(0,+2)</option><option>Hermite-Gaussian HG(1,1)</option><option>Needle Bessel-Gaussian</option><option>Flattop super-Gaussian</option></select></label>
   <label>Seed energy (nJ)<input name="seed_energy_nj" type="number" min="0.001" max="100000" step="any" value="10" required></label>
   <h3 class="control-title">3 · Phase</h3>
-  <label>Phase mask<select name="phase_mask"><option value="none">None</option><option value="vortex+1">Vortex +1</option><option value="vortex-1">Vortex −1</option><option value="vortex+2">Vortex +2</option><option value="defocus">Defocus</option><option value="astigmatic">Astigmatic</option><option value="axicon">Axicon</option></select></label>
-  <label>Phase strength (rad)<input name="phase_strength_rad" type="number" min="-50" max="50" step="any" value="3.14159265" required></label>
+  <label>Added aberration / correction<select name="phase_mask"><option value="none">None</option><option value="vortex+1">Additional vortex +1</option><option value="vortex-1">Additional vortex −1</option><option value="vortex+2">Additional vortex +2</option><option value="defocus">Defocus</option><option value="astigmatic">Astigmatic</option><option value="axicon">Additional axicon</option></select></label>
+  <label>Added phase strength (rad)<input name="phase_strength_rad" type="number" min="-50" max="50" step="any" value="3.14159265" required></label>
   <label>Operating time (s)<input name="operation_duration_s" type="number" min="0.001" max="120" step="any" value="30" required></label>
   <h3 class="control-title">4 · Cooler flow</h3>
   <label>Water-side control<select name="cooling_mode"><option value="feedback">Automatic bounded flow</option><option value="fixed">Fixed flow</option></select></label>
@@ -68,6 +68,7 @@
   <label>Disk thickness (µm)<input name="thickness_um" type="number" min="1" max="2000" step="any" value="100" required></label>
   <label>Assumed signal waist (mm)<input name="waist_mm" type="number" min="0.1" max="2" step="any" value="0.6" required></label>
   <label>Output distance (m)<input name="distance_m" type="number" min="0" max="2" step="any" value="0.25" required></label>
+  <label>SLM to disk propagation (m)<input name="slm_to_disk_m" type="number" min="0.001" max="2" step="any" value="0.25" required></label>
   <label>Yb cluster seed<input name="density_seed" type="number" min="-2000000000" max="2000000000" step="1" value="17" required></label>
   <label>Cluster count<input name="cluster_count" type="number" min="2" max="64" step="1" value="24" required></label>
   <label>Assumed escaping fluorescence yield<input name="escape_yield" type="number" min="0" max="1" step="any" value="0" required></label>
@@ -83,8 +84,8 @@
   <section class="card" id="pulseMetricsCard"><h2>Pulse result</h2><div id="pulseMetrics" class="metrics"></div></section>
   <details class="card" id="pulseCoolerCard"><summary>Steady copper design reference and surface maps</summary><div id="pulseHeatMetrics" class="metrics"></div><p id="pulseThermalText"></p><div id="pulseThermalMaps" class="pulse-beam-grid" hidden><figure><canvas id="pulseOpdCanvas"></canvas><figcaption>Scalar round-trip optical path change (nm)</figcaption></figure><figure><canvas id="pulseDisplacementCanvas"></canvas><figcaption>Front surface displacement (nm)</figcaption></figure><figure><canvas id="pulseRearCanvas"></canvas><figcaption>Rear surface displacement (nm)</figcaption></figure><figure><svg id="pulseDeformationProfile" class="spatial-profile" viewBox="0 0 560 160"></svg><figcaption>Front and rear center cuts, displacement relative to their own center (nm); vertical scale enlarged</figcaption></figure></div></details>
   <section class="card" id="pulseDensityCard"><h2>Yb distribution</h2><p>Dark blue = lower Yb density, teal = middle, yellow = higher density; black = outside the 10 mm disk. This spatial map is synthetic until measured crystal data are supplied.</p><div class="pulse-beam-grid"><figure><canvas id="pulseDensityCanvas" style="width:100%;aspect-ratio:1;image-rendering:pixelated"></canvas><figcaption>Yb density at the disk entrance</figcaption></figure></div></section>
-  <section class="card" id="pulseBeamCard"><h2>Seed and amplified beam</h2><p id="pulseBeamScope">The outgoing field includes the selected phase mask and the latest thermally valid optical-path screen.</p><div id="pulseMaps" class="beam-pair"></div></section>
-  <section class="card" id="pulsePhaseCard"><h2>Phase before and after amplification</h2><p>Wrapped phase (−π to π rad) appears where fluence exceeds 1% of peak. The residual compares the amplified field with the same seed and optics, uniform Yb, and no thermal phase; a constant piston is removed.</p><div class="phase-grid"><figure><canvas id="inputPhaseCanvas"></canvas><figcaption>Seed phase at disk</figcaption></figure><figure><canvas id="outputPhaseCanvas"></canvas><figcaption>Amplified phase at observation plane</figcaption></figure><figure><canvas id="residualPhaseCanvas"></canvas><figcaption id="residualPhaseLabel">Amplified phase residual (rad)</figcaption></figure></div></section>
+  <section class="card" id="pulseBeamCard"><h2>Gaussian source, shaped disk input, and amplified beam</h2><p id="pulseBeamScope">The Gaussian retains its intensity at the SLM. Structure forms after propagation to the disk.</p><div id="pulseMaps" class="beam-pair"></div></section>
+  <section class="card" id="pulsePhaseCard"><h2>SLM mask and amplified phase</h2><p>Wrapped phase appears where the associated beam fluence exceeds 1% of peak. The phase-only SLM mask combines target shaping and added correction; only its illuminated area is shown. The output residual compares with the same Gaussian seed and mask, uniform Yb, and no thermal phase; a constant piston is removed.</p><div class="phase-grid"><figure><canvas id="inputPhaseCanvas"></canvas><figcaption>Gaussian source phase</figcaption></figure><figure><canvas id="slmPhaseCanvas"></canvas><figcaption>Illuminated phase-only SLM mask</figcaption></figure><figure><canvas id="outputPhaseCanvas"></canvas><figcaption>Amplified phase at observation plane</figcaption></figure><figure><canvas id="residualPhaseCanvas"></canvas><figcaption id="residualPhaseLabel">Amplified phase residual (rad)</figcaption></figure></div></section>
   <section class="card" id="thermalTimelineCard"><h2>Heating, cooling control, and stabilization</h2><p id="timelineStatus"></p><button type="button" id="thermalDemo" hidden>Try an in-range 0.2 W pump example (low gain)</button><div class="timeline-grid"><svg id="temperatureTimeline" class="timeline-chart" viewBox="0 0 650 210" aria-label="Maximum crystal temperature versus operating time"></svg><svg id="opdTimeline" class="timeline-chart" viewBox="0 0 650 210" aria-label="Round-trip OPD versus operating time"></svg><svg id="deformationTimeline" class="timeline-chart" viewBox="0 0 650 210" aria-label="Crystal front displacement versus operating time"></svg><svg id="coolingTimeline" class="timeline-chart" viewBox="0 0 650 210" aria-label="Water-side heat transfer conductance versus time"></svg></div><small id="timelineAssumptions">The 26.85 °C division is the current thermo-mechanical parameter limit, not crystal damage. The spectroscopic reconstruction reaches 200 °C. The assumed indium contact melts near 156.6 °C; 250 °C is shown as your crystal temperature reference, not an assembly rating. Solid green uses room-temperature properties within range; dashed amber extrapolates them. Horizontal time axis is logarithmic after t = 0.</small></section>
   <details class="card"><summary>Power during the stretched seed pulse</summary><svg id="pulseTrace" viewBox="0 0 560 115" class="profile"></svg><small>Blue input; orange output. Time window spans ±3 stretched-seed FWHM in picoseconds.</small></details>
   <details class="card"><summary>Proposal targets and model scope</summary><p>Target: &gt;100 µJ output, gain &gt;10,000, pattern fidelity &gt;0.8, phase distortion &lt;0.5 rad. These are design targets, not achieved performance.</p><p id="pulseScope"></p></details>
@@ -112,14 +113,15 @@
 <div class="layout">
 <form id="structuredForm">
   <label>Solver<select name="solver_mode"><option value="weak_probe">Pump-only weak probe</option><option value="modal_cw">Fixed-mode CW oscillator background</option><option value="saturated_cw">Signal-saturated CW pass</option><option value="pulsed">Pulsed seeded amplifier · selected shape</option></select></label>
-  <label>Beam shape<select name="selected_beam"><option>Gaussian TEM00</option><option>Helical LG(0,+1)</option><option>Double helix LG(0,+2)</option><option>Hermite-Gaussian HG(1,1)</option><option>Needle Bessel-Gaussian</option><option>Flattop super-Gaussian</option></select></label>
+  <label>Target shape at disk<select name="selected_beam"><option>Gaussian TEM00</option><option>Helical LG(0,+1)</option><option>Double helix LG(0,+2)</option><option>Hermite-Gaussian HG(1,1)</option><option>Needle Bessel-Gaussian</option><option>Flattop super-Gaussian</option></select></label>
   <label>Pump power (W)<input name="pump_W" type="number" min="0.001" max="1000" step="any" value="40" required></label>
   <label>Pump radius (mm)<input name="radius_mm" type="number" min="0.1" max="5" step="any" value="0.6" required></label>
   <label>Disk thickness (µm)<input name="thickness_um" type="number" min="1" max="2000" step="any" value="150" required></label>
   <label>Input power per beam (W)<input name="signal_W" type="number" min="0.001" max="100" step="any" value="1" required></label>
   <label>Signal waist (mm)<input name="waist_mm" type="number" min="0.1" max="2" step="any" value="0.408" required></label>
   <label>Output distance (m)<input name="distance_m" type="number" min="0" max="2" step="any" value="0.25" required></label>
-  <label>Phase mask<select name="phase_mask"><option value="none">None</option><option value="vortex+1">Vortex +1</option><option value="vortex-1">Vortex −1</option><option value="vortex+2">Vortex +2</option><option value="defocus">Defocus</option><option value="astigmatic">Astigmatic</option><option value="axicon">Axicon</option></select></label>
+  <label>SLM to disk propagation (m)<input name="slm_to_disk_m" type="number" min="0.001" max="2" step="any" value="0.25" required></label>
+  <label>Added aberration / correction<select name="phase_mask"><option value="none">None</option><option value="vortex+1">Additional vortex +1</option><option value="vortex-1">Additional vortex −1</option><option value="vortex+2">Additional vortex +2</option><option value="defocus">Defocus</option><option value="astigmatic">Astigmatic</option><option value="axicon">Additional axicon</option></select></label>
   <label>Phase strength (rad)<input name="phase_strength_rad" type="number" min="-50" max="50" step="any" value="3.14159265" required></label>
   <label>Yb cluster seed<input name="density_seed" type="number" min="-2000000000" max="2000000000" step="1" value="17" required></label>
   <label>Cluster count<input name="cluster_count" type="number" min="2" max="64" step="1" value="24" required></label>
@@ -129,8 +131,8 @@
   <button type="submit">Calculate selected Yb beam</button><p id="structuredStatus">Ready.</p>
 </form>
 <main class="cards">
-  <details class="card"><summary>Applied phase mask and Yb concentration</summary><p>Yb concentration uses dark blue for lower density, teal for the middle, and yellow for higher density; black is outside the disk.</p><div class="beam-grid"><figure><canvas id="maskCanvas"></canvas><figcaption>Ideal phase mask (0–2π)</figcaption></figure><figure><canvas id="densityCanvas"></canvas><figcaption>Synthetic Yb entrance density (10²⁶ ions/m³)</figcaption></figure><figure><canvas id="densityMiddleCanvas"></canvas><figcaption>Middle Yb concentration slice</figcaption></figure><figure><canvas id="pumpCanvas"></canvas><figcaption>Incident pump irradiance</figcaption></figure></div><figure><canvas id="densityXZCanvas" style="width:100%;height:80px;image-rendering:pixelated"></canvas><figcaption>Yb concentration x–z cut at y≈0</figcaption></figure></details>
-  <section class="card"><h2>Selected beam: incoming and outgoing</h2><p>Each top view includes the physical 10 mm disk boundary and both center-cut profiles. Dashed cyan shows ideal uniform Yb at the same settings. Thermal optical feedback is omitted.</p><p id="resonatorText"></p><p id="beamSummary"></p><div id="beamResults" class="beam-pair"></div></section>
+  <details class="card"><summary>Applied phase mask and Yb concentration</summary><p>Yb concentration uses dark blue for lower density, teal for the middle, and yellow for higher density; black is outside the disk.</p><div class="beam-grid"><figure><canvas id="maskCanvas"></canvas><figcaption>Target plus added phase at SLM (0–2π)</figcaption></figure><figure><canvas id="densityCanvas"></canvas><figcaption>Synthetic Yb entrance density (10²⁶ ions/m³)</figcaption></figure><figure><canvas id="densityMiddleCanvas"></canvas><figcaption>Middle Yb concentration slice</figcaption></figure><figure><canvas id="pumpCanvas"></canvas><figcaption>Incident pump irradiance</figcaption></figure></div><figure><canvas id="densityXZCanvas" style="width:100%;height:80px;image-rendering:pixelated"></canvas><figcaption>Yb concentration x–z cut at y≈0</figcaption></figure></details>
+  <section class="card"><h2>Gaussian source, shaped disk input, and output</h2><p>Each top view includes the physical 10 mm disk boundary and both center-cut profiles. Dashed cyan shows uniform Yb at the same settings. The selected target makes a phase-only SLM mask; the intensity structure forms after propagation. Thermal optical feedback is omitted.</p><p id="resonatorText"></p><p id="beamSummary"></p><div id="beamResults" class="beam-pair"></div></section>
   <section class="card"><h2>Copper cooler and crystal deformation</h2><p id="thermalText">Run the selected beam to calculate its thermal screen.</p><div class="pulse-beam-grid" id="thermalMaps" hidden><figure><canvas id="opdCanvas"></canvas><figcaption>Scalar round-trip optical path change (nm)</figcaption></figure><figure><canvas id="displacementCanvas"></canvas><figcaption>Front surface displacement (nm)</figcaption></figure><figure><canvas id="rearCanvas"></canvas><figcaption>Rear surface displacement (nm)</figcaption></figure><figure><svg id="deformationProfile" class="spatial-profile" viewBox="0 0 560 160"></svg><figcaption>Center cuts, displacement relative to each surface center (nm)</figcaption></figure></div><small>Thermo-mechanical parameters are currently supported from 20 to 26.85 °C. This is not a crystal survival temperature. Above it, deformation is a separate 5 K design reference. Photoelasticity is omitted.</small></section>
   <section class="card"><h2>Scope</h2><p id="structuredScope"></p></section>
 </main></div></details>
@@ -172,7 +174,7 @@ function drawMap(canvas,values,kind='intensity',range=null){
   else rgb=[Math.round(255*Math.min(1,q*1.6)),Math.round(200*Math.sqrt(q)),Math.round(255*(1-q)*q)];
   const k=4*(j*w+i);image.data.set([...rgb,255],k);
  }ctx.putImageData(image,0,0);
- if(kind!=='densityXZ'&&n===w&&diskExtentMm){
+ if(kind!=='densityXZ'&&kind!=='phase'&&n===w&&diskExtentMm){
   const radius=5/diskExtentMm*w;
   ctx.beginPath();ctx.arc(w/2,n/2,radius,0,2*Math.PI);
   ctx.strokeStyle=kind==='density'?'#e6f2f7':'#f1f4fa';ctx.lineWidth=Math.max(1,w/160);ctx.stroke();
@@ -189,7 +191,7 @@ function drawBeamHeatmap(canvas,values){
   image.data.set([...rgb,255],4*(j*w+i));
  }ctx.putImageData(image,0,0);
 }
-function drawMaskedPhaseMap(canvas,phase,fluence){
+function drawMaskedPhaseMap(canvas,phase,fluence,showDisk=true){
  const n=phase.length,w=phase[0].length,max=Math.max(...fluence.flat(),1e-30);
  canvas.width=w;canvas.height=n;const ctx=canvas.getContext('2d'),image=ctx.createImageData(w,n);
  for(let j=0;j<n;j++)for(let i=0;i<w;i++){
@@ -197,7 +199,7 @@ function drawMaskedPhaseMap(canvas,phase,fluence){
   if(fluence[n-1-j][i]>=.01*max){const a=phase[n-1-j][i];rgb=[Math.round(128+127*Math.cos(a)),Math.round(128+127*Math.cos(a-2.094)),Math.round(128+127*Math.cos(a+2.094))]}
   image.data.set([...rgb,255],4*(j*w+i));
  }ctx.putImageData(image,0,0);
- ctx.beginPath();ctx.arc(w/2,n/2,5/diskExtentMm*w,0,2*Math.PI);ctx.strokeStyle='#20242c';ctx.lineWidth=1;ctx.stroke();
+ if(showDisk){ctx.beginPath();ctx.arc(w/2,n/2,5/diskExtentMm*w,0,2*Math.PI);ctx.strokeStyle='#20242c';ctx.lineWidth=1;ctx.stroke()}
 }
 function drawResidualPhaseMap(canvas,residual,fluence){
  const n=residual.length,w=residual[0].length,maxFluence=Math.max(...fluence.flat(),1e-30);
@@ -221,7 +223,7 @@ function cutProfile(svg,actual,ideal,vertical){
  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
  svg.innerHTML=`<path d="${points(ideal)}" fill="none" stroke="#0087a5" stroke-width="${vertical?2:2.5}" stroke-dasharray="5 4"/><path d="${points(actual)}" fill="none" stroke="#cc6729" stroke-width="2"/>`;
 }
-function renderBeamView(container,title,values,reference,x,unit){
+function renderBeamView(container,title,values,reference,x,unit,showDisk=true){
  const card=document.createElement('article');card.className='pulse-beam-card';
  const h=document.createElement('h3');h.textContent=title;card.append(h);
  const view=document.createElement('div');view.className='beam-view';
@@ -232,11 +234,11 @@ function renderBeamView(container,title,values,reference,x,unit){
  const mapWrap=document.createElement('div');mapWrap.className='map-wrap';
  const canvas=document.createElement('canvas');drawBeamHeatmap(canvas,values);
  const rim=document.createElementNS('http://www.w3.org/2000/svg','svg');rim.classList.add('disk-ring');rim.setAttribute('viewBox','0 0 100 100');rim.innerHTML=`<circle cx="50" cy="50" r="${(500/diskExtentMm).toFixed(3)}" fill="none" stroke="#20242c" stroke-width=".36"/>`;
- mapWrap.append(canvas,rim);
+ mapWrap.append(canvas);if(showDisk)mapWrap.append(rim);
  const bottom=document.createElementNS('http://www.w3.org/2000/svg','svg');bottom.classList.add('bottom');cutProfile(bottom,values[cy],reference[cy],false);
  view.append(sideWrap,mapWrap,bottom);card.append(view);
- const label=document.createElement('div');label.className='beam-view-label';label.textContent=`x, y: ${x[0].toFixed(1)} to ${x.at(-1).toFixed(1)} mm · center cuts in ${unit} · black circle: Ø10 mm crystal`;
- const legend=document.createElement('div');legend.className='beam-legend';legend.innerHTML='<span>Selected Yb</span><span class="ideal">Uniform Yb</span><span class="rim">Crystal edge</span>';
+ const label=document.createElement('div');label.className='beam-view-label';label.textContent=`x, y: ${x[0].toFixed(1)} to ${x.at(-1).toFixed(1)} mm · center cuts in ${unit}${showDisk?' · black circle: Ø10 mm crystal':''}`;
+ const legend=document.createElement('div');legend.className='beam-legend';legend.innerHTML='<span>Selected Yb</span><span class="ideal">Uniform Yb</span>'+(showDisk?'<span class="rim">Crystal edge</span>':'');
  card.append(label,legend);container.append(card);
 }
 function drawFootprint(canvas,density,intensity){
@@ -331,7 +333,8 @@ async function calculateStructured(){
   const box=document.getElementById('beamResults');box.replaceChildren();
   const cavity=r.resonator;document.getElementById('resonatorText').textContent=cavity?`Fixed-mode cavity screen: one-direction intracavity ${cavity.intracavity_one_direction_W.toFixed(3)} W, output-coupler ${cavity.output_coupler_power_W.toFixed(3)} W, assumed cavity waist ${(cavity.cavity_waist_m*1e3).toFixed(3)} mm. ${cavity.scope}`:'';
   const m=r.modes[r.selected_beam];
-  renderBeamView(box,`${r.selected_beam} · incoming · ${m.input_power_W.toFixed(3)} W`,m.input_intensity,m.input_intensity,r.x_mm,'W/m²');
+  renderBeamView(box,`Gaussian TEM00 · before SLM · ${m.input_power_W.toFixed(3)} W`,m.input_intensity,m.input_intensity,r.x_mm,'W/m²',false);
+  renderBeamView(box,`${r.selected_beam} · after SLM propagation at disk`,m.disk_input_intensity,m.disk_input_intensity,r.x_mm,'W/m²');
   renderBeamView(box,`Outgoing · ${m.output_power_W.toFixed(3)} W at observation plane`,m.output_intensity,r.uniform_reference_intensity,r.x_mm,'W/m²');
   document.getElementById('beamSummary').textContent=`Disk exit ${m.disk_output_power_W.toFixed(3)} W · pump absorbed ${m.pump_absorbed_W.toFixed(3)} W · heat ${m.net_heat_W_upper_or_assumed.toFixed(3)} W (${r.fluorescence_escape_yield_assumed===0?'zero-escape upper estimate':'assumed escape yield'})`;
   renderThermal(r.thermal,r.x_mm,'cw');
@@ -355,15 +358,17 @@ async function calculatePulsed(){
   document.getElementById('timelineAssumptions').textContent=`${r.fluorescence_escape_yield_assumed===0?'Zero escaping fluorescence makes deposited heat an upper estimate.':'Deposited heat uses the entered escaping-fluorescence assumption.'} Flow control changes an assumed water-side conductance with instantaneous response and an ideal constant-temperature bath; pump heat is cycle averaged. The 26.85 °C division is the current thermo-mechanical parameter limit, not crystal damage. Published spectral reconstructions reach 200 °C. The assumed indium contact melts near 156.6 °C; 250 °C marks your crystal temperature reference, not an assembly rating. Solid green uses room-temperature properties within range; dashed amber extrapolates them. Time is logarithmic after t = 0.`;
   drawMap(document.getElementById('pulseDensityCanvas'),r.yb_density_m3[0],'density');
   const maps=document.getElementById('pulseMaps');maps.replaceChildren();
-  renderBeamView(maps,`${data.selected_beam} · incoming at disk`,r.input_fluence_J_m2,r.input_fluence_J_m2,r.x_mm,'J/m²');
+  renderBeamView(maps,'Gaussian TEM00 · before SLM',r.input_fluence_J_m2,r.input_fluence_J_m2,r.x_mm,'J/m²',false);
+  renderBeamView(maps,`${data.selected_beam} · shaped input at disk`,r.disk_input_fluence_J_m2,r.disk_input_fluence_J_m2,r.x_mm,'J/m²');
   renderBeamView(maps,'Outgoing at observation plane',r.output_fluence_J_m2,r.uniform_isothermal_output_fluence_J_m2,r.x_mm,'J/m²');
-  drawMaskedPhaseMap(document.getElementById('inputPhaseCanvas'),r.input_phase,r.input_fluence_J_m2);
+  drawMaskedPhaseMap(document.getElementById('inputPhaseCanvas'),r.input_phase,r.input_fluence_J_m2,false);
+  drawMaskedPhaseMap(document.getElementById('slmPhaseCanvas'),r.phase_mask,r.input_fluence_J_m2,false);
   drawMaskedPhaseMap(document.getElementById('outputPhaseCanvas'),r.output_phase,r.output_fluence_J_m2);
   const residualLimit=drawResidualPhaseMap(document.getElementById('residualPhaseCanvas'),r.phase_residual_rad,r.output_fluence_J_m2);
   document.getElementById('residualPhaseLabel').textContent=`Phase residual: blue negative, red positive; ±${residualLimit.toFixed(3)} rad · weighted RMS ${r.phase_residual_rms_rad.toFixed(3)} rad`;
   document.getElementById('pulseBeamScope').textContent=r.thermal_feedback_applied?
-   `Calculated thermal OPD is applied at each ideal-relayed disk encounter using the ${r.thermal_feedback_time_s.toPrecision(3)} s thermal state. Dashed profiles use uniform Yb and no thermal phase. Optical gain is not recalculated after beam reshaping.`:
-   'No validated thermal phase was available for this operating point; the beam is shown without thermal correction. Dashed profiles use uniform Yb and no thermal phase.';
+   `Gaussian source → phase-only target mask plus optional added phase → ${Number(data.slm_to_disk_m).toFixed(3)} m free-space propagation → disk gain. Calculated thermal OPD is applied at each ideal-relayed disk encounter using the ${r.thermal_feedback_time_s.toPrecision(3)} s thermal state. Dashed output uses uniform Yb and no thermal phase.`:
+   `Gaussian source → phase-only target mask plus optional added phase → ${Number(data.slm_to_disk_m).toFixed(3)} m free-space propagation → disk gain. No validated thermal phase was available for this operating point; output is shown without thermal correction. Dashed output uses uniform Yb and no thermal phase.`;
   drawProfile(document.getElementById('pulseTrace'),r.input_power_trace_W,r.output_power_trace_W);
   document.getElementById('pulseScope').textContent=`${r.reference_scope} ${r.source_fwhm_fs_assumed} fs source: approximately ${r.transform_limited_seed_spectral_fwhm_nm.toFixed(2)} nm transform-limited Gaussian bandwidth at 1030 nm. Assumed 12 at.% lifetime ${(r.lifetime_s_assumed*1e3).toFixed(3)} ms is interpolated, not measured at 12 at.%. ${r.spectral_scope} ${r.scope}`;
   pulsedStatus.textContent='Periodic pulse calculation complete.';

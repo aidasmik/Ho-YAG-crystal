@@ -17,7 +17,7 @@ import numpy as np
 from hoyag.propagation import Grid2D, angular_spectrum_propagate, optical_power
 from hoyag.resonator import ThinDiskResonator
 from hoyag.structured_beam_gallery import (BEAM_NAMES, PHASE_MASKS, GallerySettings,
-                                            _cartesian_to_polar, input_modes,
+                                            _cartesian_to_polar,
                                             nonuniform_density, phase_pattern)
 from hoyag.thermal import DiskThermalMesh
 
@@ -27,6 +27,7 @@ from .assembly import (solve_yb_assembly, solve_yb_cooler_temperature,
                        yb_cooler_solver)
 from .pulsed import propagate_pulse
 from .multipass_pump import steady_multipass_pump, transport_multipass_pump
+from .beam_shaping import gaussian_seed_and_target_mask
 
 
 @dataclass(frozen=True)
@@ -37,6 +38,7 @@ class YbGallerySettings:
     input_power_W: float = 1.0
     waist_m: float = 0.408e-3
     post_disk_distance_m: float = 0.25
+    slm_to_disk_distance_m: float = 0.25
     phase_mask_name: str = "none"
     phase_strength_rad: float = math.pi
     density_seed: int = 17
@@ -60,6 +62,8 @@ class YbGallerySettings:
             if not np.isfinite(getattr(self, name)) or getattr(self, name) <= 0:
                 raise ValueError(f"{name} must be finite and positive")
         if (not np.isfinite(self.post_disk_distance_m) or self.post_disk_distance_m < 0 or
+                not np.isfinite(self.slm_to_disk_distance_m) or
+                self.slm_to_disk_distance_m <= 0 or
                 not np.isfinite(self.phase_strength_rad) or
                 not 0 <= self.fluorescence_escape_yield <= 1 or
                 not 0 <= self.cluster_contrast <= 1 or
@@ -353,8 +357,11 @@ def simulate_structured_gallery(material: YbLuAGMaterial,
     z_edges = np.linspace(0, settings.thickness_m, settings.z_steps + 1)
     density = nonuniform_density(grid, z_edges, 5e-3, common).values_m3
     density_scale = density / material.number_density_m3
-    phase = np.mod(phase_pattern(grid, common), 2 * np.pi)
-    seeds = input_modes(grid, common)
+    aberration_phase = phase_pattern(grid, common)
+    source, target_phase = gaussian_seed_and_target_mask(
+        grid, settings.waist_m, settings.input_power_W, selected_beam,
+        material.signal_wavelength_nm * 1e-9, settings.slm_to_disk_distance_m)
+    phase = np.mod(target_phase + aberration_phase, 2 * np.pi)
     x, y = grid.mesh
     pump = np.exp(-2 * (x*x + y*y) / settings.pump_radius_m**2)
     pump *= settings.pump_power_W / (float(pump.sum()) * grid.dx * grid.dy)
@@ -367,9 +374,11 @@ def simulate_structured_gallery(material: YbLuAGMaterial,
     outcomes = {}
     reference_heat_slices = None
     for name in (selected_beam,):
-        before = seeds[name]
-        field = before * np.exp(1j * phase)
-        field_in = field.copy()
+        field_in = source
+        field = angular_spectrum_propagate(
+            source * np.exp(1j * phase), grid, wavelength,
+            settings.slm_to_disk_distance_m)
+        disk_field_in = field.copy()
         pump_step = pump.copy()
         heat = np.zeros(grid.shape)
         heat_slices = []
@@ -416,8 +425,10 @@ def simulate_structured_gallery(material: YbLuAGMaterial,
                                                settings.post_disk_distance_m)
         outcomes[name] = {
             "input_intensity": abs(field_in)**2,
+            "disk_input_intensity": abs(disk_field_in)**2,
             "output_intensity": abs(field)**2,
             "input_phase": np.angle(field_in),
+            "disk_input_phase": np.angle(disk_field_in),
             "output_phase": np.angle(field),
             "input_profile": abs(field_in[grid.ny // 2])**2,
             "output_profile": abs(field[grid.ny // 2])**2,
@@ -454,7 +465,10 @@ def simulate_structured_gallery(material: YbLuAGMaterial,
     if modal is not None:
         modal = {key: value for key, value in modal.items()
                  if key not in ("beta_by_slice", "heat_W_m3_by_slice")}
-    return {"grid": grid, "phase_mask": phase, "yb_density_m3": density,
+    return {"grid": grid, "phase_mask": phase,
+            "target_phase_mask": np.mod(target_phase, 2 * np.pi),
+            "aberration_phase_mask": np.mod(aberration_phase, 2 * np.pi),
+            "yb_density_m3": density,
             "pump_intensity_W_m2": pump, "outcomes": outcomes,
             "thermal": thermal,
             "resonator": modal,
@@ -464,7 +478,9 @@ def simulate_structured_gallery(material: YbLuAGMaterial,
                       "inversion; saturated CW includes local signal depletion. Modal CW "
                       "uses one fixed Gaussian cavity background and probes each shape "
                       "without depletion. Weak-probe heat is a pump-only estimate; saturated CW heat includes signal extraction. "
-                      "Modal CW uses its fixed Gaussian cavity heat. All modes screen a "
+                      "Modal CW uses its fixed Gaussian cavity heat. A Gaussian source receives a phase-only "
+                      "target mask plus optional correction before free-space propagation to the disk. "
+                      "All modes screen a "
                       "copper-cooled assembly within its material range. Free-space diffraction "
                       "follows the disk. Fluorescence escape yield is assumed by the user.")}
 
@@ -511,8 +527,14 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
     density = nonuniform_density(grid, np.linspace(0, settings.thickness_m,
                          settings.z_steps + 1), 5e-3, common).values_m3
     scale = density / material.number_density_m3
-    phase = np.mod(phase_pattern(grid, common), 2 * np.pi)
-    seed = input_modes(grid, common)[selected_beam] * np.exp(1j * phase)
+    source, target_phase = gaussian_seed_and_target_mask(
+        grid, settings.waist_m, 1.0, selected_beam,
+        material.signal_wavelength_nm * 1e-9, settings.slm_to_disk_distance_m)
+    aberration_phase = phase_pattern(grid, common)
+    phase = np.mod(target_phase + aberration_phase, 2 * np.pi)
+    seed = angular_spectrum_propagate(
+        source * np.exp(1j * phase), grid,
+        material.signal_wavelength_nm * 1e-9, settings.slm_to_disk_distance_m)
     x, y = grid.mesh
     pump = np.exp(-2 * (x*x + y*y) / settings.pump_radius_m**2)
     pump *= settings.pump_power_W / (float(pump.sum()) * grid.dx * grid.dy)
@@ -525,8 +547,9 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
     time = np.linspace(-3 * seed_fwhm_s, 3 * seed_fwhm_s, 41)
     pulse_shape = np.exp(-4 * np.log(2) * (time / seed_fwhm_s)**2)
     pulse_shape /= np.trapezoid(pulse_shape, time)
-    input_fluence = seed_energy_J * abs(seed)**2
-    initial_signal = pulse_shape[:, None, None] * input_fluence[None]
+    input_fluence = seed_energy_J * abs(source)**2
+    disk_input_fluence = seed_energy_J * abs(seed)**2
+    initial_signal = pulse_shape[:, None, None] * disk_input_fluence[None]
     dark_time = 1 / repetition_rate_Hz - (time[-1] - time[0])
     if dark_time <= 0:
         raise ValueError("pulse window exceeds repetition period")
@@ -591,7 +614,7 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
                                                  cooling_h_max_W_m2K)
     fluence_out = np.trapezoid(signal, time, axis=0)
     disk_output_J = float(np.sum(fluence_out) * grid.dx * grid.dy)
-    gain_amplitude = np.sqrt(np.maximum(fluence_out, 0) / np.maximum(input_fluence, 1e-30))
+    gain_amplitude = np.sqrt(np.maximum(fluence_out, 0) / np.maximum(disk_input_fluence, 1e-30))
     field_out = seed * gain_amplitude
     thermal_feedback_applied = bool(timeline is not None and
                                     timeline["requested_material_range_valid"])
@@ -608,11 +631,17 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
                                                material.signal_wavelength_nm * 1e-9,
                                                settings.post_disk_distance_m)
     return {
-        "grid": grid, "phase_mask": phase, "yb_density_m3": density,
+        "grid": grid, "phase_mask": phase,
+        "target_phase_mask": np.mod(target_phase, 2 * np.pi),
+        "aberration_phase_mask": np.mod(aberration_phase, 2 * np.pi),
+        "yb_density_m3": density,
         "selected_beam": selected_beam,
         "input_fluence_J_m2": input_fluence,
+        "disk_input_fluence_J_m2": disk_input_fluence,
         "output_fluence_J_m2": abs(field_out)**2 * seed_energy_J,
-        "input_phase": np.angle(seed), "output_phase": np.angle(field_out),
+        "input_phase": np.angle(source),
+        "disk_input_phase": np.angle(seed),
+        "output_phase": np.angle(field_out),
         "time_ps": (time * 1e12),
         "input_power_trace_W": np.sum(initial_signal, axis=(1, 2)) * grid.dx * grid.dy,
         "output_power_trace_W": np.sum(signal, axis=(1, 2)) * grid.dx * grid.dy,
@@ -631,7 +660,11 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
         "thermal_feedback_applied": thermal_feedback_applied,
         "thermal_feedback_time_s": (operation_duration_s if thermal_feedback_applied else None),
         "mean_excited_fraction_before_pulse": float(np.mean(beta_before)),
-        "scope": (f"Periodic two-manifold Yb:LuAG population with {pump_passes} alternating "
+        "scope": (f"Gaussian TEM00 source shaped by a phase-only target mask plus optional "
+                  "added phase, then propagated to the disk. LG, HG, Bessel and flat-top names "
+                  "describe approximate targets, not guaranteed pure modes. The flat-top mask "
+                  "uses a 48-step scalar alternating-projection design. "
+                  f"Periodic two-manifold Yb:LuAG population with {pump_passes} alternating "
                   "CW pump traversals, short pulse gain depletion, and ideal image relays "
                   "between signal traversals. Retarded-time intensity transport omits "
                   "GVD, Kerr phase, walkoff, coherent diffraction within each pulse pass, "
@@ -642,7 +675,7 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
                   "Cycle-averaged heat uses the fixed pump profile "
                   "and an assumed fluorescence escape yield; the generic copper assembly "
                   "runs only inside its material temperature range. The output spatial "
-                  "phase retains the seed phase "
+                  "phase retains the shaped disk-incident phase "
                   "and includes free-space propagation; high-extraction phase accuracy "
                   "requires a coupled space-time field solver.")
     }
