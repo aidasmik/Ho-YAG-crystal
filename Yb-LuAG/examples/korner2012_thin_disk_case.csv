@@ -1,0 +1,12 @@
+parameter,value,unit,source_id
+disk_thickness,150,um,KORNER2012
+pump_spot_radius,1.375,mm,KORNER2012
+pump_passes,24,,KORNER2012
+coolant_temperature,300,K,KORNER2012
+pump_wavelength,940,nm,KORNER2012
+lasing_wavelength,1030,nm,KORNER2012
+heat_sink_thickness,1.2,mm,KORNER2012
+heat_sink_thermal_conductivity_approx,2000,W/(m K),KORNER2012
+thermal_resistance_heat_sink_disk_approx,5e-05,K/W,KORNER2012
+cavity_internal_losses_approx,0.01,fraction,KORNER2012
+output_coupling,0.05,fraction,KORNER2012

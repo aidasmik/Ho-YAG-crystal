@@ -1,0 +1,44 @@
+property,temperature_K,value,unit,source_id,material,data_quality
+thermal_conductivity,101,25.4,W/(m K),AGGARWAL2005,undoped LuAG,measured
+thermal_conductivity,151,16.5,W/(m K),AGGARWAL2005,undoped LuAG,measured
+thermal_conductivity,201,12.2,W/(m K),AGGARWAL2005,undoped LuAG,measured
+thermal_conductivity,250,9.6,W/(m K),AGGARWAL2005,undoped LuAG,measured
+thermal_conductivity,298,8.3,W/(m K),AGGARWAL2005,undoped LuAG,measured
+thermal_diffusivity,101,0.319,cm^2/s,AGGARWAL2005,undoped LuAG,measured
+thermal_diffusivity,151,0.112,cm^2/s,AGGARWAL2005,undoped LuAG,measured
+thermal_diffusivity,201,0.06,cm^2/s,AGGARWAL2005,undoped LuAG,measured
+thermal_diffusivity,250,0.039,cm^2/s,AGGARWAL2005,undoped LuAG,measured
+thermal_diffusivity,298,0.03,cm^2/s,AGGARWAL2005,undoped LuAG,measured
+thermal_expansion_coefficient,100,2.46,ppm/K,AGGARWAL2005,undoped LuAG,polynomial table from measured data
+thermal_expansion_coefficient,120,3.07,ppm/K,AGGARWAL2005,undoped LuAG,polynomial table from measured data
+thermal_expansion_coefficient,140,3.63,ppm/K,AGGARWAL2005,undoped LuAG,polynomial table from measured data
+thermal_expansion_coefficient,160,4.13,ppm/K,AGGARWAL2005,undoped LuAG,polynomial table from measured data
+thermal_expansion_coefficient,180,4.59,ppm/K,AGGARWAL2005,undoped LuAG,polynomial table from measured data
+thermal_expansion_coefficient,200,4.98,ppm/K,AGGARWAL2005,undoped LuAG,polynomial table from measured data
+thermal_expansion_coefficient,220,5.32,ppm/K,AGGARWAL2005,undoped LuAG,polynomial table from measured data
+thermal_expansion_coefficient,240,5.6,ppm/K,AGGARWAL2005,undoped LuAG,polynomial table from measured data
+thermal_expansion_coefficient,260,5.83,ppm/K,AGGARWAL2005,undoped LuAG,polynomial table from measured data
+thermal_expansion_coefficient,280,6.01,ppm/K,AGGARWAL2005,undoped LuAG,polynomial table from measured data
+thermal_expansion_coefficient,300,6.13,ppm/K,AGGARWAL2005,undoped LuAG,polynomial table from measured data
+dn_dT_1064nm,100,0.7,ppm/K,AGGARWAL2005,undoped LuAG,polynomial table from measured data
+dn_dT_1064nm,120,1.5,ppm/K,AGGARWAL2005,undoped LuAG,polynomial table from measured data
+dn_dT_1064nm,140,2.2,ppm/K,AGGARWAL2005,undoped LuAG,polynomial table from measured data
+dn_dT_1064nm,160,2.9,ppm/K,AGGARWAL2005,undoped LuAG,polynomial table from measured data
+dn_dT_1064nm,180,3.6,ppm/K,AGGARWAL2005,undoped LuAG,polynomial table from measured data
+dn_dT_1064nm,200,4.3,ppm/K,AGGARWAL2005,undoped LuAG,polynomial table from measured data
+dn_dT_1064nm,220,5.1,ppm/K,AGGARWAL2005,undoped LuAG,polynomial table from measured data
+dn_dT_1064nm,240,5.8,ppm/K,AGGARWAL2005,undoped LuAG,polynomial table from measured data
+dn_dT_1064nm,260,6.6,ppm/K,AGGARWAL2005,undoped LuAG,polynomial table from measured data
+dn_dT_1064nm,280,7.4,ppm/K,AGGARWAL2005,undoped LuAG,polynomial table from measured data
+dn_dT_1064nm,300,8.3,ppm/K,AGGARWAL2005,undoped LuAG,polynomial table from measured data
+optical_path_temp_coeff_1064nm,100,5.2,ppm/K,AGGARWAL2005,undoped LuAG,polynomial table from measured data
+optical_path_temp_coeff_1064nm,120,7.1,ppm/K,AGGARWAL2005,undoped LuAG,polynomial table from measured data
+optical_path_temp_coeff_1064nm,140,8.8,ppm/K,AGGARWAL2005,undoped LuAG,polynomial table from measured data
+optical_path_temp_coeff_1064nm,160,10.5,ppm/K,AGGARWAL2005,undoped LuAG,polynomial table from measured data
+optical_path_temp_coeff_1064nm,180,12.0,ppm/K,AGGARWAL2005,undoped LuAG,polynomial table from measured data
+optical_path_temp_coeff_1064nm,200,13.5,ppm/K,AGGARWAL2005,undoped LuAG,polynomial table from measured data
+optical_path_temp_coeff_1064nm,220,14.8,ppm/K,AGGARWAL2005,undoped LuAG,polynomial table from measured data
+optical_path_temp_coeff_1064nm,240,16.0,ppm/K,AGGARWAL2005,undoped LuAG,polynomial table from measured data
+optical_path_temp_coeff_1064nm,260,17.1,ppm/K,AGGARWAL2005,undoped LuAG,polynomial table from measured data
+optical_path_temp_coeff_1064nm,280,18.2,ppm/K,AGGARWAL2005,undoped LuAG,polynomial table from measured data
+optical_path_temp_coeff_1064nm,300,19.1,ppm/K,AGGARWAL2005,undoped LuAG,polynomial table from measured data

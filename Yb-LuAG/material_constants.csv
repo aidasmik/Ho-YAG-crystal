@@ -1,0 +1,22 @@
+parameter,value,unit,source_id,notes
+material,Yb:Lu3Al5O12 (Yb:LuAG),,BEIL2010,Host is cubic garnet; Yb substitutes Lu sites.
+space_group,Ia-3d,,BEIL2010,Cubic garnet.
+lattice_constant_A,11.91,angstrom,BEIL2010,Undoped LuAG.
+rare_earth_site_density_cm3,1.42e+22,cm^-3,BEIL2010,Multiply by Yb at.%/100 for Yb number density.
+density_room_temp,6.67,g/cm^3,BEIL2010,Literature table; Aggarwal-derived value often quoted ~6.71 g/cm^3.
+density_for_thermal_model,6710,kg/m^3,AGGARWAL2005,Use with Aggarwal thermal data for internal consistency.
+molar_mass_LuAG,851.7960925,g/mol,DERIVED,"Using standard atomic masses Lu=174.9668, Al=26.9815385, O=15.999."
+specific_heat_room_temp,0.42,J/(g K),BEIL2010,Undoped LuAG table value.
+thermal_conductivity_undoped_298K,8.3,W/(m K),AGGARWAL2005,Measured.
+thermal_conductivity_10atYb_room_temp,7.4,W/(m K),BEIL2010,Measured/fitted near 10 at.%.
+thermal_conductivity_12atYb_room_temp,7.2,W/(m K),KORNER2012,Specific crystal parameter used in simulation.
+melting_temperature,2060,degC,BEIL2010,Host LuAG.
+thermal_expansion_300K,6.13e-06,1/K,AGGARWAL2005,Undoped LuAG.
+dn_dT_300K_1064nm,8.3e-06,1/K,AGGARWAL2005,Undoped LuAG; measured at 1064 nm.
+pump_band_center,938,nm,BEIL2010,Effective optimum around 938 nm for ~5 nm pump bandwidth.
+absorption_peak_940nm_RT,7.22e-21,cm^2,BEIL2010,10 at.% Yb:LuAG sample.
+emission_cross_section_1030nm_RT,2.59e-20,cm^2,BEIL2010,Room-temperature anchor; values vary by method/sample.
+radiative_lifetime_for_Korner_cross_sections,0.95,ms,KORNER2012,Value used for their emission cross-section calculation.
+pinhole_lifetime_10atYb,0.965,ms,BEIL2010,Pinhole method.
+pinhole_lifetime_15atYb,0.985,ms,BEIL2010,Pinhole method.
+yb_distribution_coefficient_10_15at,1.0,dimensionless,BEIL2010,SEM/EDS for the investigated 10 and 15 at.% crystals.

@@ -1,0 +1,13 @@
+Yb:LuAG spectroscopy source figures / pages
+
+Körner et al. 2012 DOI:
+https://doi.org/10.1364/JOSAB.29.002493
+
+Absorption cross-section figure page:
+https://www.researchgate.net/figure/Absorption-cross-sections-of-YbLuAG-for-different-temperatures_fig4_263769805
+
+Emission cross-section figure page:
+https://www.researchgate.net/figure/Emission-cross-sections-of-YbLuAG-for-different-temperatures_fig8_263769805
+
+Important:
+The package cross-section arrays are figure-guided engineering reconstructions, not raw author data.

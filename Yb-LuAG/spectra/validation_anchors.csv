@@ -1,0 +1,7 @@
+quantity,wavelength_nm,temperature_C,value_cm2,source_id,notes
+absorption,940,20,7.22e-21,BEIL2010,Published scalar peak anchor; reconstruction is normalized to this at 940 nm.
+emission,1030,20,2.59e-20,BEIL2010,Independent room-temperature scalar anchor; Körner temperature figure has a somewhat higher peak (~2.8e-20).
+absorption,936,20,7.2e-21,MA2016,Independent ceramic sample.
+absorption,969,20,6.5e-21,MA2016,Independent ceramic sample; literature/sample dependence is significant near ZPL.
+emission,1030,20,2.9e-20,MA2016,Independent ceramic sample.
+emission,1030,20,3e-20,BRENIER2006,Room-temperature value from separate crystals/method.

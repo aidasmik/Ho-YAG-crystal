@@ -1,0 +1,8 @@
+parameter,value,unit,source_id,notes
+C11,342.0,GPa,ELASTIC2024,experimental LuAG cited in 2024 paper
+C12,112.0,GPa,ELASTIC2024,experimental LuAG cited in 2024 paper
+C44,115.0,GPa,ELASTIC2024,experimental LuAG cited in 2024 paper
+bulk_modulus,189.0,GPa,ELASTIC2024,experimental aggregate
+shear_modulus,115.0,GPa,ELASTIC2024,experimental aggregate
+youngs_modulus,287.0,GPa,ELASTIC2024,experimental aggregate
+poisson_ratio,0.247,dimensionless,ELASTIC2024,experimental aggregate

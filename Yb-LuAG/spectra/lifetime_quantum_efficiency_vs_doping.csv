@@ -1,0 +1,7 @@
+Yb_at_percent,fluorescence_lifetime_ms,luminescence_quantum_efficiency,source_id,notes
+0.75,1.01,,BRENIER2006,Fluorescence lifetime; possible reabsorption/systematic differences versus pinhole measurements.
+3.8,1.169,0.9,BRENIER2006,
+10,1.317,0.9,BRENIER2006,Brenier value; Beil pinhole measurement gives 0.965 ms.
+15,0.83,,BRENIER2006,Brenier value; Beil pinhole measurement gives 0.985 ms.
+20,0.525,0.84,BRENIER2006,Concentration quenching evident.
+50,0.208,0.7,BRENIER2006,Strong concentration quenching.

@@ -1,0 +1,5 @@
+parameter,value,unit,source_id,notes
+quantum_defect_938_to_1030,0.08932038834951461,fraction,DERIVED,1-lambda_p/lambda_l
+quantum_defect_940_to_1030,0.08737864077669899,fraction,DERIVED,1-lambda_p/lambda_l
+quantum_defect_969_to_1030,0.059223300970873805,fraction,DERIVED,1-lambda_p/lambda_l
+saturation_intensity_1030_using_Beil_sigma_and_0p95ms,7838.196345556604,W/cm^2,DERIVED,h*c/(lambda*sigma_e*tau); quasi-three-level systems need reabsorption-aware treatment.

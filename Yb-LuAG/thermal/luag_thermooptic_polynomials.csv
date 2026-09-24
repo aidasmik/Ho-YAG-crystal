@@ -1,0 +1,13 @@
+property,coefficient,value,unit,equation,valid_range,source_id
+thermal_expansion_ppm_per_K,M0,-1.4132,ppm/K,alpha(T)=M0+M1*T+M2*T^2+M3*T^3,100-300 K,AGGARWAL2005
+thermal_expansion_ppm_per_K,M1,0.045552,ppm/K^2,alpha(T)=M0+M1*T+M2*T^2+M3*T^3,100-300 K,AGGARWAL2005
+thermal_expansion_ppm_per_K,M2,-6.798e-05,ppm/K^3,alpha(T)=M0+M1*T+M2*T^2+M3*T^3,100-300 K,AGGARWAL2005
+thermal_expansion_ppm_per_K,M3,0.0,ppm/K^4,alpha(T)=M0+M1*T+M2*T^2+M3*T^3,100-300 K,AGGARWAL2005
+optical_path_coeff_ppm_per_K,N0,-5.7998,ppm/K,gamma(T)=N0+N1*T+N2*T^2+N3*T^3,100-300 K,AGGARWAL2005
+optical_path_coeff_ppm_per_K,N1,0.12344,ppm/K^2,gamma(T)=N0+N1*T+N2*T^2+N3*T^3,100-300 K,AGGARWAL2005
+optical_path_coeff_ppm_per_K,N2,-0.0001354,ppm/K^3,gamma(T)=N0+N1*T+N2*T^2+N3*T^3,100-300 K,AGGARWAL2005
+optical_path_coeff_ppm_per_K,N3,0.0,ppm/K^4,gamma(T)=N0+N1*T+N2*T^2+N3*T^3,100-300 K,AGGARWAL2005
+dn_dT_ppm_per_K,P0,-2.3926,ppm/K,dn/dT(T)=P0+P1*T+P2*T^2+P3*T^3,100-300 K,AGGARWAL2005
+dn_dT_ppm_per_K,P1,0.029863,ppm/K^2,dn/dT(T)=P0+P1*T+P2*T^2+P3*T^3,100-300 K,AGGARWAL2005
+dn_dT_ppm_per_K,P2,1.8715e-05,ppm/K^3,dn/dT(T)=P0+P1*T+P2*T^2+P3*T^3,100-300 K,AGGARWAL2005
+dn_dT_ppm_per_K,P3,0.0,ppm/K^4,dn/dT(T)=P0+P1*T+P2*T^2+P3*T^3,100-300 K,AGGARWAL2005

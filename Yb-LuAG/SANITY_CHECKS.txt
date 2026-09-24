@@ -1,0 +1,18 @@
+Yb:LuAG package sanity checks
+=============================
+n_1030: 1.82358010361
+N_10pct_cm3: 1.42e+21
+sigma_a_940_20C: 7.22e-21
+sigma_e_1030_20C: 2.78e-20
+alpha10_940_20C_cm1: 10.2524
+Cp_298_JkgK: 418.777943
+k_298_WmK: 8.3
+Isat_1030_Wcm2: 7838.19634556
+
+Expected anchors:
+- n(1030 nm) ~ 1.82358
+- N_Yb(10 at.%) = 1.42e21 cm^-3
+- sigma_abs(940 nm,20 C) = 7.22e-21 cm^2
+- sigma_em(1030 nm,20 C) = 2.78e-20 cm^2
+- Cp(298 K) = 418.78 J/(kg K)
+- k_undoped(298 K) = 8.3 W/(m K)

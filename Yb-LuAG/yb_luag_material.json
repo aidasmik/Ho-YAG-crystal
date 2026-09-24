@@ -1,0 +1,65 @@
+{
+  "material": "Yb:LuAG",
+  "host": "Lu3Al5O12",
+  "crystal_system": "cubic garnet",
+  "spectra": {
+    "storage": "five binary parts concatenated into a compressed NPZ",
+    "part_glob": "spectra/yb_luag_cross_sections_20_200C_reconstructed.npz.part*",
+    "wavelength_nm": [
+      880,
+      1150
+    ],
+    "wavelength_step_nm": 0.5,
+    "temperature_C": [
+      20,
+      80,
+      140,
+      200
+    ],
+    "arrays": [
+      "wavelength_nm",
+      "temperature_C",
+      "sigma_abs_cm2",
+      "sigma_em_cm2"
+    ],
+    "data_quality": "figure-guided engineering reconstruction; not raw author arrays"
+  },
+  "validity": {
+    "host_n_wavelength_nm": [
+      193,
+      1690
+    ],
+    "thermal_thermooptic_temperature_K": [
+      100,
+      300
+    ],
+    "heat_capacity_engineering_temperature_K": [
+      80,
+      300
+    ],
+    "elastic_constants": "room temperature"
+  },
+  "structure": {
+    "rare_earth_site_density_cm3": 1.42e+22,
+    "density_kg_m3": 6710,
+    "lattice_constant_A": 11.91
+  },
+  "sellmeier": {
+    "lambda_unit": "um",
+    "formula": "n^2 = 2.077 + 1.237*lambda^2/(lambda^2-0.1376^2) - 0.0104*lambda^2",
+    "source_id": "HRABOVSKY2021"
+  },
+  "elastic_GPa": {
+    "C11": 342,
+    "C12": 112,
+    "C44": 115,
+    "E": 287,
+    "nu": 0.247,
+    "source_id": "ELASTIC2024"
+  },
+  "known_gaps": [
+    "LuAG-specific full photoelastic tensor p11,p12,p44",
+    "high-temperature doped thermal conductivity above 300 K",
+    "raw numerical temperature-dependent cross-section arrays"
+  ]
+}

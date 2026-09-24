@@ -1,0 +1,5 @@
+Yb_at_percent,thermal_conductivity_W_mK,source_id,notes
+0,8.3,AGGARWAL2005,"laser-flash-derived, 298 K; separate method/sample"
+0,7.7,BEIL2010,temperature-wave method; Beil notes values ~10% below some literature
+10,7.4,BEIL2010,room temperature
+12,7.2,KORNER2012,crystal parameter used in simulation
