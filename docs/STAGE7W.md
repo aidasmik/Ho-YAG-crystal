@@ -88,7 +88,7 @@ python -m pytest -q
 python audit/deep_check.py
 python examples/stage7w_validation.py plan --output config/stage7w_validation.json
 python examples/stage7w_validation.py run --plan config/stage7w_validation.json \
-  --cases reference modes_4 modes_8 --seconds-per-case 3600 \
+  --cases reference --seconds-per-case 900 --live-snapshots \
   --output results/stage7w/paired
 python examples/stage7w_validation.py report --plan config/stage7w_validation.json \
   --output results/stage7w/paired
@@ -98,6 +98,21 @@ The bounded parent records timeouts separately from scientific nonconvergence.
 Reports are built against the full plan, so running a small subset cannot generate
 a false whole-campaign pass. `dataset_ready` remains false pending independent
 physical calibration and complete qualification.
+
+Local runs now use `hoyag.local_supervisor`: one persistent 7200 s ledger,
+at most four expensive coupled attempts, 900 s per case, a memory ceiling, and
+owned process-tree cleanup. See `docs/LOCAL_EXECUTION.md`. The optional
+six-mode case is added only after one saved hot-operator candidate spectrum
+supports its retained boundary. The same family guard remains active in the
+coupled solve. A finite bank never proves global completeness.
+
+The saved-state replay adapter and live iteration snapshots are described in
+`HoYAG_live_visualization_addendum(1).md`. An iteration snapshot is marked
+`outer_iteration`, not physical time. An incoherent modal mixture has per-mode
+phase and total intensity but no unique total scalar phase. Optional
+PyVista/VTK dependencies are isolated from headless numerical tests. The
+externally seeded amplifier is a separate application path and does not use a
+cavity eigensolve to generate amplifier output.
 
 ## Verification status
 

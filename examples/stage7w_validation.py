@@ -11,14 +11,11 @@ keeps partial iteration logs and rebuilds the full-plan report with missing case
 from __future__ import annotations
 import argparse
 import json
-import os
 from pathlib import Path
-import signal
-import subprocess
 import sys
-import time
 
 ROOT=Path(__file__).resolve().parents[1]
+sys.path.insert(0,str(ROOT/'src'))
 
 
 def main():
@@ -32,7 +29,11 @@ def main():
     for name in ('run','worker'):
         p=sub.add_parser(name);p.add_argument('--plan',type=Path,required=True)
         p.add_argument('--cases',nargs='+',required=True);p.add_argument('--output',type=Path,required=True)
-        if name=='run':p.add_argument('--seconds-per-case',type=int,default=3600)
+        p.add_argument('--live-snapshots',action='store_true')
+        if name=='run':
+            p.add_argument('--seconds-per-case',type=int,default=900)
+            p.add_argument('--ledger',type=Path,default=ROOT/'.local_runtime/budget.json')
+            p.add_argument('--memory-mb',type=int,default=None)
     p=sub.add_parser('report');p.add_argument('--plan',type=Path,required=True)
     p.add_argument('--output',type=Path,required=True)
     args=ap.parse_args()
@@ -58,29 +59,31 @@ def main():
         raise ValueError('unknown or duplicate case ID')
     if args.command=='worker':
         if len(args.cases)!=1:raise ValueError('one case per worker')
-        result=execute_polarized_case(by_id[args.cases[0]],out,manifest)
+        result=execute_polarized_case(by_id[args.cases[0]],out,manifest,
+                                      live_snapshots=args.live_snapshots)
         print('STAGE7W_CASE '+json.dumps({'id':result['id'],'status':result['status'],
                                        'solver_status':result.get('solver_status'),'metrics':result.get('metrics')}),flush=True)
         raise SystemExit(0 if result['status']=='completed' else 1)
     if not 30<=args.seconds_per_case<=21600:raise ValueError('case budget must be 30..21600 seconds')
+    from hoyag.local_supervisor import BudgetLedger,Limits,run_bounded
+    from hoyag.live_control import CancellationFlag
+    import os
+    import psutil
+    memory_mb = args.memory_mb or min(8192,int(psutil.virtual_memory().total*.7/1024**2))
+    if memory_mb<=0 or memory_mb>min(8192,int(psutil.virtual_memory().total*.7/1024**2)):
+        raise ValueError('memory ceiling must be positive and no greater than 8 GiB or 70% of RAM')
+    ledger=BudgetLedger(args.ledger,Limits(memory_bytes=memory_mb*1024**2))
     failed=[]
     for cid in args.cases:
         folder=out/cid;folder.mkdir(exist_ok=True)
-        begin=time.perf_counter()
         cmd=[sys.executable,str(Path(__file__).resolve()),'worker','--plan',str(args.plan.resolve()),
              '--cases',cid,'--output',str(out.resolve())]
-        with (folder/'execution.log').open('a') as log:
-            child=subprocess.Popen(cmd,stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
-            try:
-                code=child.wait(timeout=args.seconds_per_case)
-                timed_out=False
-            except subprocess.TimeoutExpired:
-                timed_out=True
-                os.killpg(child.pid,signal.SIGTERM)
-                try:child.wait(timeout=10)
-                except subprocess.TimeoutExpired:
-                    os.killpg(child.pid,signal.SIGKILL);child.wait()
-                code=124
+        if args.live_snapshots:cmd.append('--live-snapshots')
+        execution=run_bounded(cmd,cwd=ROOT,log_path=folder/'execution.log',
+            summary_path=folder/'execution_status.json',ledger=ledger,label=cid,
+            configured_seconds=args.seconds_per_case,
+            env={**os.environ,'HOYAG_SUPERVISED':'1'},
+            cancel=CancellationFlag(folder) if args.live_snapshots else None)
         path=folder/'summary.json'
         if path.exists():record=json.loads(path.read_text())
         else:
@@ -89,14 +92,13 @@ def main():
             record={'schema':SCHEMA,'id':cid,'kind':'coupled','purpose':c['purpose'],
                     'spec_hash':c['spec_hash'],'physics_hash':c['physics_hash'],
                     'source_hash':manifest['source_hash'],'case':c,'dataset_ready':False}
-        if timed_out:
-            record.update(status='timed_out',reason='explicit wall-time limit; partial iterations are not a result')
-        elif code!=0 and record.get('status')=='running':
+        if execution['status'] in ('timed_out','resource_limit','budget_exhausted','cancelled'):
+            record.update(status=execution['status'],reason='supervisor limit; partial iterations are not a result')
+        elif execution['status']=='failed' and record.get('status')=='running':
             record.update(status='failed',reason='worker failed before producing a final record')
-        record['execution']={'exit_code':code,'seconds_per_case':args.seconds_per_case,
-                             'elapsed_s':time.perf_counter()-begin}
+        record['execution']=execution
         write_json(path,record)
-        print('BOUNDED_STAGE7W '+json.dumps({'id':cid,'status':record.get('status'),**record['execution']}),flush=True)
+        print('BOUNDED_STAGE7W '+json.dumps({'id':cid,'status':record.get('status'),**execution}),flush=True)
         if record.get('status')!='completed':failed.append(cid)
     report=build_report(plan,out,manifest)
     print('STAGE7W_REPORT '+json.dumps({'status':report['status'],'case_status':report['case_status'],'dataset_ready':False}),flush=True)

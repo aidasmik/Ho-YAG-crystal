@@ -1,0 +1,9 @@
+{
+  "effective_limit_s": 300,
+  "elapsed_s": 9.692168153997045,
+  "exit_code": 0,
+  "label": "final_independent_audit",
+  "log_path": "/home/aidas/Desktop/FTMC/Ho-YAG-crystal/results/local_validation/audit.log",
+  "peak_rss_bytes": 129863680,
+  "status": "completed"
+}

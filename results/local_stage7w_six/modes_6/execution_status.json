@@ -1,0 +1,9 @@
+{
+  "effective_limit_s": 900,
+  "elapsed_s": 482.3077913980014,
+  "exit_code": 0,
+  "label": "modes_6",
+  "log_path": "results/local_stage7w_six/modes_6/execution.log",
+  "peak_rss_bytes": 1253670912,
+  "status": "completed"
+}

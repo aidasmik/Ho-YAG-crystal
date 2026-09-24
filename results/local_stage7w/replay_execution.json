@@ -1,0 +1,9 @@
+{
+  "effective_limit_s": 120,
+  "elapsed_s": 3.104214408002008,
+  "exit_code": 0,
+  "label": "replay_viewer_smoke",
+  "log_path": "/home/aidas/Desktop/FTMC/Ho-YAG-crystal/results/local_stage7w/replay.log",
+  "peak_rss_bytes": 511152128,
+  "status": "completed"
+}

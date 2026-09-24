@@ -1,0 +1,9 @@
+{
+  "effective_limit_s": 180,
+  "elapsed_s": 3.4085263979977753,
+  "exit_code": 0,
+  "label": "gallery_none",
+  "log_path": "/home/aidas/Desktop/FTMC/Ho-YAG-crystal/results/structured_beams/execution.log",
+  "peak_rss_bytes": 220823552,
+  "status": "completed"
+}

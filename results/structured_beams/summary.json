@@ -1,0 +1,78 @@
+{
+  "model": "weak one-traversal seeded probe; frozen archived population fractions",
+  "application_mode": "seeded_multipass_amplifier",
+  "fidelity_mode": "weak_diagnostic_probe",
+  "source_hash": "f498b6ca77225b99e92b139e6954d3afad868a13ad33028219643d4f65001975",
+  "reference_state_id": "9e38859accf318d4",
+  "reference_state_sha256": "33a8fdecbc732ca68053e37dfbf86734405f703d8813b211cb042f31ca06b40c",
+  "reference_case": "results/local_stage7w/reference",
+  "fields_sha256": "5c28b25867c1529419fd580576e3011446e4c524a026b49474b666a8cf3e0ac0",
+  "fields_archived": true,
+  "wavelength_m": 2.0903e-06,
+  "settings": {
+    "mean_ho_density_m3": 1.52e+26,
+    "density_seed": 17,
+    "cluster_count": 24,
+    "cluster_contrast": 0.27,
+    "cluster_radius_min_m": 0.0002,
+    "cluster_radius_max_m": 0.00125,
+    "waist_m": 0.000408,
+    "input_power_W": 1.0,
+    "post_disk_distance_m": 0.25,
+    "phase_mask_name": "none",
+    "phase_strength_rad": 3.141592653589793
+  },
+  "density_mean_active_m3": 1.5200000000000002e+26,
+  "density_min_active_m3": 8.654596163440315e+25,
+  "density_max_active_m3": 2.5999843745184547e+26,
+  "phase_mask": {
+    "name": "none",
+    "strength_rad": 3.141592653589793,
+    "response": "ideal phase-only; no measured hardware latency or loss",
+    "maximum_local_irradiance_relative_change": 0.0
+  },
+  "modes": {
+    "Gaussian TEM00": {
+      "input_power_W": 0.9999999999999998,
+      "output_power_W": 1.0157032808836228,
+      "disk_exit_power_W": 1.0157032808836224,
+      "disk_power_gain": 1.0157032808836226
+    },
+    "Helical LG(0,+1)": {
+      "input_power_W": 1.0,
+      "output_power_W": 1.012007357340871,
+      "disk_exit_power_W": 1.012007357340871,
+      "disk_power_gain": 1.012007357340871
+    },
+    "Double helix LG(0,+2)": {
+      "input_power_W": 1.0,
+      "output_power_W": 1.0048731924960532,
+      "disk_exit_power_W": 1.0048731924960528,
+      "disk_power_gain": 1.0048731924960528
+    },
+    "Hermite-Gaussian HG(1,1)": {
+      "input_power_W": 1.0,
+      "output_power_W": 1.004824072297387,
+      "disk_exit_power_W": 1.004824072297387,
+      "disk_power_gain": 1.004824072297387
+    },
+    "Needle Bessel-Gaussian": {
+      "input_power_W": 1.0000000000000002,
+      "output_power_W": 1.0045089965242364,
+      "disk_exit_power_W": 1.004508996524236,
+      "disk_power_gain": 1.0045089965242358
+    },
+    "Flattop super-Gaussian": {
+      "input_power_W": 1.0,
+      "output_power_W": 1.0176434165654757,
+      "disk_exit_power_W": 1.0176434165654757,
+      "disk_power_gain": 1.0176434165654757
+    }
+  },
+  "time_kind": "steady_state",
+  "limitations": [
+    "imposed density is not pump/heat/mechanics self-consistent",
+    "weak-signal probe; no population depletion by these inputs",
+    "single disk traversal; no specified multipass hardware topology"
+  ]
+}

@@ -358,3 +358,73 @@ The README figures can be rebuilt from the unpacked audited Actions artifact:
 M. Rupp, M. Eichhorn, C. Kieleck, *Iterative 3D modeling of thermal effects in end-pumped continuous-wave Ho³⁺:YAG lasers*, **Applied Physics B 129, 4 (2023)**, DOI 10.1007/s00340-022-07939-z.
 
 That paper validated a different CW rod geometry. It does **not** directly validate the reconstructed picosecond-pumped thin-disk system documented here.
+
+---
+
+## 17. Bounded local work and scientific replay
+
+The local development path now has a persistent compute-budget supervisor,
+finite-bank polarization-family diagnostic, and immutable solver snapshots.
+Use [the local execution guide](docs/LOCAL_EXECUTION.md) for named bounded
+cases, [profiling evidence](docs/PROFILING.md) for measured replay changes,
+and [Stage 7W](docs/STAGE7W.md) for the coupled polarization guard.
+
+The replay viewer reads hash-verified scientific arrays using optional
+PyVista/VTK dependencies. Its cavity state is an incoherent modal mixture:
+it displays per-mode phase and power plus total intensity, not a unique total
+phase. Outer iterations carry `time_kind=outer_iteration`; they are not thermal
+or optical physical seconds. A separate externally seeded amplifier API in
+`hoyag.seeded_amplifier` updates one shared crystal population state across
+declared disk encounters. Hardware topology and seed parameters are still
+incomplete, so that API does not claim a calibrated multipass design.
+
+Historical Stage 7W results above remain tied to their saved revisions.
+Local software, bounded numerical, viewer, full-campaign, experimental, and
+dataset statuses are reported separately in `docs/STAGE7W_RESULTS.md`.
+
+An additional weak seeded-probe gallery plots absolute input/output irradiance
+and masked relative phase for Gaussian, LG(0,+1), LG(0,+2), HG(1,1), a
+Bessel-Gaussian needle, and an order-8 super-Gaussian flattop. It uses the
+saved Stage 7W population fractions and an explicit
+seeded random Ho concentration with rich and poor clusters of mixed sizes.
+The output plane is one 1-mm disk traversal plus 0.25 m free space. It does
+not re-solve the pump, heat, or mechanics after changing the dopant map.
+Run `.venv/bin/python examples/structured_beam_gallery.py` to regenerate
+`results/structured_beams/input_output_beams.png`, `beam_side_profiles.png`,
+`beam_on_ho_density.png`, and `ho_density.png`. The overlay uses the generated
+entrance-slice Ho concentration as the background and calculated input
+irradiance contours as the beam footprint.
+`--phase-mask` selects `none`, `vortex+1`, `vortex-1`, `vortex+2`,
+`defocus`, `astigmatic`, or `axicon`; the ideal applied phase and unchanged
+immediate SLM irradiance are saved in `phase_mask.png`. Centerline input/output
+irradiance cuts for all six modes are saved beside the corresponding input and
+output maps in `input_output_beams.png` and also collected in
+`beam_side_profiles.png`.
+The precomputed choices can also be browsed in
+`results/structured_beams/index.html`; regenerate an arbitrary random seed
+with the CLI.
+
+To use the interactive calculator, start the local app:
+
+```bash
+.venv/bin/python examples/structured_beam_app.py
+```
+
+Then open <http://127.0.0.1:8780/results/structured_beams/index.html>. Choose
+the phase mask, mask strength, seeded random Ho cluster distribution, and
+output distance, then press **Calculate**. Each run writes plots and metrics
+under `results/structured_beams/runs/<run-id>/`. The calculator performs a
+bounded weak-probe traversal using archived Stage 7W population fractions; it
+does not claim a new self-consistent pump, thermal, or mechanical solution.
+Select **Modal thermal estimate** in the calculator (historical CLI identifier
+`--solver-mode full_seeded_modal`) to compute a saturated fixed-mode oscillator
+background, then its heat, cooling plate, thermoelastic displacement, and
+photoelastic Jones screens for the selected Ho map. Each displayed 1 W beam
+is a separate undepleted one-pass probe of that background. The probe power
+does not affect populations or heat, and hot optics do not feed back into the
+oscillator. This is an estimate rather than a complete seeded amplifier or
+self-consistent cavity solution. It is bounded by the local supervisor and
+can take substantially longer. After the four coupled attempts are used,
+the calculator offers **Start new bounded compute budget**. Clicking it
+archives the old ledger and starts a new bounded session; restarting the app
+alone does not reset the budget.

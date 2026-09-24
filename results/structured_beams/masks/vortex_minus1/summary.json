@@ -1,0 +1,66 @@
+{
+  "model": "weak one-traversal seeded probe; frozen archived population fractions",
+  "application_mode": "seeded_multipass_amplifier",
+  "fidelity_mode": "weak_diagnostic_probe",
+  "source_hash": "a0faf31f7548a06f5d076a717aa1139b16521247a9b8687e8115fb466419a12f",
+  "reference_state_id": "9e38859accf318d4",
+  "reference_state_sha256": "33a8fdecbc732ca68053e37dfbf86734405f703d8813b211cb042f31ca06b40c",
+  "reference_case": "results/local_stage7w/reference",
+  "fields_sha256": null,
+  "fields_archived": false,
+  "wavelength_m": 2.0903e-06,
+  "settings": {
+    "mean_ho_density_m3": 1.52e+26,
+    "density_seed": 17,
+    "cluster_count": 24,
+    "cluster_contrast": 0.27,
+    "cluster_radius_min_m": 0.0002,
+    "cluster_radius_max_m": 0.00125,
+    "waist_m": 0.000408,
+    "input_power_W": 1.0,
+    "post_disk_distance_m": 0.25,
+    "phase_mask_name": "vortex-1",
+    "phase_strength_rad": 3.141592653589793
+  },
+  "density_mean_active_m3": 1.5200000000000002e+26,
+  "density_min_active_m3": 8.654596163440315e+25,
+  "density_max_active_m3": 2.5999843745184547e+26,
+  "phase_mask": {
+    "name": "vortex-1",
+    "strength_rad": 3.141592653589793,
+    "response": "ideal phase-only; no measured hardware latency or loss",
+    "maximum_local_irradiance_relative_change": 8.280186973337302e-16
+  },
+  "modes": {
+    "Gaussian TEM00": {
+      "input_power_W": 1.0,
+      "output_power_W": 1.0157033830055675,
+      "disk_exit_power_W": 1.0157033830055673,
+      "disk_power_gain": 1.0157033830055673
+    },
+    "Helical LG(0,+1)": {
+      "input_power_W": 1.0,
+      "output_power_W": 1.0120073530950329,
+      "disk_exit_power_W": 1.0120073530950329,
+      "disk_power_gain": 1.0120073530950329
+    },
+    "Double helix LG(0,+2)": {
+      "input_power_W": 1.0,
+      "output_power_W": 1.0048732008797627,
+      "disk_exit_power_W": 1.0048732008797627,
+      "disk_power_gain": 1.0048732008797627
+    },
+    "Hermite-Gaussian HG(1,1)": {
+      "input_power_W": 1.0,
+      "output_power_W": 1.0048240692308403,
+      "disk_exit_power_W": 1.0048240692308401,
+      "disk_power_gain": 1.0048240692308401
+    }
+  },
+  "time_kind": "steady_state",
+  "limitations": [
+    "imposed density is not pump/heat/mechanics self-consistent",
+    "weak-signal probe; no population depletion by these inputs",
+    "single disk traversal; no specified multipass hardware topology"
+  ]
+}

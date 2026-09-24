@@ -9,3 +9,6 @@ build/
 dist/
 .coverage
 htmlcov/
+.local_runtime/
+results/local_*/**/snapshots/
+results/structured_beams/runs/

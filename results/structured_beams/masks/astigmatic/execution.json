@@ -1,0 +1,9 @@
+{
+  "effective_limit_s": 180,
+  "elapsed_s": 3.8848310989997117,
+  "exit_code": 0,
+  "label": "gallery_astigmatic",
+  "log_path": "/home/aidas/Desktop/FTMC/Ho-YAG-crystal/results/structured_beams/masks/astigmatic/execution.log",
+  "peak_rss_bytes": 229085184,
+  "status": "completed"
+}

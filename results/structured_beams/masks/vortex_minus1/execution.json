@@ -1,0 +1,9 @@
+{
+  "effective_limit_s": 180,
+  "elapsed_s": 3.2987086529974476,
+  "exit_code": 0,
+  "label": "gallery_vortexminus1",
+  "log_path": "/home/aidas/Desktop/FTMC/Ho-YAG-crystal/results/structured_beams/masks/vortex_minus1/execution.log",
+  "peak_rss_bytes": 220598272,
+  "status": "completed"
+}

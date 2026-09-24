@@ -1,0 +1,9 @@
+{
+  "effective_limit_s": 180,
+  "elapsed_s": 3.3988647800033505,
+  "exit_code": 0,
+  "label": "gallery_axicon",
+  "log_path": "/home/aidas/Desktop/FTMC/Ho-YAG-crystal/results/structured_beams/masks/axicon/execution.log",
+  "peak_rss_bytes": 231211008,
+  "status": "completed"
+}

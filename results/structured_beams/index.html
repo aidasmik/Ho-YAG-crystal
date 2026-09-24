@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Ho:YAG structured-beam calculator</title>
+  <style>
+    :root{color-scheme:dark;font:15px system-ui,sans-serif;background:#101522;color:#eef2fa}
+    body{max-width:1380px;margin:0 auto;padding:22px}
+    h1{margin:0 0 6px;font-size:1.7rem}h2{font-size:1.15rem;margin:26px 0 10px}
+    p{line-height:1.45;color:#c8d2e5}.note{font-size:.9rem;color:#aebbd0}
+    .layout{display:grid;grid-template-columns:290px 1fr;gap:24px;align-items:start}
+    .controls{background:#182237;border:1px solid #30405e;border-radius:12px;padding:16px;position:sticky;top:14px}
+    label{display:block;margin:12px 0 5px;color:#d8e2f3;font-weight:600}
+    input,select,button{box-sizing:border-box;width:100%;font:inherit;border-radius:7px;border:1px solid #506180;padding:8px;background:#0f1728;color:#eef2fa}
+    input[type=number]{font-variant-numeric:tabular-nums}button{margin-top:17px;background:#2878c8;border-color:#69b1f2;font-weight:700;cursor:pointer}button:disabled{opacity:.55;cursor:wait}
+    .status{min-height:44px;margin-top:12px;padding:9px;border-radius:7px;background:#111a2b;color:#bcd0e9;white-space:pre-wrap}
+    .status.error{color:#ffb5b5;border:1px solid #a64b55}.status.ok{color:#b8f0c6;border:1px solid #4e9764}
+    .images{min-width:0}.images img{display:block;width:100%;height:auto;margin:0 0 18px;border-radius:8px;background:#fff}
+    .metrics{width:100%;border-collapse:collapse;background:#182237;border-radius:8px;overflow:hidden}.metrics th,.metrics td{padding:8px;border-bottom:1px solid #30405e;text-align:left}.metrics th{color:#bcd0e9}
+    code{color:#a9d8ff}.pill{display:inline-block;padding:3px 7px;border-radius:10px;background:#253a5c;color:#cce5ff}
+    @media(max-width:850px){.layout{grid-template-columns:1fr}.controls{position:static}}
+  </style>
+</head>
+<body>
+  <h1>Ho:YAG structured-beam calculator</h1>
+  <p>Choose the solver, phase mask, and seeded random Ho distribution, then press Calculate. Each run evaluates six 1 W input shapes—Gaussian, two helical LG modes, HG(1,1), a Bessel-Gaussian needle, and a flattop super-Gaussian—and returns irradiance, phase, and centerline side profiles.</p>
+  <div class="layout">
+    <form class="controls" id="calculator">
+      <label for="solver_mode">Solver</label>
+      <select id="solver_mode" name="solver_mode">
+        <option value="weak_probe">Weak probe (fast)</option>
+        <option value="full_seeded_modal">Modal thermal estimate (approximate)</option>
+        <option value="periodic_seeded_amplifier">Picosecond seeded amplifier (bounded)</option>
+      </select>
+      <p class="note">The modal estimate calculates one saturated fixed-mode oscillator background for all six shapes, then probes each 1 W beam separately. It recomputes heat, cooling, stress, and optical phase for the Ho map. The probes do not deplete the inversion or heat the crystal; the hot optics do not feed back into the oscillator.</p>
+      <p class="note">The seeded amplifier runs one chosen shape through a shared Ho:YAG crystal with pump recovery, signal depletion, heat, and a bonded heatsink. Its short-pulse and material assumptions are reported with every result.</p>
+      <label for="selected_beam">Seed beam (seeded amplifier)</label>
+      <select id="selected_beam" name="selected_beam">
+        <option>Gaussian TEM00</option><option>Helical LG(0,+1)</option>
+        <option>Double helix LG(0,+2)</option><option>Hermite-Gaussian HG(1,1)</option>
+        <option>Needle Bessel-Gaussian</option><option>Flattop super-Gaussian</option>
+      </select>
+      <label for="seed_energy_nj">Seed energy (nJ)</label>
+      <input id="seed_energy_nj" name="seed_energy_nj" type="number" value="10" min="0.001" max="100000" step="1">
+      <label for="seed_fwhm_ps">Seed FWHM (ps; assumed)</label>
+      <input id="seed_fwhm_ps" name="seed_fwhm_ps" type="number" value="10" min="0.1" max="1000" step="1">
+      <label for="signal_traversals">Material traversals</label>
+      <input id="signal_traversals" name="signal_traversals" type="number" value="10" min="1" max="20" step="1">
+      <label for="relay_distance_m">Free-space relay distance (m; 0 = ideal image relay)</label>
+      <input id="relay_distance_m" name="relay_distance_m" type="number" value="0" min="0" max="2" step="0.01">
+      <label for="cpu_workers">CPU workers (seeded amplifier)</label>
+      <input id="cpu_workers" name="cpu_workers" type="number" value="4" min="1" max="16" step="1">
+      <label for="dn_dHo_m3">Measured dn/dN(Ho) (m³/ion; optional)</label>
+      <input id="dn_dHo_m3" name="dn_dHo_m3" type="text" placeholder="Leave blank until measured">
+      <label for="dn_dExcited_m3">Measured dn/dN(excited) (m³/ion; optional)</label>
+      <input id="dn_dExcited_m3" name="dn_dExcited_m3" type="text" placeholder="Leave blank until measured">
+      <label for="index_provenance">Index coefficient source</label>
+      <input id="index_provenance" name="index_provenance" type="text" placeholder="Measurement or paper with wavelength">
+      <label for="phase_mask">Phase mask</label>
+      <select id="phase_mask" name="phase_mask">
+        <option value="none">None</option><option value="vortex+1">Vortex +1</option>
+        <option value="vortex-1">Vortex −1</option><option value="vortex+2">Vortex +2</option>
+        <option value="defocus">Defocus</option><option value="astigmatic">Astigmatic</option>
+        <option value="axicon">Axicon</option>
+      </select>
+      <label for="phase_strength_rad">Mask strength (rad)</label>
+      <input id="phase_strength_rad" name="phase_strength_rad" type="number" value="3.14159265" min="-50" max="50" step="0.1">
+      <label for="density_seed">Ho distribution seed</label>
+      <input id="density_seed" name="density_seed" type="number" value="17" min="-2000000000" max="2000000000" step="1">
+      <label for="cluster_count">Cluster count</label>
+      <input id="cluster_count" name="cluster_count" type="number" value="24" min="2" max="64" step="1">
+      <label for="cluster_contrast">Cluster contrast</label>
+      <input id="cluster_contrast" name="cluster_contrast" type="number" value="0.27" min="0" max="1" step="0.01">
+      <label for="cluster_min_radius_mm">Smallest cluster radius (mm)</label>
+      <input id="cluster_min_radius_mm" name="cluster_min_radius_mm" type="number" value="0.20" min="0.05" max="2.5" step="0.05">
+      <label for="cluster_max_radius_mm">Largest cluster radius (mm)</label>
+      <input id="cluster_max_radius_mm" name="cluster_max_radius_mm" type="number" value="1.25" min="0.05" max="2.5" step="0.05">
+      <label for="post_disk_distance_m">Output distance after disk (m)</label>
+      <input id="post_disk_distance_m" name="post_disk_distance_m" type="number" value="0.25" min="0" max="2" step="0.01">
+      <button id="calculate" type="button">Calculate</button>
+      <button id="newBudget" type="button" hidden>Start new bounded compute budget</button>
+      <div id="status" class="status">Waiting for a calculation.</div>
+      <p class="note">The phase mask is ideal and phase-only: irradiance is unchanged immediately across the SLM. The Ho map is regenerated from the seed on every calculation. The modal estimate is slower and subject to the local supervisor time budget.</p>
+    </form>
+    <main class="images">
+      <div id="resultSummary"><span class="pill">Saved example</span> Select parameters and calculate to replace these plots.</div>
+      <img id="phaseImage" src="phase_mask.png" alt="Applied phase mask and immediate irradiance check">
+      <img id="beamsImage" src="input_output_beams.png" alt="Calculated input and output beam irradiance and phase">
+      <img id="profilesImage" src="beam_side_profiles.png" alt="Centerline side profiles of input and output beam irradiance">
+      <img id="beamDensityImage" src="beam_on_ho_density.png" alt="Calculated incoming beam footprints over the Ho concentration entrance slice">
+      <img id="densityImage" src="ho_density.png" alt="Calculated random clustered Ho distribution">
+      <h2>Calculated probe powers</h2>
+      <table class="metrics" id="metrics"><tbody><tr><th>Mode</th><th>Output power</th><th>Disk gain</th></tr></tbody></table>
+      <p class="note" id="scopeNote">Model scope: one disk traversal plus free-space propagation, frozen archived inversion fractions, and weak-signal gain.</p>
+    </main>
+  </div>
+  <script>
+    if(location.protocol==='file:')location.replace('http://127.0.0.1:8780/results/structured_beams/index.html');
+    const form=document.getElementById('calculator'),statusBox=document.getElementById('status');
+    const calculateButton=document.getElementById('calculate');
+    const newBudgetButton=document.getElementById('newBudget');
+    const value=id=>document.getElementById(id).value;
+    async function refreshBudget(){
+      const response=await fetch('/budget/status');
+      if(!response.ok)throw new Error('Cannot read compute budget');
+      const budget=await response.json();
+      newBudgetButton.hidden=!budget.coupled_exhausted;
+      if(budget.coupled_exhausted){
+        statusBox.className='status error';
+        statusBox.textContent=`Coupled calculations have used ${budget.coupled_attempts_used} of ${budget.coupled_attempts_limit} runs in the shared budget. Start a new bounded budget for another modal or seeded run; the old ledger will be archived.`;
+      }
+    }
+    function image(url){return url+'?cache='+Date.now()}
+    function renderResult(result){
+      const s=result.summary;
+      document.getElementById('solver_mode').value=s.solver_mode;
+      if(s.settings.selected_beam)document.getElementById('selected_beam').value=s.settings.selected_beam;
+      if(s.settings.cpu_workers)document.getElementById('cpu_workers').value=s.settings.cpu_workers;
+      document.getElementById('phaseImage').src=image(result.images.phase);
+      document.getElementById('beamsImage').src=image(result.images.beams);
+      document.getElementById('profilesImage').src=image(result.images.profiles);
+      document.getElementById('beamDensityImage').src=image(result.images.beam_density);
+      document.getElementById('densityImage').src=image(result.images.density);
+      const phase=s.phase_mask;
+      const modeLabel=s.solver_mode==='periodic_seeded_amplifier'?'Picosecond seeded amplifier':s.solver_mode==='full_seeded_modal'?'Modal thermal estimate':'Weak probe';
+      document.getElementById('resultSummary').innerHTML=`<span class="pill">Calculated ${result.run_id}</span> <strong>${modeLabel}</strong>; Mask: <strong>${phase.name}</strong>; Ho range: ${(s.density_min_active_m3/1e26).toFixed(3)}–${(s.density_max_active_m3/1e26).toFixed(3)} ×10²⁶ ions/m³; immediate SLM irradiance relative change: ${phase.maximum_local_irradiance_relative_change.toExponential(2)}`;
+      document.getElementById('scopeNote').textContent=s.solver_mode==='periodic_seeded_amplifier'
+        ? `Seeded amplifier: ${s.settings.seed_energy_J*1e9} nJ, assumed ${s.settings.seed_fwhm_s*1e12} ps, ${s.settings.signal_traversals} material traversals. ${s.solver_diagnostics.population_cycles} pump/seed cycles, heat ${s.solver_diagnostics.heat_W.toFixed(4)} W, disk peak ${s.solver_diagnostics.thermal_peak_disk_K.toFixed(2)} K. The pulse width is used for peak-power interpretation; the gain solver uses short-pulse fluence. Ho index coefficients, measured mounting, and mesh convergence remain absent.`
+        : s.solver_mode==='full_seeded_modal'
+        ? 'Modal estimate: one fixed-mode oscillator background supplies saturated populations and heat. Each shown beam is a separate undepleted one-pass probe. Thermal and photoelastic phases are applied once; there is no cavity eigenfield or hot-optics feedback. Output phase is the x-polarized component; irradiance sums both polarizations.'
+        : 'Weak mode: one disk traversal plus free-space propagation using archived inversion fractions; the changed Ho map is not a self-consistent pump, thermal, or mechanical operating point.';
+      const rows=Object.entries(s.modes).map(([name,m])=>`<tr><td>${name}</td><td>${m.output_power_W.toFixed(6)} W</td><td>${m.disk_power_gain.toFixed(6)}×</td></tr>`).join('');
+      document.getElementById('metrics').innerHTML=`<tbody><tr><th>Mode</th><th>Output power</th><th>Disk gain</th></tr>${rows}</tbody>`;
+    }
+    calculateButton.addEventListener('click',async ()=>{
+      calculateButton.disabled=true;statusBox.className='status';statusBox.textContent='Calculating numerical propagation…';
+      const payload={solver_mode:value('solver_mode'),selected_beam:value('selected_beam'),seed_energy_nj:value('seed_energy_nj'),seed_fwhm_ps:value('seed_fwhm_ps'),signal_traversals:value('signal_traversals'),relay_distance_m:value('relay_distance_m'),cpu_workers:value('cpu_workers'),dn_dHo_m3:value('dn_dHo_m3'),dn_dExcited_m3:value('dn_dExcited_m3'),index_provenance:value('index_provenance'),phase_mask:value('phase_mask'),phase_strength_rad:value('phase_strength_rad'),density_seed:value('density_seed'),cluster_count:value('cluster_count'),cluster_contrast:value('cluster_contrast'),cluster_min_radius_mm:value('cluster_min_radius_mm'),cluster_max_radius_mm:value('cluster_max_radius_mm'),post_disk_distance_m:value('post_disk_distance_m')};
+      try{const response=await fetch('/calculate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const result=await response.json();if(!response.ok)throw new Error(result.error||'calculation failed');renderResult(result);statusBox.className='status ok';statusBox.textContent='Calculation complete. The plots and metrics above are from the new run.';}
+      catch(error){
+        const detail=String(error.message||error);
+        const message=detail.includes('budget_exhausted')
+          ? 'The shared coupled budget is exhausted. Press Start new bounded compute budget to archive the old ledger and allow another run.'
+          : 'Calculation failed: '+detail;
+        statusBox.className='status error';statusBox.textContent=message;
+        if(detail.includes('budget_exhausted'))newBudgetButton.hidden=false;
+      }
+      finally{calculateButton.disabled=false;}
+    });
+    newBudgetButton.addEventListener('click',async ()=>{
+      newBudgetButton.disabled=true;
+      try{
+        const response=await fetch('/budget/new',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'start_new_budget'})});
+        const result=await response.json();
+        if(!response.ok)throw new Error(result.error||'Could not start a new budget');
+        newBudgetButton.hidden=true;statusBox.className='status ok';
+        statusBox.textContent='New bounded budget is ready. Press Calculate to run the modal thermal estimate. Previous budget archived at '+result.archive;
+      }catch(error){statusBox.className='status error';statusBox.textContent='Budget reset failed: '+String(error.message||error);}
+      finally{newBudgetButton.disabled=false;}
+    });
+    refreshBudget().catch(error=>{statusBox.className='status error';statusBox.textContent=String(error.message||error);});
+    fetch('/runs/latest').then(response=>response.ok?response.json():null).then(result=>{if(result)renderResult(result)}).catch(()=>{});
+  </script>
+</body>
+</html>

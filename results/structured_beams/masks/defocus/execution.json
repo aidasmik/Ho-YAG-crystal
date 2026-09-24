@@ -1,0 +1,9 @@
+{
+  "effective_limit_s": 180,
+  "elapsed_s": 4.100021325997659,
+  "exit_code": 0,
+  "label": "gallery_defocus",
+  "log_path": "/home/aidas/Desktop/FTMC/Ho-YAG-crystal/results/structured_beams/masks/defocus/execution.log",
+  "peak_rss_bytes": 229400576,
+  "status": "completed"
+}

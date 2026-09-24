@@ -83,6 +83,19 @@ def geometric_roundtrip_opd(front_uz_m,rear_uz_m,*,index=1.799104526293235):
     return 2*((1-index)*f+index*r)
 
 
+def geometric_transmission_opd(front_uz_m,rear_uz_m,*,index=1.799104526293235):
+    """One-pass OPD through the crystal between fixed external air planes.
+
+    The air paths on both sides cancel a rigid translation of the disk.
+    The remaining path change is (n-1) times the thickness change.
+    """
+    positive(index,'index')
+    f,r=np.broadcast_arrays(np.asarray(front_uz_m,float),np.asarray(rear_uz_m,float))
+    if not np.all(np.isfinite(f)) or not np.all(np.isfinite(r)):
+        raise ValueError('displacements must be finite')
+    return (index-1)*(r-f)
+
+
 def ordered_jones(index_change_by_slice,dz_m,wavelength_m):
     """Near-normal paraxial Jones matrices in a fixed lab x/y basis.
 

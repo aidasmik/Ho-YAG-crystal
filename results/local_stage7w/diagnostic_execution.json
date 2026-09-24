@@ -1,0 +1,9 @@
+{
+  "effective_limit_s": 180,
+  "elapsed_s": 31.83782327500012,
+  "exit_code": 0,
+  "label": "hot_family_diagnostic",
+  "log_path": "results/local_stage7w/diagnostic.log",
+  "peak_rss_bytes": 262467584,
+  "status": "completed"
+}
