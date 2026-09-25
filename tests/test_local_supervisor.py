@@ -63,10 +63,20 @@ def test_memory_ceiling_and_cancellation(tmp_path):
 
 def test_budget_exhaustion_persists_across_instances(tmp_path):
     limits=Limits(total_seconds=.05, case_seconds=1, max_attempts=1,
-                  memory_bytes=256*1024**2, poll_seconds=.01)
+                  memory_bytes=256*1024**2, poll_seconds=.01,
+                  enforce_cumulative_budget=True)
     ledger=BudgetLedger(tmp_path/'ledger.json', limits)
     run_bounded([sys.executable,'-c','pass'],cwd=tmp_path,
         log_path=tmp_path/'log',summary_path=tmp_path/'summary',ledger=ledger,
         label='first',configured_seconds=1)
     with pytest.raises(RuntimeError,match='budget_exhausted'):
         BudgetLedger(tmp_path/'ledger.json',limits).begin('second',1)
+
+
+def test_default_ledger_has_no_cumulative_attempt_or_time_cap(tmp_path):
+    limits=Limits(total_seconds=.01, case_seconds=1, max_attempts=1)
+    ledger=BudgetLedger(tmp_path/'ledger.json',limits)
+    for attempt in range(2):
+        assert ledger.begin(str(attempt), 2) == 1
+        ledger.finish('completed', .1)
+    assert len(json.loads((tmp_path/'ledger.json').read_text())['attempts']) == 2

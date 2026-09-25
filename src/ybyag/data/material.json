@@ -1,0 +1,190 @@
+{
+  "material": "Yb:YAG",
+  "host": "Y3Al5O12",
+  "version": "1.0.0",
+  "scope": "Material inputs only; does not alter or validate the repository simulator.",
+  "conventions": {
+    "doping": "Atomic percent on the Y sublattice, NOT percentage of all atoms.",
+    "spectra": "nm and cm^2 per Yb ion in source CSV; helper also provides SI.",
+    "temperature": "Kelvin in API; Celsius only in figure CSV column names.",
+    "strain": "Symmetric infinitesimal mechanical elastic strain, after subtracting thermal eigenstrain.",
+    "axes": "Crystal Cartesian axes [100], [010], [001].",
+    "source_quality": "Published fits, source repository tables, figure readings and derived results are different evidence categories."
+  },
+  "structure": {
+    "rho_host_300K_kg_m3": 4552.0,
+    "rho_source_id": "SATO2025",
+    "molar_mass_host_kg_mol": 0.59362,
+    "molar_mass_source_id": "SATO2025",
+    "Y_sites_per_formula": 3,
+    "avogadro_mol-1": 6.02214076e+23,
+    "number_density_model": "3*rho_host_300K/M_host * N_A * (Yb_at_percent/100). Fixed-volume substitution baseline; no concentration-specific lattice calibration."
+  },
+  "sellmeier": {
+    "source_id": "ZELMON1998",
+    "lambda_unit": "um",
+    "range_nm": [
+      400,
+      5000
+    ],
+    "formula": "n^2=1+2.28200*l^2/(l^2-0.01185)+3.27644*l^2/(l^2-282.734)",
+    "A": [
+      2.282,
+      3.27644
+    ],
+    "B_um2": [
+      0.01185,
+      282.734
+    ]
+  },
+  "default_spectra": {
+    "file": "spectra/yb_yag_293K_legacy.csv",
+    "temperature_K": 293.15,
+    "range_nm": [
+      905,
+      1095
+    ],
+    "step_nm": 1,
+    "source_id": "HASEONGPU",
+    "quality": "legacy_repository_array",
+    "experimental_uncertainty": null,
+    "doping_dependence": "Not available; concentration only scales number density."
+  },
+  "approximate_temperature_spectra": {
+    "file": "spectra/korner2012_laser_band_manual.csv",
+    "temperature_K": [
+      293.15,
+      353.15,
+      413.15,
+      473.15
+    ],
+    "range_nm": [
+      1020,
+      1060
+    ],
+    "source_ids": [
+      "KORNER2012",
+      "KORNER_FIGURE_COPY"
+    ],
+    "quality": "manual_visual_figure_readings",
+    "requires_explicit_opt_in": true,
+    "absorption": "Derived from emission at the SAME temperature by McCumber reciprocity. Not independently digitized absorption.",
+    "warnings": [
+      "Only main laser band. Pump absorption at high temperature is NOT included.",
+      "Manual readings are coarse and not original author arrays.",
+      "Linear interpolation does not add spectral resolution."
+    ]
+  },
+  "lifetime": {
+    "default_s": 0.00095,
+    "source_id": "KORNER2012",
+    "role": "Emission-normalization/model parameter; not tau(T,c)."
+  },
+  "host_thermooptic_polynomials": {
+    "aggarwal2005": {
+      "source_id": "AGGARWAL2005",
+      "range_K": [
+        100,
+        300
+      ],
+      "wavelength_nm": 1064,
+      "alpha_coeff_per_K": [
+        -1.8496e-06,
+        4.368e-08,
+        -5.6844e-11,
+        0
+      ],
+      "dn_dT_coeff_per_K": [
+        -3.946e-06,
+        5.294e-08,
+        -4.5605e-11,
+        0
+      ],
+      "interpretation": "Host stress-free thermo-optic baseline; not concentration-calibrated."
+    },
+    "sato2025": {
+      "source_id": "SATO2025",
+      "range_K": [
+        100,
+        500
+      ],
+      "wavelength_nm": 1064,
+      "measurement_band_nm": [
+        1057,
+        1071
+      ],
+      "alpha_coeff_per_K": [
+        -1.43e-06,
+        4.25e-08,
+        -6.82e-11,
+        4.04e-14
+      ],
+      "alpha_fit_range_K": [
+        50,
+        700
+      ],
+      "dn_dT_coeff_per_K": [
+        -1.38e-06,
+        3.9e-08,
+        -2.51e-11,
+        -2.02e-14
+      ],
+      "interpretation": "Apparent host dn/dT; authors report possible mounting-stress contamination. Not a safe automatic stress-free replacement. Text mistakenly mentions fourth/fifth order, but Eq.9/Table7 specify cubic/four coefficients; use Eq.9/Table7."
+    }
+  },
+  "sato_host_k": {
+    "source_id": "SATO2025",
+    "range_K": [
+      160,
+      773
+    ],
+    "formula": "k0+k1/T+k2*exp(-T/T0)",
+    "single_crystal": [
+      1.29,
+      2470,
+      120,
+      60.7
+    ],
+    "ceramic": [
+      1.75,
+      2090,
+      52.4,
+      76.7
+    ],
+    "uncertainty": "Reported <1% fit residual is not total experimental uncertainty."
+  },
+  "sato_host_diffusivity": {
+    "source_id": "SATO2025",
+    "range_K": [
+      160,
+      773
+    ],
+    "formula": "D0+D1/T+D2/T^m, in mm^2/s",
+    "single_crystal": [
+      0.415,
+      585,
+      291000000.0,
+      3.35
+    ],
+    "ceramic": [
+      0.568,
+      429,
+      33700000.0,
+      2.96
+    ]
+  },
+  "heat_capacity": {
+    "source_id": "SATO2025",
+    "file": "thermal/sato2025_host_tables.csv",
+    "range_K": [
+      100,
+      500
+    ],
+    "quality": "Published host summary including calculated heat capacity; interpolation of table, not direct calorimetry at every node.",
+    "doped_RT_file": "thermal/aggarwal2005_yb_doping.csv"
+  },
+  "nonlinear_index_n2_m2_W": null,
+  "nonradiative_quantum_efficiency": null,
+  "laser_damage_threshold": null,
+  "thermal_contact_resistance": null
+}

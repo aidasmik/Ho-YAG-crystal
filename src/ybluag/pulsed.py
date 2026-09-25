@@ -5,6 +5,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from .model import H, C, YbLuAGMaterial
+from .multipass_pump import exponential_cell_average
 
 
 @dataclass(frozen=True)
@@ -24,7 +25,8 @@ class PulseResult:
 def propagate_pulse(material: YbLuAGMaterial, time_s, pump_in_W_m2,
                     signal_in_W_m2, thickness_m: float, steps: int, *,
                     initial_excited_fraction=0.0,
-                    density_scale_by_slice=1.0) -> PulseResult:
+                    density_scale_by_slice=1.0,
+                    temperature_K_by_slice=None) -> PulseResult:
     """Transport intensity samples and evolve one shared Yb population per z cell.
 
     Time samples include both pulse tails. During each optical pass the local
@@ -51,6 +53,9 @@ def propagate_pulse(material: YbLuAGMaterial, time_s, pump_in_W_m2,
                            (steps, *shape)).copy()
     density_scale = np.broadcast_to(np.asarray(density_scale_by_slice, dtype=float),
                                     beta.shape)
+    temperature = (None if temperature_K_by_slice is None else
+                   np.broadcast_to(np.asarray(temperature_K_by_slice, dtype=float),
+                                   beta.shape))
     if np.any(~np.isfinite(density_scale)) or np.any(density_scale < 0):
         raise ValueError("density_scale_by_slice must be finite and nonnegative")
     if np.any(~np.isfinite(beta)) or np.any((beta < 0) | (beta > 1)):
@@ -67,7 +72,8 @@ def propagate_pulse(material: YbLuAGMaterial, time_s, pump_in_W_m2,
         pump_absorbed = np.empty_like(current_beta) if ledger else None
         signal_change = np.empty_like(current_beta) if ledger else None
         for iz in range(steps):
-            alpha, gain = material.coefficients_m1(current_beta[iz])
+            local_T = None if temperature is None else temperature[iz]
+            alpha, gain = material.coefficients_m1(current_beta[iz], local_T)
             alpha = alpha * density_scale[iz]
             gain = gain * density_scale[iz]
             next_p = p * np.exp(-alpha * dz)
@@ -77,7 +83,8 @@ def propagate_pulse(material: YbLuAGMaterial, time_s, pump_in_W_m2,
                 signal_change[iz] = next_s - s
             if rates:
                 up[iz], down[iz] = material.rates_s1(
-                    0.5 * (p + next_p), 0.5 * (s + next_s))
+                    exponential_cell_average(p, -alpha * dz),
+                    exponential_cell_average(s, gain * dz), local_T)
             p, s = next_p, next_s
         return p, s, up, down, pump_absorbed, signal_change
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import hashlib
 from pathlib import Path
 
 from ybluag_app import calculate, calculate_pulsed, calculate_structured
@@ -15,6 +16,23 @@ def main() -> None:
     parser.add_argument("result", type=Path)
     args = parser.parse_args()
     payload = json.loads(args.request.read_text(encoding="utf-8"))
+    root = Path(__file__).resolve().parents[1]
+    source_hash = hashlib.sha256()
+    sources = sorted(path for path in (root/'src').rglob('*') if path.is_file()
+                     and '__pycache__' not in path.parts)
+    sources += sorted((root/'config').glob('*.json'))
+    sources += [Path(__file__), root/'examples/ybluag_app.py']
+    for path in sources:
+        source_hash.update(path.relative_to(root).as_posix().encode())
+        source_hash.update(path.read_bytes())
+    provenance = {
+        'material': payload.get('material', 'Yb:LuAG'),
+        'configuration_sha256': hashlib.sha256(args.request.read_bytes()).hexdigest(),
+        'numerical_source_sha256': source_hash.hexdigest(),
+        'yag_dataset_revision': '7aa99048aa79f0f00a9a7f4efd21de50c19a6e00'
+            if payload.get('material') == 'Yb:YAG' else None,
+    }
+    (args.result.parent/'provenance.json').write_text(json.dumps(provenance, indent=2), encoding='utf-8')
     if args.kind == "pump_sweep":
         top = float(payload["pump_W"])
         result = {"points": [calculate_pulsed(

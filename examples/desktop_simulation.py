@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import math
 from pathlib import Path
+import subprocess
 import sys
 import threading
 import time
@@ -29,7 +30,7 @@ sys.path.insert(0, str(ROOT / "src"))
 from hoyag.local_supervisor import BudgetLedger, Limits, run_bounded
 from hoyag.structured_beam_gallery import BEAM_NAMES, PHASE_MASKS, SOLVER_MODES
 from structured_beam_app import (budget_status, latest_completed_run,
-                                 run_calculation, start_new_budget,
+                                 run_calculation,
                                  validate_request)
 from ybluag_desktop_views import YbResultPanel
 
@@ -38,7 +39,7 @@ NUMERIC_RANGES = {
     "thickness_um": (1, 2000), "disk_radius_mm": (1, 10),
     "yb_at_percent": (5, 15), "waist_mm": (.1, 2),
     "signal_W": (.001, 100), "seed_W": (0, 1000),
-    "pump_nm": (880, 1150), "signal_nm": (880, 1150),
+    "pump_nm": (880, 1150), "pulsed_pump_nm": (880, 1150), "signal_nm": (880, 1150),
     "phase_strength_rad": (-50, 50), "seed_energy_nj": (.001, 100000),
     "source_fwhm_fs": (50, 10000), "seed_fwhm_ps": (.1, 1000),
     "repetition_rate_kHz": (.01, 100), "pump_passes": (1, 48),
@@ -53,6 +54,7 @@ NUMERIC_RANGES = {
     "thermal_internal_max_step_s": (.001, 120),
     "probe_seed": (0, 2**31-1),
     "cooling_h_max_W_m2K": (10000, 200000),
+    "ideal_relay_power_retention": (.001, 1),
     "grid_n": (32, 768), "field_size_mm": (8, 24),
     "optical_z_steps": (1, 16), "thermal_nr": (4, 48),
     "thermal_nphi": (4, 96), "thermal_nz": (1, 24),
@@ -67,9 +69,12 @@ def validate_yb_payload(kind: str, values: dict) -> dict:
     if kind not in ("cw", "structured", "pulsed", "pump_sweep"):
         raise ValueError("unknown Yb calculation")
     payload = dict(values)
+    yag = payload.get("material") == "Yb:YAG"
     for key, (low, high) in NUMERIC_RANGES.items():
         if key not in payload:
             continue
+        if yag and key == "yb_at_percent":
+            low, high = 1, 22.9
         try:
             value = float(payload[key])
         except ValueError as exc:
@@ -82,15 +87,24 @@ def validate_yb_payload(kind: str, values: dict) -> dict:
     if kind != "cw":
         if payload["selected_beam"] not in BEAM_NAMES or payload["phase_mask"] not in PHASE_MASKS:
             raise ValueError("unknown beam or phase mask")
-        if payload["assembly_property_model"] not in ("reference_10at", "proposal_12at"):
+        if payload["assembly_property_model"] not in (("yag_rt_proxy",) if yag else ("reference_10at", "proposal_12at")):
             raise ValueError("unknown Yb assembly property assumption")
     if kind in ("pulsed", "pump_sweep") and payload["seed_fwhm_ps"] * 1000 < payload["source_fwhm_fs"]:
         raise ValueError("stretched pulse must be at least as long as source pulse")
     if kind in ("pulsed", "pump_sweep") and payload["thermal_optical_mode"] not in (
             "cold", "lumped_phase", "coupled_steady"):
         raise ValueError("unknown thermal-optical mode")
+    if kind in ("pulsed", "pump_sweep") and payload["architecture"] not in (
+            "ideal_multipass", "regenerative"):
+        raise ValueError("unknown amplifier architecture")
     if kind == "structured" and not .1 <= payload["radius_mm"] <= 5:
         raise ValueError("structured pump radius must be 0.1–5 mm")
+    if yag and payload.get("thermal_optical_mode") == "coupled_steady":
+        raise ValueError("Yb:YAG coupled hot gain needs missing temperature-dependent pump spectra")
+    if yag:
+        for key in ("pump_nm", "pulsed_pump_nm", "signal_nm"):
+            if key in payload and not 905 <= payload[key] <= 1095:
+                raise ValueError(f"{key}: Yb:YAG spectra cover 905–1095 nm")
     return payload
 
 
@@ -103,16 +117,17 @@ YB_FIELDS = (
     field("selected_beam", "Target beam", BEAM_NAMES[0], BEAM_NAMES),
     field("phase_mask", "Optional phase correction", "none", PHASE_MASKS),
     field("phase_strength_rad", "Correction strength (rad)", math.pi),
-    field("architecture", "Amplifier architecture", "regenerative",
-          ("regenerative", "ideal_multipass")),
+    field("architecture", "Amplifier architecture", "ideal_multipass",
+          ("ideal_multipass", "regenerative")),
     field("thermal_optical_mode", "Thermal-optical calculation", "lumped_phase",
           ("cold", "lumped_phase", "coupled_steady")),
     field("solver_mode", "Structured CW solver", "saturated_cw",
           ("weak_probe", "saturated_cw", "modal_cw")),
     field("pump_W", "Pump power (W)", 40),
-    field("radius_mm", "Pump radius (mm)", 1),
+    field("radius_mm", "Pump 1/e² radius (mm)", 1),
     field("thickness_um", "Disk thickness (µm)", 100),
-    field("yb_at_percent", "Yb concentration (at.%)", 12),
+    field("yb_at_percent", "Yb concentration (at.%)", 12,
+          ("5", "10", "12", "15")),
     field("disk_radius_mm", "Disk radius (mm)", 5),
     field("assembly_property_model", "Assembly property assumption", "proposal_12at",
           ("reference_10at", "proposal_12at")),
@@ -124,10 +139,11 @@ YB_FIELDS = (
     field("thermal_nz", "Thermal depth cells", 4),
     field("thermal_internal_max_step_s", "Thermal internal max step (s)", 10),
     field("probe_seed", "Temperature-probe noise seed", 0),
-    field("waist_mm", "Signal waist (mm)", 0.6),
+    field("waist_mm", "Gaussian source 1/e² radius (mm)", 0.6),
     field("signal_W", "Structured input (W)", 1),
     field("seed_W", "CW input (W)", 1),
     field("pump_nm", "CW pump wavelength (nm)", 938),
+    field("pulsed_pump_nm", "Pulsed amplifier pump wavelength (nm)", 969),
     field("signal_nm", "CW signal wavelength (nm)", 1030),
     field("seed_energy_nj", "Seed energy (nJ)", 10),
     field("source_fwhm_fs", "Source FWHM (fs)", 300),
@@ -136,6 +152,7 @@ YB_FIELDS = (
     field("pump_passes", "Pump passes", 10),
     field("signal_traversals", "Signal traversals", 10),
     field("regen_round_trips", "Cavity round trips", 10),
+    field("ideal_relay_power_retention", "Ideal relay power retention", 1),
     field("cavity_length_m", "Disk to mirror (m)", 0.25),
     field("mirror_radius_m", "Mirror curvature radius (m)", 0.5),
     field("disk_hr_reflectivity", "Disk HR reflectivity", 0.9995),
@@ -150,8 +167,18 @@ YB_FIELDS = (
     field("escape_yield", "Fluorescence escape yield", 0),
     field("operation_duration_s", "Operating time (s)", 30),
     field("cooling_mode", "Cooler control", "feedback", ("feedback", "sensor_feedback", "fixed")),
-    field("cooling_target_C", "Cooler target (°C)", 40),
+    field("cooling_target_C", "Cooler target (°C)", 25),
     field("cooling_h_max_W_m2K", "Maximum cooler h (W/m²K)", 100000),
+)
+
+YAG_FIELDS = tuple(
+    (key, label,
+     {"yb_at_percent": "20", "pump_nm": "969",
+                  "assembly_property_model": "yag_rt_proxy"}.get(key, default),
+     ("cold", "lumped_phase") if key == "thermal_optical_mode" else
+     ("yag_rt_proxy",) if key == "assembly_property_model" else
+     ("5", "10", "15", "20") if key == "yb_at_percent" else choices)
+    for key, label, default, choices in YB_FIELDS
 )
 
 HO_FIELDS = (
@@ -178,7 +205,7 @@ HO_FIELDS = (
 
 
 def run_yb(kind: str, payload: dict) -> tuple[dict, Path]:
-    """Run the latest PR's Yb backend under the shared bounded supervisor."""
+    """Run the local Yb solver under the shared bounded supervisor."""
     run_id = time.strftime("%Y%m%d_%H%M%S") + "_" + uuid.uuid4().hex[:8]
     directory = ROOT / "results" / "desktop_runs" / run_id
     directory.mkdir(parents=True)
@@ -194,7 +221,7 @@ def run_yb(kind: str, payload: dict) -> tuple[dict, Path]:
         log_path=directory / "execution.log",
         summary_path=directory / "execution.json",
         ledger=BudgetLedger(ROOT / ".local_runtime" / "budget.json", Limits()),
-        label=f"desktop_ybluag_{kind}_{run_id}",
+        label=f"desktop_{'ybyag' if payload.get('material') == 'Yb:YAG' else 'ybluag'}_{kind}_{run_id}",
         configured_seconds=900 if coupled else 180, category=category)
     if record["status"] != "completed" or record["exit_code"] != 0:
         log = (directory / "execution.log").read_text(encoding="utf-8")
@@ -202,42 +229,91 @@ def run_yb(kind: str, payload: dict) -> tuple[dict, Path]:
     return json.loads(output.read_text(encoding="utf-8")), directory
 
 
+YB_CONTROL_GROUPS = {
+    "Seed & phase": {"kind", "selected_beam", "phase_mask", "phase_strength_rad",
+                     "waist_mm", "seed_energy_nj", "source_fwhm_fs", "seed_fwhm_ps",
+                     "repetition_rate_kHz", "signal_W", "seed_W"},
+    "Yb crystal": {"kind", "thickness_um", "yb_at_percent", "disk_radius_mm",
+                   "assembly_property_model", "density_seed", "cluster_count", "cluster_contrast"},
+    "Pump & cooling": {"kind", "pump_W", "radius_mm", "pump_nm", "pulsed_pump_nm", "pump_passes",
+                       "escape_yield", "thermal_optical_mode", "operation_duration_s",
+                       "cooling_mode", "cooling_target_C", "cooling_h_max_W_m2K"},
+    "Amplifier & optics": {"kind", "architecture", "solver_mode", "signal_nm", "signal_traversals",
+                           "regen_round_trips", "ideal_relay_power_retention", "cavity_length_m",
+                           "mirror_radius_m", "disk_hr_reflectivity", "held_retention",
+                           "injection_efficiency", "extraction_efficiency", "distance_m", "slm_to_disk_m"},
+    "Numerical settings": {"kind", "grid_n", "field_size_mm", "optical_z_steps", "thermal_nr",
+                           "thermal_nphi", "thermal_nz", "thermal_internal_max_step_s", "probe_seed"},
+}
+
+
 class InputPanel(ttk.Frame):
     def __init__(self, parent, fields):
         super().__init__(parent)
-        canvas = tk.Canvas(self, width=320, highlightthickness=0)
+        self.grouped = fields is YB_FIELDS or fields is YAG_FIELDS
+        self.active_keys = {f[0] for f in fields}
+        self.vars, self.rows = {}, {}
+        self.group = tk.StringVar(value="Seed & phase")
+        if self.grouped:
+            heading = ttk.Frame(self, padding=(14, 14, 14, 8))
+            heading.pack(fill="x")
+            ttk.Label(heading, text="SIMULATION INPUTS", style="Eyebrow.TLabel").pack(anchor="w")
+            concentration = next((item for item in fields if item[0] == "yb_at_percent"), None)
+            if concentration is not None:
+                key, label, default, choices = concentration
+                ttk.Label(heading, text=label, style="Input.TLabel").pack(anchor="w", pady=(8, 4))
+                var = tk.StringVar(value=default)
+                ttk.Combobox(heading, textvariable=var, values=choices,
+                             state="readonly", width=25).pack(fill="x", ipady=2)
+                self.vars[key] = var
+            selector = ttk.Combobox(heading, textvariable=self.group,
+                                   values=tuple(YB_CONTROL_GROUPS), state="readonly", width=27)
+            selector.pack(fill="x", pady=(8, 0))
+            selector.bind("<<ComboboxSelected>>", lambda *_: self.show_only(self.active_keys))
+        self.canvas = canvas = tk.Canvas(self, width=305, highlightthickness=0, background="#f3f6fa")
         scroll = ttk.Scrollbar(self, orient="vertical", command=canvas.yview)
-        self.inner = ttk.Frame(canvas, padding=8)
+        self.inner = ttk.Frame(canvas, padding=(14, 4, 14, 14))
         self.inner.bind("<Configure>",
                         lambda event: canvas.configure(scrollregion=canvas.bbox("all")))
-        canvas.create_window((0, 0), window=self.inner, anchor="nw")
+        window = canvas.create_window((0, 0), window=self.inner, anchor="nw")
+        canvas.bind("<Configure>", lambda event: canvas.itemconfigure(window, width=event.width))
         canvas.configure(yscrollcommand=scroll.set)
         canvas.pack(side="left", fill="both", expand=True)
         scroll.pack(side="right", fill="y")
-        self.vars = {}
-        self.rows = {}
         for row, (key, label, default, choices) in enumerate(fields):
+            if key in self.vars:
+                continue
             holder = ttk.Frame(self.inner)
-            holder.grid(row=row, column=0, sticky="ew", pady=3)
-            ttk.Label(holder, text=label).pack(anchor="w")
+            holder.grid(row=row, column=0, sticky="ew", pady=(5, 7))
+            ttk.Label(holder, text=label, style="Input.TLabel").pack(anchor="w", pady=(0, 4))
             var = tk.StringVar(value=default)
             widget = (ttk.Combobox(holder, textvariable=var, values=choices,
-                                   state="readonly", width=34)
-                      if choices else ttk.Entry(holder, textvariable=var, width=37))
-            widget.pack(fill="x")
-            self.vars[key] = var
-            self.rows[key] = holder
+                                   state="readonly", width=25)
+                      if choices else ttk.Entry(holder, textvariable=var, width=28))
+            widget.pack(fill="x", ipady=2)
+            self.vars[key], self.rows[key] = var, holder
         self.inner.columnconfigure(0, weight=1)
+        # Scope wheel scrolling to this panel, including its child controls.
+        self.winfo_toplevel().bind("<MouseWheel>", self._wheel, add="+")
+
+    def _wheel(self, event):
+        widget = event.widget
+        while widget is not None:
+            if widget is self:
+                self.canvas.yview_scroll(-int(event.delta/120), "units")
+                return "break"
+            widget = getattr(widget, "master", None)
 
     def values(self):
         return {key: variable.get().strip() for key, variable in self.vars.items()}
 
     def show_only(self, keys):
+        self.active_keys = set(keys)
+        visible = (self.active_keys & YB_CONTROL_GROUPS[self.group.get()]
+                   if self.grouped else self.active_keys)
         for key, widget in self.rows.items():
-            if key in keys:
-                widget.grid()
-            else:
-                widget.grid_remove()
+            widget.grid() if key in visible else widget.grid_remove()
+        self.canvas.yview_moveto(0)
 
 
 class ResultPanel(ttk.Frame):
@@ -414,36 +490,81 @@ class ResultPanel(ttk.Frame):
 class DesktopSimulation(tk.Tk):
     def __init__(self, initial_material="Ho:YAG"):
         super().__init__()
-        self.title("Ho:YAG and Yb:LuAG simulation")
-        self.geometry("1450x900")
+        self.title(f"{initial_material} simulation · native desktop")
+        self.configure(background="#f3f6fa")
+        style = ttk.Style(self)
+        style.theme_use("clam")
+        style.configure(".", font=("Segoe UI", 10), background="#f3f6fa", foreground="#213247")
+        style.configure("TNotebook", tabmargins=(4, 6, 4, 0), borderwidth=0)
+        style.configure("TNotebook.Tab", padding=(12, 9))
+        style.map("TNotebook.Tab", background=[("selected", "#ffffff")],
+                  foreground=[("selected", "#087f8c")])
+        style.configure("TEntry", fieldbackground="white", padding=4)
+        style.configure("TCombobox", fieldbackground="white", padding=4)
+        style.configure("TButton", padding=(10, 7))
+        style.configure("Accent.TButton", background="#087f8c", foreground="white", font=("Segoe UI", 11, "bold"))
+        style.map("Accent.TButton", background=[("active", "#096672"), ("disabled", "#adbcc5")])
+        style.configure("Input.TLabel", font=("Segoe UI", 9), foreground="#526378")
+        style.configure("Eyebrow.TLabel", font=("Segoe UI", 9, "bold"), foreground="#087f8c")
+        style.configure("Card.TFrame", background="white")
+        style.configure("Card.TLabel", background="white", foreground="#526378", font=("Segoe UI", 9))
+        style.configure("Metric.TLabel", background="white", font=("Segoe UI", 19, "bold"), foreground="#173b52")
+        self.geometry(f"{min(1550, self.winfo_screenwidth()-60)}x{min(960, self.winfo_screenheight()-100)}")
+        header = tk.Frame(self, background="#173b52", padx=20, pady=12)
+        header.pack(fill="x")
+        tk.Label(header, text="Thin-disk amplifier", background="#173b52", foreground="white",
+                 font=("Segoe UI", 20, "bold")).pack(side="left")
+        tk.Label(header, text="Gaussian seed  →  phase mask  →  shared disk  →  output",
+                 background="#173b52", foreground="#c3dde7", font=("Segoe UI", 10)).pack(side="right")
         self.minsize(1000, 650)
         self.running = False
         self.last_yb_payload = None
-        self.status = tk.StringVar(value="Ready. Calculations use the shared local budget.")
+        self.yb_pages = {}
+        self.status = tk.StringVar(value="Ready. Calculations have per-run time and memory limits.")
         notebook = ttk.Notebook(self)
         notebook.pack(fill="both", expand=True)
-        self.yb_input, self.yb_result, self.yb_button = self.make_tab(
-            notebook, "Yb:LuAG", YB_FIELDS, self.calculate_yb, YbResultPanel)
+        for material, fields in (("Yb:LuAG", YB_FIELDS), ("Yb:YAG", YAG_FIELDS)):
+            inputs, result, button = self.make_tab(
+                notebook, material, fields,
+                lambda name=material: self.calculate_yb(name), YbResultPanel)
+            sweep = ttk.Button(inputs.master, text="Pump → output curve (5 points)",
+                command=lambda name=material: self.calculate_yb_sweep(name), state="disabled")
+            sweep.pack(fill="x", padx=8, pady=(0, 8))
+            camera = ttk.Button(inputs.master, text="Export camera data (1080p)…",
+                command=lambda name=material: self.camera_dialog(name), state="disabled")
+            camera.pack(fill="x", padx=8, pady=(0, 8))
+            dataset = None
+            if material == "Yb:YAG":
+                dataset = ttk.Button(inputs.master, text="Generate NN dataset…",
+                    command=self.dataset_dialog)
+                dataset.pack(fill="x", padx=8, pady=(0, 8))
+            self.yb_pages[material] = dict(input=inputs, result=result, button=button,
+                                           sweep=sweep, camera=camera, dataset=dataset,
+                                           last_payload=None)
+            for key in ("kind", "architecture"):
+                inputs.vars[key].trace_add("write", lambda *_, name=material: self.update_yb_fields(name))
+            self.update_yb_fields(material)
+            if material == "Yb:YAG":
+                result.model_note.set("Yb:YAG repository spectra at 20 °C · heated pump spectra missing · lumped phase is an approximation.")
+        luag = self.yb_pages["Yb:LuAG"]
+        self.yb_input, self.yb_result, self.yb_button = luag['input'], luag['result'], luag['button']
+        self.yb_sweep_button = luag['sweep']
         self.ho_input, self.ho_result, self.ho_button = self.make_tab(
             notebook, "Ho:YAG", HO_FIELDS, self.calculate_ho)
-        self.yb_input.vars["kind"].trace_add("write", lambda *_: self.update_yb_fields())
-        self.yb_input.vars["architecture"].trace_add("write", lambda *_: self.update_yb_fields())
-        self.update_yb_fields()
-        self.yb_sweep_button = ttk.Button(self.yb_input.master,
-            text="Calculate five-point pump curve", command=self.calculate_yb_sweep,
-            state="disabled")
-        self.yb_sweep_button.pack(fill="x", padx=8, pady=(0, 8))
-        bar = ttk.Frame(self, padding=6)
+        bar = ttk.Frame(self, padding=(12, 8))
+        self.progress = ttk.Progressbar(bar, mode="indeterminate", length=95)
+        self.progress.pack(side="left", padx=(0, 10))
         bar.pack(fill="x")
         ttk.Label(bar, textvariable=self.status).pack(side="left", fill="x", expand=True)
-        ttk.Button(bar, text="Budget status", command=self.show_budget).pack(side="right")
-        ttk.Button(bar, text="New bounded budget", command=self.new_budget).pack(side="right", padx=5)
+        ttk.Button(bar, text="Run limits", command=self.show_budget).pack(side="right")
         self.protocol("WM_DELETE_WINDOW", self.close)
         latest = latest_completed_run()
         if latest:
             self.ho_result.draw_ho(latest)
-        self.restore_yb_result()
-        notebook.select(0 if initial_material == "Yb:LuAG" else 1)
+        self.restore_yb_result("Yb:LuAG")
+        self.restore_yb_result("Yb:YAG")
+        self.material_tabs = notebook
+        notebook.select({"Yb:LuAG": 0, "Yb:YAG": 1, "Ho:YAG": 2}[initial_material])
 
     def make_tab(self, notebook, title, fields, command, result_class=ResultPanel):
         page = ttk.Panedwindow(notebook, orient="horizontal")
@@ -451,15 +572,17 @@ class DesktopSimulation(tk.Tk):
         left = ttk.Frame(page)
         inputs = InputPanel(left, fields)
         inputs.pack(fill="both", expand=True)
-        button = ttk.Button(left, text="Calculate", command=command)
+        button = ttk.Button(left, text="Run simulation", style="Accent.TButton", command=command)
         button.pack(fill="x", padx=8, pady=8)
         page.add(left, weight=0)
         result = result_class(page)
         page.add(result, weight=1)
         return inputs, result, button
 
-    def update_yb_fields(self):
-        kind = self.yb_input.vars["kind"].get()
+    def update_yb_fields(self, material="Yb:LuAG"):
+        page = self.yb_pages[material]
+        inputs = page["input"]
+        kind = inputs.vars["kind"].get()
         common = {"kind", "pump_W", "radius_mm", "thickness_um", "disk_radius_mm",
                   "yb_at_percent",
                   "assembly_property_model", "grid_n",
@@ -468,9 +591,7 @@ class DesktopSimulation(tk.Tk):
         if kind == "cw":
             common -= {"grid_n", "field_size_mm", "optical_z_steps",
                        "thermal_nr", "thermal_nphi", "thermal_nz",
-                       "disk_radius_mm", "assembly_property_model", "yb_at_percent"}
-        if kind == "structured":
-            common -= {"yb_at_percent"}
+                       "disk_radius_mm", "assembly_property_model"}
         shaped = {"selected_beam", "phase_mask", "phase_strength_rad", "waist_mm",
                   "distance_m", "slm_to_disk_m", "density_seed", "cluster_count",
                   "cluster_contrast", "escape_yield"}
@@ -482,43 +603,54 @@ class DesktopSimulation(tk.Tk):
             keys = common | shaped | {"architecture", "seed_energy_nj",
                    "thermal_optical_mode",
                    "source_fwhm_fs", "seed_fwhm_ps", "repetition_rate_kHz",
-                   "pump_passes", "signal_traversals", "operation_duration_s",
+                   "pump_passes", "pulsed_pump_nm", "signal_traversals", "operation_duration_s",
                    "thermal_internal_max_step_s",
                    "probe_seed",
                    "cooling_mode", "cooling_target_C", "cooling_h_max_W_m2K"}
-            if self.yb_input.vars["architecture"].get() == "regenerative":
+            if inputs.vars["architecture"].get() == "ideal_multipass":
+                keys.add("ideal_relay_power_retention")
+            if inputs.vars["architecture"].get() == "regenerative":
                 keys |= {"regen_round_trips", "cavity_length_m", "mirror_radius_m",
                          "disk_hr_reflectivity", "held_retention",
                          "injection_efficiency", "extraction_efficiency"}
-        self.yb_input.show_only(keys)
-        self.active_yb_keys = keys
+        if material == "Yb:YAG":
+            keys.add("yb_at_percent")
+            if kind == "structured":
+                keys.add("pulsed_pump_nm")
+        page["keys"] = keys
+        inputs.show_only(keys)
+        if material == "Yb:LuAG":
+            self.active_yb_keys = keys
 
-    def calculate_yb(self):
+    def calculate_yb(self, material="Yb:LuAG"):
         if self.running:
             return
-        values = {key: value for key, value in self.yb_input.values().items()
-                  if key in self.active_yb_keys}
+        page = self.yb_pages[material]
+        values = {key: value for key, value in page['input'].values().items() if key in page['keys']}
         kind = values.pop("kind")
+        values['material'] = material
         try:
             values = validate_yb_payload(kind, values)
         except ValueError as exc:
-            messagebox.showerror("Invalid Yb:LuAG input", str(exc))
+            messagebox.showerror(f"Invalid {material} input", str(exc))
             return
         beam = values.get("selected_beam", "Gaussian TEM00")
-        self.start(lambda: ("yb", kind, beam, values, *run_yb(kind, values)))
+        self.start(lambda: ("yb", material, kind, beam, values, *run_yb(kind, values)))
 
-    def calculate_yb_sweep(self):
-        if self.running or self.last_yb_payload is None:
+    def calculate_yb_sweep(self, material="Yb:LuAG"):
+        page = self.yb_pages[material]
+        if self.running or page['last_payload'] is None:
             return
-        payload = dict(self.last_yb_payload)
+        payload = dict(page['last_payload'])
         try:
             validate_yb_payload("pump_sweep", payload)
         except ValueError as exc:
             messagebox.showerror("Invalid pump sweep", str(exc))
             return
-        self.start(lambda: ("yb_sweep", *run_yb("pump_sweep", payload)))
+        self.start(lambda: ("yb_sweep", material, *run_yb("pump_sweep", payload)))
 
-    def restore_yb_result(self):
+    def restore_yb_result(self, material="Yb:LuAG"):
+        panel = self.yb_pages[material]["result"]
         root = ROOT / "results" / "desktop_runs"
         if not root.is_dir():
             return
@@ -529,20 +661,19 @@ class DesktopSimulation(tk.Tk):
             try:
                 request = json.loads(request_file.read_text(encoding="utf-8"))
                 result = json.loads(result_file.read_text(encoding="utf-8"))
+                if request.get("material", "Yb:LuAG") != material:
+                    continue
                 if "points" in result:
                     continue
                 kind = ("pulsed" if "architecture" in result else
                         "structured" if "modes" in result else "cw")
                 beam = request.get("selected_beam", "Gaussian TEM00")
-                self.yb_input.vars["kind"].set(kind)
-                for key, value in request.items():
-                    if key in self.yb_input.vars:
-                        self.yb_input.vars[key].set(str(value))
-                self.update_yb_fields()
-                self.yb_result.draw(kind, result, directory, beam)
-                if kind == "pulsed":
-                    self.last_yb_payload = request
-                    self.yb_sweep_button.configure(state="normal")
+                result.setdefault("disk_radius_mm", float(request.get("disk_radius_mm", 5)))
+                panel.draw(kind, result, directory, beam)
+                if kind == "pulsed" and "output_fluence_J_m2" in result:
+                    self.yb_pages[material]["camera"].configure(state="normal")
+                panel.set_provenance("SAVED RESULT · inputs may differ; run to update")
+                self.status.set("Showing a saved Yb result; input controls use current defaults.")
                 return
             except (OSError, ValueError, KeyError, TypeError, IndexError):
                 continue
@@ -559,8 +690,13 @@ class DesktopSimulation(tk.Tk):
 
     def start(self, task):
         self.running = True
-        self.yb_button.configure(state="disabled")
-        self.yb_sweep_button.configure(state="disabled")
+        self.progress.start(12)
+        for page in self.yb_pages.values():
+            page["button"].configure(state="disabled")
+            page["sweep"].configure(state="disabled")
+            page["camera"].configure(state="disabled")
+            if page["dataset"] is not None:
+                page["dataset"].configure(state="disabled")
         self.ho_button.configure(state="disabled")
         self.status.set("Calculating in a bounded worker…")
 
@@ -573,55 +709,206 @@ class DesktopSimulation(tk.Tk):
 
         threading.Thread(target=work, daemon=True).start()
 
-    def complete(self, value):
+    def _enable_controls(self):
         self.running = False
-        self.yb_button.configure(state="normal")
+        self.progress.stop()
         self.ho_button.configure(state="normal")
+        for page in self.yb_pages.values():
+            page['button'].configure(state="normal")
+            page['sweep'].configure(state="normal" if page['last_payload'] else "disabled")
+            panel = page['result']
+            page['camera'].configure(state="normal" if panel.kind == "pulsed" and
+                                     panel.directory is not None and
+                                     panel.result is not None and
+                                     "output_fluence_J_m2" in panel.result else "disabled")
+            if page['dataset'] is not None:
+                page['dataset'].configure(state="normal")
+
+    def complete(self, value):
         if value[0] == "yb":
-            _, kind, beam, payload, result, directory = value
-            self.yb_result.draw(kind, result, directory, beam)
-            self.last_yb_payload = payload if kind == "pulsed" else None
-            self.yb_sweep_button.configure(state="normal" if kind == "pulsed" else "disabled")
-            self.status.set(f"Yb:LuAG {kind} calculation completed; saved in {directory}")
+            _, material, kind, beam, payload, result, directory = value
+            page = self.yb_pages[material]
+            page['result'].draw(kind, result, directory, beam)
+            page['last_payload'] = payload if kind == "pulsed" else None
+            if material == "Yb:LuAG":
+                self.last_yb_payload = page['last_payload']
+            self.status.set(f"{material} {kind} completed; saved in {directory}")
         elif value[0] == "yb_sweep":
-            _, result, directory = value
-            self.yb_result.update_sweep(result["points"])
-            self.yb_sweep_button.configure(state="normal")
-            self.status.set(f"Yb:LuAG five-point pump curve completed; saved in {directory}")
+            _, material, result, directory = value
+            self.yb_pages[material]['result'].update_sweep(result['points'])
+            self.status.set(f"{material} cold pump curve completed; saved in {directory}")
+        elif value[0] == "camera":
+            _, material, output = value
+            self.status.set(f"{material} exploratory camera frames saved in {output}")
+            messagebox.showinfo("Camera frames exported",
+                                f"Saved {output}\n\nSensor parameters are illustrative. "
+                                "Metadata marks this export as unqualified for training ground truth.")
+        elif value[0] == "dataset":
+            self.status.set(f"Yb:YAG grouped dataset generated: {value[1]}")
+            messagebox.showinfo("Dataset generation complete", str(value[1]))
         else:
             self.ho_result.draw_ho(value[1])
-            self.yb_sweep_button.configure(state="normal" if self.last_yb_payload else "disabled")
             self.status.set(f"Ho:YAG calculation completed: {value[1]['run_id']}")
+        self._enable_controls()
+
+    def camera_dialog(self, material):
+        page = self.yb_pages[material]
+        panel = page["result"]
+        if self.running or panel.directory is None or panel.kind != "pulsed":
+            return
+        from ybluag.camera_dataset import CameraSettings, suggest_optical_throughput
+        try:
+            suggested_throughput = suggest_optical_throughput(panel.result, CameraSettings())
+        except (ValueError, KeyError):
+            suggested_throughput = 1e-8
+        dialog = tk.Toplevel(self)
+        dialog.title(f"{material} camera export")
+        dialog.transient(self)
+        dialog.resizable(False, False)
+        body = ttk.Frame(dialog, padding=18)
+        body.pack(fill="both", expand=True)
+        ttk.Label(body, text="1080p monochrome camera · exploratory data",
+                  style="Eyebrow.TLabel").grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 10))
+        defaults = (
+            ("frames", "Frames per solved state", "2"),
+            ("seed", "Random seed", "17"),
+            ("fov", "Object field width (mm)", "10"),
+            ("qe", "QE at signal wavelength", "0.05"),
+            ("throughput", "Optical throughput (suggested)", f"{suggested_throughput:.4g}"),
+            ("pulses", "Pulses per exposure", "100"),
+            ("read", "Read noise (electrons RMS)", "3"),
+            ("temp", "Detector temperature jitter (°C)", "0.1"),
+            ("other", "Other solved run dirs (; separated)", ""),
+        )
+        variables = {}
+        for row, (key, label, default) in enumerate(defaults, 1):
+            ttk.Label(body, text=label).grid(row=row, column=0, sticky="w", padx=(0, 12), pady=3)
+            var = tk.StringVar(value=default)
+            ttk.Entry(body, textvariable=var, width=40).grid(row=row, column=1, sticky="ew", pady=3)
+            variables[key] = var
+        ttk.Label(body, text="Extra runs add independent physical states; repeated frames add sensor noise.",
+                  wraplength=530).grid(row=10, column=0, columnspan=2, sticky="w", pady=(10, 2))
+        ttk.Label(body, text="Camera values need calibration. Yb:YAG hot gain remains approximate.",
+                  wraplength=530).grid(row=11, column=0, columnspan=2, sticky="w")
+
+        def submit():
+            try:
+                frames = int(variables["frames"].get())
+                seed = int(variables["seed"].get())
+                fov = float(variables["fov"].get())
+                qe = float(variables["qe"].get())
+                throughput = float(variables["throughput"].get())
+                pulses = int(variables["pulses"].get())
+                read = float(variables["read"].get())
+                temp = float(variables["temp"].get())
+                others = [Path(s.strip()) for s in variables["other"].get().split(";") if s.strip()]
+                CameraSettings(object_fov_width_mm=fov, qe_at_signal=qe,
+                               optical_throughput=throughput, pulses_per_exposure=pulses,
+                               read_noise_e=read, sensor_temperature_jitter_C=temp)
+                if not 1 <= frames <= 8 or seed < 0 or (len(others)+1)*frames > 8:
+                    raise ValueError("Use 1–8 total frames and a nonnegative random seed")
+                runs = [panel.directory, *others]
+                if any(not (path/"request.json").is_file() or
+                       not (path/"result.json").is_file() for path in runs):
+                    raise ValueError("Each run directory needs request.json and result.json")
+            except (ValueError, OSError) as exc:
+                messagebox.showerror("Camera settings", str(exc), parent=dialog)
+                return
+            dialog.destroy()
+            self.start(lambda: ("camera", material, self.export_camera(
+                material, runs, frames, seed, fov, qe, throughput, pulses, read, temp)))
+
+        ttk.Button(body, text="Export frames", style="Accent.TButton",
+                   command=submit).grid(row=12, column=1, sticky="e", pady=(14, 0))
+
+    @staticmethod
+    def export_camera(material, runs, frames, seed, fov, qe, throughput, pulses, read, temp):
+        run_id = time.strftime("%Y%m%d_%H%M%S") + "_" + uuid.uuid4().hex[:8]
+        directory = ROOT / "results" / "camera_datasets" / run_id
+        directory.mkdir(parents=True)
+        output = directory / "camera"
+        command = [sys.executable, str(ROOT / "examples" / "yb_camera_dataset.py"),
+                   "--output", str(output), "--frames-per-state", str(frames),
+                   "--seed", str(seed), "--fov-mm", str(fov), "--qe", str(qe),
+                   "--throughput", str(throughput), "--pulses-per-exposure", str(pulses),
+                   "--read-noise-e", str(read), "--sensor-temp-jitter-C", str(temp),
+                   "--runs", *(str(path) for path in runs)]
+        record = run_bounded(
+            command, cwd=ROOT, log_path=directory/"execution.log",
+            summary_path=directory/"execution.json",
+            ledger=BudgetLedger(ROOT/".local_runtime"/"budget.json", Limits()),
+            label=f"desktop_{material.lower().replace(':', '')}_camera_{run_id}",
+            configured_seconds=180, category="profile")
+        if record["status"] != "completed" or record["exit_code"] != 0:
+            log = (directory/"execution.log").read_text(encoding="utf-8")
+            raise RuntimeError(f"{record['status']}: {log[-1600:]}")
+        return output.with_suffix(".npz")
+
+    def dataset_dialog(self):
+        if self.running:
+            return
+        dialog = tk.Toplevel(self)
+        dialog.title("Yb:YAG grouped NN dataset")
+        dialog.transient(self)
+        body = ttk.Frame(dialog,padding=18)
+        body.pack(fill="both",expand=True)
+        ttk.Label(body,text="Physical states → phase-diverse cameras → grouped splits",
+                  style="Eyebrow.TLabel").grid(row=0,column=0,columnspan=2,sticky="w",pady=(0,10))
+        run_id=time.strftime("%Y%m%d_%H%M%S")+"_"+uuid.uuid4().hex[:8]
+        defaults=(
+            ("config","Configuration JSON",str(ROOT/"config"/"ybyag_nn_dataset.json")),
+            ("output","Output directory",str(ROOT/"results"/"ybyag_nn_dataset"/run_id)),
+            ("points","Operating points per setup","1"),
+        )
+        vars_={}
+        for row,(key,label,default) in enumerate(defaults,1):
+            ttk.Label(body,text=label).grid(row=row,column=0,sticky="w",padx=(0,12),pady=3)
+            vars_[key]=tk.StringVar(value=default)
+            ttk.Entry(body,textvariable=vars_[key],width=62).grid(row=row,column=1,sticky="ew",pady=3)
+        ttk.Label(body,text="Edit the JSON ranges and nominal Yb:YAG point before generating. "
+                  "Only solver-valid near-room-temperature states are exported.",
+                  wraplength=600).grid(row=4,column=0,columnspan=2,sticky="w",pady=(10,3))
+
+        def submit():
+            try:
+                config=Path(vars_["config"].get())
+                output=Path(vars_["output"].get())
+                points=int(vars_["points"].get())
+                if not config.is_file() or not 1<=points<=2:
+                    raise ValueError("Choose an existing config and 1–2 operating points")
+                json.loads(config.read_text(encoding="utf-8"))
+            except (OSError,ValueError) as exc:
+                messagebox.showerror("Dataset configuration",str(exc),parent=dialog)
+                return
+            dialog.destroy()
+            self.start(lambda:("dataset",self.run_dataset(config,output,points)))
+
+        ttk.Button(body,text="Generate bounded dataset",style="Accent.TButton",
+                   command=submit).grid(row=5,column=1,sticky="e",pady=(12,0))
+
+    @staticmethod
+    def run_dataset(config, output, points):
+        command=[sys.executable,str(ROOT/"examples"/"ybyag_nn_dataset.py"),
+                 "--config",str(config),"--output",str(output),
+                 "--points-per-setup",str(points)]
+        run=subprocess.run(command,cwd=ROOT,text=True,capture_output=True,timeout=960)
+        if run.returncode:
+            raise RuntimeError((run.stderr or run.stdout)[-3000:])
+        return output/"manifest.json"
 
     def failed(self, error):
-        self.running = False
-        self.yb_button.configure(state="normal")
-        self.ho_button.configure(state="normal")
-        self.yb_sweep_button.configure(state="normal" if self.last_yb_payload else "disabled")
+        self._enable_controls()
         self.status.set(f"Calculation failed: {error[:180]}")
         messagebox.showerror("Calculation failed", error)
 
     def show_budget(self):
         status = budget_status()
-        messagebox.showinfo("Shared compute budget",
-                            f"Coupled attempts: {status['coupled_attempts_used']} / "
-                            f"{status['coupled_attempts_limit']}\n"
-                            f"Remaining: {status['remaining_seconds']:.0f} s\n"
+        messagebox.showinfo("Calculation limits",
+                            "No cumulative attempt or time limit.\n"
+                            f"Per coupled run: {status['per_run_seconds']:.0f} s\n"
+                            f"Memory ceiling: {status['memory_bytes'] / 1024**3:.1f} GiB\n"
+                            f"Past coupled runs: {status['coupled_attempts_used']}\n"
                             f"Active: {status['active']}")
-
-    def new_budget(self):
-        status = budget_status()
-        if not status["coupled_exhausted"]:
-            messagebox.showinfo("Shared compute budget", "The current budget is available.")
-            return
-        if not messagebox.askyesno("Archive exhausted budget",
-                                  "Archive the exhausted ledger and start one new bounded budget?"):
-            return
-        try:
-            result = start_new_budget()
-            self.status.set(f"New budget ready; old ledger: {result['archive']}")
-        except Exception as exc:
-            messagebox.showerror("Budget error", str(exc))
 
     def close(self):
         if self.running:

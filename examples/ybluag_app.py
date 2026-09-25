@@ -24,6 +24,7 @@ from ybluag import (YbLuAGMaterial, YbGallerySettings, fluorescence_spectrum,
                     propagate_cw, scan_output_coupler, simulate_structured_gallery,
                     simulate_pulsed_seed)
 from ybluag.model import _spectra
+from ybyag import YbYAGMaterial
 from ybluag.regenerative import RegenerativeCavity
 from ybluag.diagnostics import gain_feasibility, hardware_validity, spectral_gain_screen
 from ybluag.sensors import TemperatureProbe
@@ -31,6 +32,23 @@ from ybluag.sensors import TemperatureProbe
 PAGE = ROOT / "Yb-LuAG" / "app.html"
 COATINGS = ROOT / "config" / "ybluag_10at_coatings.json"
 PROPOSAL = ROOT / "config" / "ybslam_proposal_luag.json"
+
+
+def material_class(data):
+    name = data.get("material", "Yb:LuAG")
+    if name not in ("Yb:LuAG", "Yb:YAG"):
+        raise ValueError("unknown Yb host")
+    return YbYAGMaterial if name == "Yb:YAG" else YbLuAGMaterial
+
+
+def material_status(material):
+    if material.name == "Yb:YAG":
+        return ("Yb:YAG RT legacy repository spectra (905–1095 nm), experimental sample metadata unknown; "
+                "0.95 ms lifetime is an assumed model parameter. Gain uses 293.15 K spectra. "
+                "Temperature-dependent pump spectra are missing: fully coupled hot gain is unavailable. "
+                "Thermal phase uses a YAG host/aggregate RT proxy and generic copper/contact; "
+                "photoelasticity is not applied.")
+    return "Yb:LuAG reconstructed spectra; sample lifetime and generic assembly remain assumptions."
 
 
 def number(data, key, low, high):
@@ -94,9 +112,17 @@ def calculate(data):
     radius_mm = number(data, "radius_mm", 0.01, 10)
     thickness_um = number(data, "thickness_um", 1, 2000)
     seed_W = number(data, "seed_W", 0, 1000)
-    config = json.loads(COATINGS.read_text(encoding="utf-8"))
-    material = YbLuAGMaterial(pump_wavelength_nm=pump_nm,
-                              signal_wavelength_nm=signal_nm)
+    config = json.loads((ROOT/"config"/"ybyag_coating_screen.json"
+                         if data.get("material") == "Yb:YAG" else COATINGS).read_text(encoding="utf-8"))
+    yag = data.get("material") == "Yb:YAG"
+    concentration = number({"yb_at_percent": data.get("yb_at_percent", 20 if yag else 10)},
+                           "yb_at_percent", 1 if yag else 5, 22.9 if yag else 15)
+    material = material_class(data)(pump_wavelength_nm=pump_nm,
+                                    signal_wavelength_nm=signal_nm,
+                                    yb_at_percent=concentration,
+                                    **({"lifetime_s": json.loads(PROPOSAL.read_text(encoding="utf-8"))
+                                       ["material"]["lifetime_s"]}
+                                       if not yag and concentration != 10 else {}))
     area = math.pi * (radius_mm * 1e-3) ** 2
     result = propagate_cw(material, thickness_um * 1e-6, 16,
                           pump_W / area, seed_W / area)
@@ -106,12 +132,12 @@ def calculate(data):
         coating["screening_candidates"],
         disk_hr_reflectivity=config["disk_rear"]["target_min_reflectance_laser"],
         other_roundtrip_survival=coating["screening_other_roundtrip_survival"])
-    wavelength, _, _, _ = _spectra()
-    sample = wavelength[::2]
+    sample = material.spectral_wavelengths_nm[::2]
     cross = [material.cross_sections_m2(float(w)) for w in sample]
     fluorescence = fluorescence_spectrum(material)
     return {
-        "material": "Yb:LuAG", "temperature_C": 20, "yb_at_percent": 10,
+        "material": material.name, "temperature_C": 20, "yb_at_percent": material.yb_at_percent,
+        "material_status": material_status(material),
         "pump_out_W": float(result.pump_out_W_m2) * area,
         "absorbed_pump_W": float(result.absorbed_pump_W_m2) * area,
         "signal_out_W": float(result.signal_out_W_m2) * area,
@@ -126,7 +152,7 @@ def calculate(data):
         "wavelength_nm": sample.tolist(),
         "absorption_cross_section_cm2": [float(v[0] * 1e4) for v in cross],
         "emission_cross_section_cm2": [float(v[1] * 1e4) for v in cross],
-        "scope": "Single collinear CW pass at fixed 20 C; the OC scan uses an equal-counterpropagating-intensity approximation. Spectra are figure-guided reconstructions, and coating results are a design screen, not calibrated laser output.",
+        "scope": "Single collinear CW pass at fixed 20 C; the OC scan uses an equal-counterpropagating-intensity approximation. Coating results are a design screen, not calibrated laser output; spectrum provenance is reported separately.",
     }
 
 
@@ -171,15 +197,26 @@ def calculate_structured(data):
         thermal_nr=integer(data, "thermal_nr", 4, 48),
         thermal_nphi=integer(data, "thermal_nphi", 4, 96),
         thermal_nz=integer(data, "thermal_nz", 1, 24))
-    result = simulate_structured_gallery(YbLuAGMaterial(), settings, selected_beam=beam)
+    if data.get("material") == "Yb:YAG":
+        material = YbYAGMaterial(yb_at_percent=number(data, "yb_at_percent", 1, 22.9),
+                                  pump_wavelength_nm=number(data, "pulsed_pump_nm", 905, 1095))
+    else:
+        concentration = number({"yb_at_percent": data.get("yb_at_percent", 10)},
+                               "yb_at_percent", 5, 15)
+        lifetime = (json.loads(PROPOSAL.read_text(encoding="utf-8"))["material"]["lifetime_s"]
+                    if concentration != 10 else None)
+        material = YbLuAGMaterial(yb_at_percent=concentration, lifetime_s=lifetime)
+    result = simulate_structured_gallery(material, settings, selected_beam=beam)
     ideal = (result if settings.cluster_contrast == 0 else
-             simulate_structured_gallery(YbLuAGMaterial(),
+             simulate_structured_gallery(material,
                                          replace(settings, cluster_contrast=0.0),
                                          selected_beam=beam,
                                          compute_thermal=False))
     grid = result["grid"]
     return {
-        "material": "Yb:LuAG", "solver_mode": mode,
+        "material": material.name, "solver_mode": mode,
+        "yb_at_percent": material.yb_at_percent, "material_status": material_status(material),
+        "disk_radius_mm": settings.disk_radius_m*1e3,
         "concentration_dependent_index_status": "not_calculated: no measured bulk dn/dYb for this crystal",
         "grid_n": grid.nx, "field_size_mm": settings.field_size_m * 1e3,
         "optical_z_steps": settings.z_steps,
@@ -199,7 +236,7 @@ def calculate_structured(data):
             (result["yb_density_m3"][:, grid.ny // 2, :] / 1e26).tolist(),
         "pump_intensity_W_m2": result["pump_intensity_W_m2"].tolist(),
         "fluorescence_escape_yield_assumed": result["fluorescence_escape_yield_assumed"],
-        "scope": result["scope"],
+        "scope": result["scope"].replace("Yb:LuAG", material.name),
         "thermal": jsonable(result["thermal"]),
         "resonator": result["resonator"],
         "modes": {name: {key: (value.tolist() if isinstance(value, np.ndarray) else value)
@@ -220,14 +257,17 @@ def calculate_pulsed(data, *, compute_thermal=True, summary_only=False):
     beam = data.get("selected_beam", "Gaussian TEM00")
     if mask not in PHASE_MASKS or beam not in BEAM_NAMES:
         raise ValueError("unknown phase mask or seed beam")
-    proposal = json.loads(PROPOSAL.read_text(encoding="utf-8"))
+    yag = data.get("material") == "Yb:YAG"
+    proposal_path = ROOT/"config"/"ybslam_proposal_yag.json" if yag else PROPOSAL
+    proposal = json.loads(proposal_path.read_text(encoding="utf-8"))
     data = {
         "pump_W": proposal["pump"]["incident_average_power_W"],
+        "pulsed_pump_nm": proposal["optics"]["pump_wavelength_nm"],
         "radius_mm": proposal["geometry"]["pump_beam_diameter_mm"] / 2,
         "thickness_um": proposal["geometry"]["disk_thickness_um"],
         "yb_at_percent": proposal["material"]["yb_at_percent"],
         "disk_radius_mm": 5.0,
-        "assembly_property_model": "proposal_12at",
+        "assembly_property_model": "yag_rt_proxy" if yag else "proposal_12at",
         "seed_energy_nj": proposal["seed"]["energy_nJ"],
         "seed_fwhm_ps": proposal["seed"]["amplifier_intensity_fwhm_ps"],
         "source_fwhm_fs": proposal["seed"]["source_intensity_fwhm_fs"],
@@ -252,7 +292,7 @@ def calculate_pulsed(data, *, compute_thermal=True, summary_only=False):
         "probe_seed": 0,
         "slm_to_disk_m": 0.25,
         "cooling_mode": "feedback",
-        "cooling_target_C": 40.0,
+        "cooling_target_C": 25.0,
         "architecture": "ideal_multipass",
         "thermal_optical_mode": "lumped_phase",
         "regen_round_trips": 10,
@@ -263,6 +303,7 @@ def calculate_pulsed(data, *, compute_thermal=True, summary_only=False):
         "injection_efficiency": 0.9,
         "extraction_efficiency": 0.9,
         "cooling_h_max_W_m2K": 100000.0,
+        "ideal_relay_power_retention": 1.0,
         **data,
     }
     source_fwhm_fs = number(data, "source_fwhm_fs", 50, 10000)
@@ -289,11 +330,12 @@ def calculate_pulsed(data, *, compute_thermal=True, summary_only=False):
         z_steps=integer(data, "optical_z_steps", 1, 16),
         thermal_nr=integer(data, "thermal_nr", 4, 48),
         thermal_nphi=integer(data, "thermal_nphi", 4, 96),
-        thermal_nz=integer(data, "thermal_nz", 1, 24))
-    material = YbLuAGMaterial(
-            yb_at_percent=number(data, "yb_at_percent", 5, 15),
+        thermal_nz=integer(data, "thermal_nz", 1, 24),
+        ideal_relay_power_retention=number(data, "ideal_relay_power_retention", .001, 1))
+    material = material_class(data)(
+            yb_at_percent=number(data, "yb_at_percent", 1 if yag else 5, 22.9 if yag else 15),
             lifetime_s=proposal["material"]["lifetime_s"],
-            pump_wavelength_nm=proposal["optics"]["pump_wavelength_nm"],
+            pump_wavelength_nm=number(data, "pulsed_pump_nm", 880, 1150),
             signal_wavelength_nm=proposal["optics"]["signal_wavelength_nm"])
     pulse_args = (
         number(data, "seed_energy_nj", 0.001, 100000) * 1e-9,
@@ -341,16 +383,20 @@ def calculate_pulsed(data, *, compute_thermal=True, summary_only=False):
         thermal_optical_mode=thermal_optical_mode,
         thermal_internal_max_step_s=number(data, "thermal_internal_max_step_s", .001, 120),
         temperature_probes=temperature_probes,
-        probe_seed=integer(data, "probe_seed", 0, 2**31-1))
+        probe_seed=integer(data, "probe_seed", 0, 2**31-1),
+        static_cold_phase_rad=data.get("static_cold_phase_rad"),
+        slm_correction_phase_rad=data.get("slm_correction_phase_rad"))
     if summary_only:
         return {"incident_pump_W": settings.pump_power_W,
                 "average_output_W": result["output_energy_J"]*pulse_args[2],
                 "net_energy_gain": result["output_energy_J"]/result["input_energy_J"]}
-    reference = (result if settings.cluster_contrast == 0 and not result["thermal_feedback_applied"] else
+    reference = (result if settings.cluster_contrast == 0 and not result["thermal_feedback_applied"]
+                 and not np.any(result["static_cold_phase_rad"]) else
                  simulate_pulsed_seed(material, replace(settings, cluster_contrast=0.0),
                                       beam, *pulse_args, pump_passes=pump_passes,
                                       compute_thermal=False, architecture=architecture,
-                                      regenerative_cavity=regenerative_cavity))
+                                      regenerative_cavity=regenerative_cavity,
+                                      slm_correction_phase_rad=data.get("slm_correction_phase_rad")))
     actual_phase = result["output_phase"]
     reference_phase = reference["output_phase"]
     weights = result["output_fluence_J_m2"]
@@ -368,7 +414,7 @@ def calculate_pulsed(data, *, compute_thermal=True, summary_only=False):
                           "not_calculated")
     hot_phase_reason = (
         "Coupled steady optics uses local-temperature spectra and scalar phase "
-        "at every regenerative disk encounter; generic assembly coefficients "
+        "at every disk encounter; generic assembly coefficients "
         "remain uncalibrated."
         if result["thermal_optical_mode"] == "coupled_steady" and
            result["thermal_feedback_applied"] else
@@ -398,7 +444,8 @@ def calculate_pulsed(data, *, compute_thermal=True, summary_only=False):
         held_roundtrip_retention=(regenerative_cavity.held_roundtrip_retention
                                   if regenerative_cavity is not None else 1),
         disk_hr_reflectivity=(regenerative_cavity.disk_hr_reflectivity
-                              if regenerative_cavity is not None else 1))
+                              if regenerative_cavity is not None else 1),
+        ideal_relay_power_retention=settings.ideal_relay_power_retention)
     hardware = hardware_validity(
         pump_nm=material.pump_wavelength_nm,
         coating_band_nm=tuple(proposal["coatings"]["HR_band_nm"]),
@@ -415,8 +462,15 @@ def calculate_pulsed(data, *, compute_thermal=True, summary_only=False):
         material_traversals=feasibility["material_traversals"],
         thickness_m=settings.thickness_m)
     return {
-        **{key: jsonable(value) for key, value in result.items() if key != "grid"},
+        **{key: jsonable(value) for key, value in result.items()
+           if key not in ("grid", "output_complex_field_sqrt_J_m")},
+        "material": material.name,
+        "material_status": material_status(material),
+        "scope": result["scope"].replace("Yb:LuAG", material.name),
         "yb_at_percent": material.yb_at_percent,
+        "pump_wavelength_nm": material.pump_wavelength_nm,
+        "signal_wavelength_nm": material.signal_wavelength_nm,
+        "disk_radius_mm": settings.disk_radius_m*1e3,
         "concentration_dependent_index_status": "not_calculated: no measured bulk dn/dYb for this crystal",
         "lifetime_s_assumed": proposal["material"]["lifetime_s"],
         "lifetime_status": proposal["material"]["lifetime_status"],
@@ -449,7 +503,7 @@ def calculate_pulsed(data, *, compute_thermal=True, summary_only=False):
         "hot_phase_validity": hot_phase_validity,
         "hot_phase_reason": hot_phase_reason,
         "reference_scope": ("Dashed output profiles use the same Gaussian source, target-shaping mask, optional correction, SLM-to-disk propagation, pump and selected amplifier architecture with uniform Yb and cold optics. "
-                            + ("The selected output is a converged steady regenerative thermal-optical result with local-temperature spectra and per-encounter scalar bulk/surface phase."
+                            + ("The selected output is a converged steady thermal-optical result with local-temperature spectra and per-encounter scalar bulk/surface phase."
                                if result["thermal_optical_mode"] == "coupled_steady" else
                                "The selected output uses a post-extraction lumped thermal phase only when the requested-time state is within the assembly-property range; hot gain feedback is omitted.")),
         "spectral_scope": "Pulse gain uses the 1030 nm center cross sections. The femtosecond source bandwidth, chirp, gain narrowing, dispersion and nonlinear phase are not propagated spectrally; pulse energy is a monochromatic engineering estimate.",

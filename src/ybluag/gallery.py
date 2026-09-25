@@ -11,8 +11,10 @@ from copy import deepcopy
 import json
 import math
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
+from scipy.ndimage import map_coordinates
 
 from hoyag.propagation import Grid2D, angular_spectrum_propagate, optical_power
 from hoyag.resonator import ThinDiskResonator
@@ -23,11 +25,11 @@ from hoyag.thermal import DiskThermalMesh
 from hoyag.cooling_plate import sample_temperature
 
 from .fluorescence import fluorescence_spectrum
-from .model import YbLuAGMaterial, trapezoid
+from .model import H, C, YbLuAGMaterial, trapezoid
 from .assembly import (solve_yb_assembly, solve_yb_cooler_temperature,
                        yb_cooler_solver)
 from .pulsed import propagate_pulse
-from .multipass_pump import steady_multipass_pump, transport_multipass_pump
+from .multipass_pump import recover_pumped_population, steady_multipass_pump, transport_multipass_pump
 from .beam_shaping import gaussian_seed_and_target_mask
 from .regenerative import RegenerativeCavity, amplify_regenerative
 from .field_metrics import coherent_overlap, intensity_overlap as field_intensity_overlap
@@ -60,6 +62,7 @@ class YbGallerySettings:
     thermal_nr: int = 8
     thermal_nphi: int = 12
     thermal_nz: int = 4
+    ideal_relay_power_retention: float = 1.0
 
     def __post_init__(self):
         if self.phase_mask_name not in PHASE_MASKS:
@@ -71,7 +74,7 @@ class YbGallerySettings:
             if not np.isfinite(getattr(self, name)) or getattr(self, name) <= 0:
                 raise ValueError(f"{name} must be finite and positive")
         if (not np.isfinite(self.post_disk_distance_m) or self.post_disk_distance_m < 0 or
-                self.assembly_property_model not in ("reference_10at", "proposal_12at") or
+                self.assembly_property_model not in ("reference_10at", "proposal_12at", "yag_rt_proxy") or
                 not np.isfinite(self.slm_to_disk_distance_m) or
                 self.slm_to_disk_distance_m <= 0 or
                 not np.isfinite(self.phase_strength_rad) or
@@ -86,13 +89,20 @@ class YbGallerySettings:
                 not 1 <= self.z_steps <= 16 or
                 not 4 <= self.thermal_nr <= 48 or
                 not 4 <= self.thermal_nphi <= 96 or
-                not 1 <= self.thermal_nz <= 24):
+                not 1 <= self.thermal_nz <= 24 or
+                not np.isfinite(self.ideal_relay_power_retention) or
+                not 0 < self.ideal_relay_power_retention <= 1):
             raise ValueError("invalid structured-gallery settings")
 
 
 def _assembly_configuration(material: YbLuAGMaterial, settings: YbGallerySettings):
     config_path = Path(__file__).resolve().parents[2] / "config" / "ybluag_10at_assembly.json"
     configuration = json.loads(config_path.read_text(encoding="utf-8"))
+    if material.name == "Yb:YAG":
+        from ybyag.assembly import configuration as yag_configuration
+        return yag_configuration(material, settings, configuration)
+    if settings.assembly_property_model == "yag_rt_proxy":
+        raise ValueError("YAG assembly cannot be used for Yb:LuAG")
     configuration["geometry"]["disk_radius_m"] = settings.disk_radius_m
     configuration["geometry"]["disk_thickness_m"] = settings.thickness_m
     configuration["material"] = (f"{material.yb_at_percent:g} at.% Yb:LuAG with "
@@ -124,7 +134,7 @@ def _coupled_regenerative_steady(material, settings, grid, seed, seed_energy_J,
                                   repetition_rate_Hz, cavity_settings,
                                   fluorescence_energy_J, cooling_mode,
                                   cooling_target_C, cooling_h_max_W_m2K,
-                                  temperature_probes):
+                                  temperature_probes, optical_solver=None):
     """Iterate periodic optical state, heat, disk/plate, and encounter optics.
 
     The thermo-optic coefficient and elastic constants come from the selected
@@ -141,6 +151,7 @@ def _coupled_regenerative_steady(material, settings, grid, seed, seed_energy_J,
     screen_opd = np.zeros(grid.shape)
     previous_heat = None
     previous_output = None
+    previous_field = None
     cold_reference_field = None
     history = []
     relaxation = .6
@@ -148,7 +159,7 @@ def _coupled_regenerative_steady(material, settings, grid, seed, seed_energy_J,
     if cooling_mode == "sensor_feedback":
         initial_cooler = yb_cooler_solver(mesh, configuration)
         nominal_probes = ProbeArray(
-            default_five_probes(mesh.z_edges_m[-1])
+            default_five_probes(mesh.z_edges_m[-1], mesh.r_edges_m[-1])
             if temperature_probes is None else temperature_probes,
             mesh, initial_cooler.plate,
             initial_temperature_K=configuration["thermal"]["coolant_temperature_K"])
@@ -187,13 +198,14 @@ def _coupled_regenerative_steady(material, settings, grid, seed, seed_energy_J,
     for iteration in range(1, 13):
         local_temperature = _optical_temperature_field(
             mesh, temperature, grid, density_scale.shape[0], material.temperature_K)
-        regen = amplify_regenerative(
-            material, grid, seed, seed_energy_J, pump, density_scale,
-            settings.thickness_m, pump_passes, repetition_rate_Hz,
-            cavity_settings, fluorescence_energy_J,
-            settings.fluorescence_escape_yield,
-            temperature_K_by_slice=local_temperature,
-            encounter_opd_m=screen_opd)
+        regen = (optical_solver(local_temperature, screen_opd)
+                 if optical_solver is not None else amplify_regenerative(
+                     material, grid, seed, seed_energy_J, pump, density_scale,
+                     settings.thickness_m, pump_passes, repetition_rate_Hz,
+                     cavity_settings, fluorescence_energy_J,
+                     settings.fluorescence_escape_yield,
+                     temperature_K_by_slice=local_temperature,
+                     encounter_opd_m=screen_opd))
         if cold_reference_field is None:
             cold_reference_field = regen["output_field"].copy() / math.sqrt(seed_energy_J)
         heat = regen["heat_W_m3_by_slice"]
@@ -225,18 +237,42 @@ def _coupled_regenerative_steady(material, settings, grid, seed, seed_energy_J,
                         if previous_output is not None else float("inf"))
         wavefront_error = float(np.max(np.abs(new_opd-screen_opd)) *
                                 2*np.pi/(material.signal_wavelength_nm*1e-9))
+        field_error = (1.0 - coherent_overlap(previous_field, regen["output_field"])
+                       if previous_field is not None else float("inf"))
         history.append({"iteration": iteration,
                         "coolant_conductance_W_m2K": controlled_h,
                         "temperature_max_delta_K": temperature_error,
-                        "heat_relative_delta": heat_error,
-                        "output_energy_relative_delta": output_error,
-                        "encounter_wavefront_max_delta_rad": wavefront_error})
+                        "heat_relative_delta": (heat_error if np.isfinite(heat_error) else None),
+                        "output_energy_relative_delta": (output_error if np.isfinite(output_error) else None),
+                        "encounter_wavefront_max_delta_rad": wavefront_error,
+                        "coherent_field_overlap_error": (field_error if np.isfinite(field_error) else None)})
         temperature, plate_temperature, screen_opd = new_temperature, new_plate, new_opd
         previous_heat = heat.copy()
         previous_output = regen["output_energy_J"]
+        previous_field = regen["output_field"].copy()
         if (temperature_error <= .01 and heat_error <= 1e-3 and
-                output_error <= 1e-3 and wavefront_error <= 1e-3):
-            return regen, assembly, mesh, history, cold_reference_field
+                output_error <= 1e-3 and wavefront_error <= 1e-3 and
+                field_error <= 1e-6):
+            # Publish optics evaluated at the accepted thermal/OPD state,
+            # rather than the previous outer iterate.
+            accepted_temperature = _optical_temperature_field(
+                mesh, new_temperature, grid, density_scale.shape[0],
+                material.temperature_K)
+            accepted = (optical_solver(accepted_temperature, new_opd)
+                        if optical_solver is not None else amplify_regenerative(
+                            material, grid, seed, seed_energy_J, pump,
+                            density_scale, settings.thickness_m, pump_passes,
+                            repetition_rate_Hz, cavity_settings,
+                            fluorescence_energy_J,
+                            settings.fluorescence_escape_yield,
+                            temperature_K_by_slice=accepted_temperature,
+                            encounter_opd_m=new_opd))
+            accepted_heat = accepted["heat_W_m3_by_slice"]
+            accepted_heat_error = float(np.max(np.abs(accepted_heat-heat)) /
+                                        max(float(np.max(np.abs(accepted_heat))), 1.0))
+            history[-1]["accepted_heat_relative_delta"] = accepted_heat_error
+            if accepted_heat_error <= 1e-3:
+                return accepted, assembly, mesh, history, cold_reference_field
     raise RuntimeError("Yb coupled regenerative steady state did not converge in 12 iterations")
 
 
@@ -256,7 +292,7 @@ def _thermal_payload(assembly, scope: str):
         "front_displacement_nm": screens.front_uz_m * 1e9,
         "rear_displacement_nm": screens.rear_uz_m * 1e9,
         "photoelastic_retardance_rad": None,
-        "photoelastic_reason": "Yb:LuAG photoelastic coefficients are unavailable for this crystal.",
+        "photoelastic_reason": "The scalar amplifier does not apply photoelasticity; a validated material tensor, crystal orientation and vector optical coupling are required.",
         "scope": scope + " Within the currently supported 20–26.85 °C thermo-mechanical parameter range; this is not a crystal survival limit.",
     }
 
@@ -267,7 +303,7 @@ def _empty_thermal(status, reason):
             "front_displacement_nm": None,
             "rear_displacement_nm": None,
             "photoelastic_retardance_rad": None,
-            "photoelastic_reason": "Yb:LuAG photoelastic coefficients are unavailable."}
+            "photoelastic_reason": "Photoelasticity is not applied in the scalar amplifier."}
 
 
 def _thermal_or_design_reference(mesh, heat_polar, grid, configuration, scope):
@@ -356,7 +392,7 @@ def _pulsed_thermal_timeline(mesh, heat_polar, grid, configuration, duration_s,
                              cooling_mode="fixed", cooling_target_C=40.0,
                              cooling_h_max_W_m2K=100000.0,
                              internal_max_step_s=10.0, temperature_probes=None,
-                             probe_seed=0):
+                             probe_seed=0, initial_temperature_fields=None):
     """Thermal internal steps independent of the scheduled output times.
 
     Optical heat is an explicitly quasi-steady periodic source. The initial
@@ -368,7 +404,7 @@ def _pulsed_thermal_timeline(mesh, heat_polar, grid, configuration, duration_s,
     bath = configuration["thermal"]["coolant_temperature_K"]
     gain_h_per_K = 3000.0  # Assumed controller slope; no measured flow curve.
     initial_solver = yb_cooler_solver(mesh, configuration)
-    probes = ProbeArray(default_five_probes(mesh.z_edges_m[-1])
+    probes = ProbeArray(default_five_probes(mesh.z_edges_m[-1], mesh.r_edges_m[-1])
                         if temperature_probes is None else temperature_probes,
                         mesh, initial_solver.plate, initial_temperature_K=bath,
                         seed=probe_seed)
@@ -414,8 +450,15 @@ def _pulsed_thermal_timeline(mesh, heat_polar, grid, configuration, duration_s,
     steady_disk_max_C = float(np.max(steady.disk_temperature_K) - 273.15)
     tolerance_K = max(0.05, 0.005 * max(steady_disk_max_C - (bath - 273.15), 0))
     solver = initial_solver
-    disk = np.full(mesh.shape, bath)
-    plate = np.full(solver.plate.shape, bath)
+    if initial_temperature_fields is None:
+        disk = np.full(mesh.shape, bath)
+        plate = np.full(solver.plate.shape, bath)
+    else:
+        disk = np.asarray(initial_temperature_fields[0],float).copy()
+        plate = np.asarray(initial_temperature_fields[1],float).copy()
+        if (disk.shape != mesh.shape or plate.shape != solver.plate.shape or
+                not np.all(np.isfinite(disk)) or not np.all(np.isfinite(plate))):
+            raise ValueError("initial disk/plate temperatures must match the thermal meshes")
     probe_samples = probes.initial_samples(disk, plate)
     pending_samples = list(probe_samples)
     delivered_disk_K = {}
@@ -425,15 +468,18 @@ def _pulsed_thermal_timeline(mesh, heat_polar, grid, configuration, duration_s,
     end_s = max(30.0, min(300.0, 10 * duration_s))
     continuation = np.geomspace(duration_s * 1.5, end_s, 10) if end_s > duration_s * 1.5 else np.array([])
     times = np.r_[0.0, startup, continuation]
-    max_temperature = [bath - 273.15]
-    opd_pv = [0.0]
-    front_pv = [0.0]
-    valid = [True]
+    max_temperature = [float(np.max(disk)-273.15)]
+    initial_assembly=solve_yb_assembly(mesh,heat_polar,grid,configuration,
+        temperature=SimpleNamespace(disk_temperature_K=disk,
+                                    plate_temperature_K=plate),allow_extrapolation=True)
+    opd_pv = [float(np.ptp(initial_assembly.screens.mean_roundtrip_opd_m[inside])*1e9)]
+    front_pv = [float(np.ptp(initial_assembly.screens.front_uz_m[inside])*1e9)]
+    valid = [initial_assembly.material_range_valid]
     conductance = [h_min]
     balance = []
     internal_steps = 0
     largest_internal_step = 0.0
-    latest_valid = None
+    latest_valid = initial_assembly if initial_assembly.material_range_valid else None
     latest_valid_time = 0.0
     requested = None
     stabilized_at = None
@@ -494,6 +540,8 @@ def _pulsed_thermal_timeline(mesh, heat_polar, grid, configuration, duration_s,
         "cooling_mode": cooling_mode, "cooling_target_C": cooling_target_C,
         "cooling_h_max_W_m2K": cooling_h_max_W_m2K,
         "requested_time_s": duration_s,
+        "initial_state_kind": ("uniform_coolant" if initial_temperature_fields is None
+                               else "previous_solved_state"),
         "requested_disk_max_C": float(np.max(requested.temperature.disk_temperature_K) - 273.15),
         "requested_disk_temperature_K": requested.temperature.disk_temperature_K,
         "requested_plate_temperature_K": requested.temperature.plate_temperature_K,
@@ -523,6 +571,8 @@ def _pulsed_thermal_timeline(mesh, heat_polar, grid, configuration, duration_s,
                                           if latest_valid is not None else np.zeros(grid.shape)),
         "final_front_displacement_nm": requested.screens.front_uz_m * 1e9,
         "final_rear_displacement_nm": requested.screens.rear_uz_m * 1e9,
+        "final_disk_displacement_m": requested.displacement.disk_u_m,
+        "final_plate_displacement_m": requested.displacement.plate_u_m,
         "scope": ("Thermal startup from uniform coolant temperature with a quasi-steady "
                   "periodic pulse heat source applied after the fast Yb population transient; "
                   "excitation buildup and its short initial heat are not resolved. "
@@ -766,26 +816,146 @@ def simulate_structured_gallery(material: YbLuAGMaterial,
                       "follows the disk. Fluorescence escape yield is assumed by the user.")}
 
 
+def _periodic_ideal_multipass(material, settings, grid, seed, seed_energy_J,
+                              pump, scale, pump_passes, repetition_rate_Hz,
+                              signal_traversals, time, pulse_shape,
+                              fluorescence_energy_J, *,
+                              temperature_K_by_slice=None, encounter_opd_m=None):
+    """One shared inversion and one coherent field through ideal 1:1 relays.
+
+    Retarded-time intensity transport resolves saturation. The relay has unit
+    magnification and no assumed loss. Thin-disk phase is imposed after every
+    encounter; the temporal envelope is not assigned a fabricated chirp.
+    """
+    temperature = temperature_K_by_slice
+    pump_state = steady_multipass_pump(
+        material, pump, scale, settings.thickness_m, pump_passes,
+        temperature_K_by_slice=temperature)
+    beta_steady = pump_state.excited_fraction_by_slice
+    dark_time = 1/repetition_rate_Hz - signal_traversals*(time[-1]-time[0])
+    if dark_time <= 0:
+        raise ValueError("pulse window exceeds repetition period")
+    disk_input_fluence = seed_energy_J*abs(seed)**2
+    initial_signal = pulse_shape[:, None, None]*disk_input_fluence[None]
+    opd = (np.zeros(grid.shape) if encounter_opd_m is None else
+           np.asarray(encounter_opd_m, float))
+    if opd.shape != grid.shape or not np.all(np.isfinite(opd)):
+        raise ValueError("encounter OPD must be a finite optical-grid map")
+    encounter_phase = np.exp(2j*np.pi*opd/(material.signal_wavelength_nm*1e-9))
+    beta_before = beta_steady.copy()
+    for cycles in range(1, 101):
+        initial_beta = beta_before.copy()
+        beta = beta_before.copy()
+        signal = initial_signal
+        field = np.asarray(seed, complex)*np.sqrt(seed_energy_J)
+        signal_gain_fluence = np.zeros_like(beta)
+        pulse_beta_integral = np.zeros_like(beta)
+        relay_loss_J = 0.0
+        encounter_energies_J = []
+        for encounter in range(signal_traversals):
+            incident_fluence = trapezoid(signal, time, axis=0)
+            pulse = propagate_pulse(
+                material, time, np.zeros_like(signal), signal,
+                settings.thickness_m, settings.z_steps,
+                initial_excited_fraction=beta,
+                density_scale_by_slice=scale,
+                temperature_K_by_slice=temperature)
+            signal = pulse.signal_out_W_m2
+            outgoing_fluence = trapezoid(signal, time, axis=0)
+            field *= np.sqrt(np.divide(
+                outgoing_fluence, incident_fluence,
+                out=np.ones_like(outgoing_fluence), where=incident_fluence > 0))
+            field *= encounter_phase
+            signal_gain_fluence += pulse.signal_fluence_change_J_m2_by_slice
+            pulse_beta_integral += pulse.excited_fraction_time_integral_s_by_slice
+            beta = pulse.final_excited_fraction_by_slice
+            after_disk = float(np.sum(outgoing_fluence)*grid.dx*grid.dy)
+            encounter_energies_J.append(after_disk)
+            if encounter < signal_traversals-1:
+                relay_loss_J += after_disk*(1-settings.ideal_relay_power_retention)
+                field *= math.sqrt(settings.ideal_relay_power_retention)
+                signal = signal*settings.ideal_relay_power_retention
+        following, absorbed_integral, recovery_beta_integral = recover_pumped_population(
+            material, pump, scale, settings.thickness_m, pump_passes, beta,
+            dark_time, 8, temperature_K_by_slice=temperature)
+        residual = float(np.max(abs(following-beta_before)))
+        beta_before = following
+        if residual <= 1e-6:
+            break
+    else:
+        raise RuntimeError("ideal multipass Yb population did not converge")
+    beta_average = (pulse_beta_integral+recovery_beta_integral)*repetition_rate_Hz
+    pump_absorbed = absorbed_integral*repetition_rate_Hz
+    dz = settings.thickness_m/settings.z_steps
+    density = material.number_density_m3*scale
+    fluorescence_potential = (density*beta_average/material.lifetime_s*
+                              fluorescence_energy_J*dz)
+    fluorescence = settings.fluorescence_escape_yield*fluorescence_potential
+    signal_gain = signal_gain_fluence*repetition_rate_Hz
+    storage = density*dz*(following-initial_beta)*repetition_rate_Hz*fluorescence_energy_J
+    heat = (pump_absorbed-signal_gain-fluorescence-storage)/dz
+    pump_photons = pump_absorbed/(H*C/(material.pump_wavelength_nm*1e-9))
+    signal_photons = signal_gain/(H*C/(material.signal_wavelength_nm*1e-9))
+    decay_photons = density*dz*beta_average/material.lifetime_s
+    storage_photons = density*dz*(following-initial_beta)*repetition_rate_Hz
+    balance = pump_photons-signal_photons-decay_photons-storage_photons
+    balance_scale = np.sum(abs(pump_photons)+abs(signal_photons)+decay_photons+abs(storage_photons))
+    photon_error = float(np.sum(abs(balance))/balance_scale) if balance_scale > 0 else 0.0
+    energy_error = (optical_power(seed, grid)*seed_energy_J +
+                    float(np.sum(signal_gain_fluence)*grid.dx*grid.dy) -
+                    optical_power(field, grid)-relay_loss_J)
+    return {
+        "output_field": field,
+        "output_energy_J": optical_power(field, grid),
+        "stored_energy_J": optical_power(field, grid),
+        "output_power_trace_W": np.sum(signal, axis=(1, 2))*grid.dx*grid.dy,
+        "heat_W_m3_by_slice": heat,
+        "pump_absorbed_W_m2_by_slice": pump_absorbed,
+        "signal_gain_W_m2_by_slice": signal_gain,
+        "escaping_fluorescence_W_m2_by_slice": fluorescence,
+        "fluorescence_potential_W_m2_by_slice": fluorescence_potential,
+        "excitation_storage_change_W_m2_by_slice": storage,
+        "excited_fraction_before_pulse_by_slice": beta_before.copy(),
+        "mean_excited_fraction_before_pulse": float(np.mean(beta_before)),
+        "local_temperature_K_by_slice": (None if temperature is None else
+                                           np.asarray(temperature).copy()),
+        "pump_steady_iterations": pump_state.iterations,
+        "cycles": cycles, "residual": residual,
+        "population_photon_balance_relative_L1": photon_error,
+        "optical_energy_balance_residual_J": energy_error,
+        "recovery_substeps": 8,
+        "recovery_scope": "Pump bleaching recomputed by exponential midpoint recovery; pump during picosecond signal windows omitted. Refine recovery, temporal and axial grids to assess error.",
+        "ideal_relay": "unit_magnification_phase_preserving",
+        "ideal_relay_power_retention": settings.ideal_relay_power_retention,
+        "ideal_relay_loss_J": relay_loss_J,
+        "encounter_exit_energies_J": encounter_energies_J,
+    }
+
+
 def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
                          selected_beam: str, seed_energy_J: float,
                          seed_fwhm_s: float, repetition_rate_Hz: float,
                          signal_traversals: int, pump_passes: int = 10,
                          *, compute_thermal: bool = True,
                          operation_duration_s: float = 0.0,
-                         cooling_mode: str = "fixed", cooling_target_C: float = 40.0,
+                         cooling_mode: str = "fixed", cooling_target_C: float = 25.0,
                          cooling_h_max_W_m2K: float = 100000.0,
                          architecture: str = "ideal_multipass",
                          regenerative_cavity: RegenerativeCavity | None = None,
                          thermal_optical_mode: str = "lumped_phase",
                          thermal_internal_max_step_s: float = 10.0,
-                         temperature_probes=None, probe_seed: int = 0):
+                         temperature_probes=None, probe_seed: int = 0,
+                         static_cold_phase_rad=None,
+                         slm_correction_phase_rad=None,
+                         dataset_physical=None):
     """Periodic pulsed seed through ideal relays or a regenerative cavity.
 
     Both paths iterate one physical disk population from pulse to pulse.
-    Pumping during each short signal pulse is neglected. The ideal relay path
-    holds its pump profile fixed; the regenerative path recomputes pump rates
-    during inversion recovery.
+    Pumping during each short signal pulse is neglected. Both paths recompute
+    pump transport and rates as inversion recovers between injected pulses.
     """
+    if compute_thermal and thermal_optical_mode == "coupled_steady" and not material.supports_coupled_temperature:
+        raise ValueError(f"{material.name}: coupled hot gain is unavailable because temperature-dependent pump spectra are missing. Select cold or the explicitly approximate lumped_phase calculation.")
     if selected_beam not in BEAM_NAMES:
         raise ValueError("unknown seed beam")
     if (not np.isfinite(seed_energy_J) or seed_energy_J <= 0 or
@@ -804,8 +974,7 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
             thermal_optical_mode not in ("cold", "lumped_phase", "coupled_steady") or
             not np.isfinite(thermal_internal_max_step_s) or
             thermal_internal_max_step_s <= 0 or
-            not isinstance(probe_seed, int) or
-            (thermal_optical_mode == "coupled_steady" and architecture != "regenerative")):
+            not isinstance(probe_seed, int)):
         raise ValueError("invalid pulsed seed settings")
     if (architecture == "regenerative" and regenerative_cavity is not None and
             not np.isclose(regenerative_cavity.disk_diameter_m,
@@ -814,6 +983,78 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
     cavity = regenerative_cavity or RegenerativeCavity(
         disk_diameter_m=2*settings.disk_radius_m)
     grid = Grid2D.square(settings.grid_n, settings.field_size_m)
+    x, y = grid.mesh
+    disk_mask = x*x+y*y <= settings.disk_radius_m**2
+    perturb = {} if dataset_physical is None else dict(dataset_physical)
+    if perturb and material.name != "Yb:YAG":
+        raise ValueError("dataset physical perturbations currently require Yb:YAG")
+    def optical_map(name, default=1.0):
+        value = np.broadcast_to(np.asarray(perturb.get(name, default), float), grid.shape)
+        if not np.all(np.isfinite(value)) or np.any(value <= 0):
+            raise ValueError(f"{name} must be finite and positive")
+        return value
+    def thermal_configuration():
+        configuration = _assembly_configuration(material, settings)
+        if "yb_concentration_scale" in perturb:
+            from ybyag import material_data as yag_data
+            yb_scale = optical_map("yb_concentration_scale")
+            radii=(np.arange(settings.thermal_nr)+.5)*settings.disk_radius_m/settings.thermal_nr
+            azimuths=(np.arange(settings.thermal_nphi)+.5)*2*np.pi/settings.thermal_nphi
+            rr,pp=np.meshgrid(radii,azimuths,indexing="ij")
+            xq=rr*np.cos(pp); yq=rr*np.sin(pp)
+            polar_yb=map_coordinates(yb_scale,
+                [(yq-grid.y[0])/grid.dy,(xq-grid.x[0])/grid.dx],
+                order=1,mode="nearest")
+            concentration=material.yb_at_percent*polar_yb
+            if material.yb_at_percent < 14.5:
+                conductivity=yag_data.thermal_conductivity_doped(
+                    293.15,concentration,family="CT",interpolate_doping=True)
+            elif material.yb_at_percent <= 15:
+                # CT is tabulated only through 15 at.%. Preserve the CT
+                # nominal value; use the measured HT-family concentration
+                # trend at 300 K only as an explicit local-slope proxy.
+                reference=yag_data.thermal_conductivity_doped(
+                    300.,material.yb_at_percent,family="HT",interpolate_doping=True)
+                local=yag_data.thermal_conductivity_doped(
+                    300.,concentration,family="HT",interpolate_doping=True)
+                conductivity=(configuration["thermal"]["disk"]["conductivity_W_mK"]*
+                              local/reference)
+            else:
+                conductivity=yag_data.thermal_conductivity_doped(
+                    300.,concentration,family="HT",interpolate_doping=True)
+            configuration["thermal"]["disk"]["conductivity_W_mK"]=np.broadcast_to(
+                conductivity,(settings.thermal_nz,settings.thermal_nr,
+                              settings.thermal_nphi)).copy()
+        if "contact_scale_polar" in perturb:
+            contact = np.asarray(perturb["contact_scale_polar"], float)
+            if contact.shape != (settings.thermal_nr, settings.thermal_nphi) or (
+                    not np.all(np.isfinite(contact)) or np.any(contact <= 0)):
+                raise ValueError("contact_scale_polar must match the thermal contact mesh")
+            configuration["thermal"]["interface_conductance_W_m2K"] *= contact
+        if "coolant_temperature_K" in perturb:
+            coolant = float(perturb["coolant_temperature_K"])
+            if not np.isfinite(coolant) or not 273.15 <= coolant <= 300:
+                raise ValueError("dataset coolant temperature outside supported range")
+            configuration["thermal"]["coolant_temperature_K"] = coolant
+        return configuration
+    static_phase = (np.zeros(grid.shape) if static_cold_phase_rad is None else
+                    np.asarray(static_cold_phase_rad, dtype=float))
+    if static_phase.shape != grid.shape or not np.all(np.isfinite(static_phase)):
+        raise ValueError("static cold phase must be a finite disk-plane map")
+    if "thickness_scale" in perturb:
+        delta_thickness = settings.thickness_m*(optical_map("thickness_scale")-1)
+        static_phase = static_phase + disk_mask*(2*np.pi/(material.signal_wavelength_nm*1e-9)*
+                                       2*(material.cavity_phase_index-1)*delta_thickness)
+    if "surface_figure_m" in perturb:
+        height = np.asarray(perturb["surface_figure_m"], float)
+        if height.shape != grid.shape or not np.all(np.isfinite(height)):
+            raise ValueError("surface figure must match optical grid in metres")
+        static_phase = static_phase + disk_mask*4*np.pi*height/(material.signal_wavelength_nm*1e-9)
+    static_opd = static_phase*(material.signal_wavelength_nm*1e-9)/(2*np.pi)
+    correction_phase = (np.zeros(grid.shape) if slm_correction_phase_rad is None else
+                        np.asarray(slm_correction_phase_rad, dtype=float))
+    if correction_phase.shape != grid.shape or not np.all(np.isfinite(correction_phase)):
+        raise ValueError("SLM correction must be a finite SLM-plane map")
     common = GallerySettings(mean_ho_density_m3=material.number_density_m3,
                              density_seed=settings.density_seed,
                              cluster_count=settings.cluster_count,
@@ -825,18 +1066,57 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
                              phase_strength_rad=settings.phase_strength_rad)
     density = nonuniform_density(grid, np.linspace(0, settings.thickness_m,
                          settings.z_steps + 1), settings.disk_radius_m, common).values_m3
-    scale = density / material.number_density_m3
+    true_density = density * optical_map("yb_concentration_scale")
+    thickness_scale = optical_map("thickness_scale")
+    # First-order thin-disk column-depth approximation. The mechanical mesh
+    # retains nominal thickness; the surface-height contribution is explicit.
+    scale = true_density / material.number_density_m3 * thickness_scale
     source, target_phase = gaussian_seed_and_target_mask(
         grid, settings.waist_m, 1.0, selected_beam,
         material.signal_wavelength_nm * 1e-9, settings.slm_to_disk_distance_m)
+    if any(key in perturb for key in ("seed_center_m", "seed_angle_rad",
+                                      "seed_ellipticity", "seed_aperture")):
+        sx, sy = perturb.get("seed_center_m", (0.0, 0.0))
+        ax, ay = perturb.get("seed_angle_rad", (0.0, 0.0))
+        ellipticity = float(perturb.get("seed_ellipticity", 1.0))
+        if not all(np.isfinite(v) for v in (sx, sy, ax, ay, ellipticity)) or ellipticity <= 0:
+            raise ValueError("invalid seed position, angle or ellipticity")
+        wx, wy = settings.waist_m*ellipticity**.5, settings.waist_m/ellipticity**.5
+        source = np.exp(-((x-sx)**2/wx**2+(y-sy)**2/wy**2)).astype(complex)
+        source *= np.exp(1j*2*np.pi/(material.signal_wavelength_nm*1e-9)*(ax*x+ay*y))
+        if "seed_aperture" in perturb:
+            aperture = perturb["seed_aperture"]
+            cx, cy = aperture["center_m"]
+            source *= ((x-cx)**2+(y-cy)**2 <= float(aperture["radius_m"])**2)
+        norm = float(np.sum(abs(source)**2)*grid.dx*grid.dy)
+        if norm <= 0:
+            raise ValueError("seed aperture removed all light")
+        source /= np.sqrt(norm)
     aberration_phase = phase_pattern(grid, common)
-    phase = np.mod(target_phase + aberration_phase, 2 * np.pi)
+    requested_phase = target_phase + aberration_phase + correction_phase
+    if "slm_actual_phase_rad" in perturb:
+        applied = np.asarray(perturb["slm_actual_phase_rad"], float)
+        if applied.shape != grid.shape or not np.all(np.isfinite(applied)):
+            raise ValueError("actual SLM phase must match optical grid")
+        external = np.asarray(perturb.get("external_phase_rad", 0),float)
+        if external.shape not in ((),grid.shape) or not np.all(np.isfinite(external)):
+            raise ValueError("external phase must match optical grid")
+        phase = np.mod(applied+external, 2*np.pi)
+    else:
+        phase = np.mod(requested_phase, 2 * np.pi)
     seed = angular_spectrum_propagate(
         source * np.exp(1j * phase), grid,
         material.signal_wavelength_nm * 1e-9, settings.slm_to_disk_distance_m)
-    x, y = grid.mesh
-    pump = np.exp(-2 * (x*x + y*y) / settings.pump_radius_m**2)
+    px, py = perturb.get("pump_center_m", (0.0, 0.0))
+    pump = np.exp(-2 * ((x-px)**2 + (y-py)**2) / settings.pump_radius_m**2)
     pump *= settings.pump_power_W / (float(pump.sum()) * grid.dx * grid.dy)
+    background_alpha = np.broadcast_to(np.asarray(
+        perturb.get("background_absorption_m1", 0), float), grid.shape)
+    if np.any(~np.isfinite(background_alpha)) or np.any(background_alpha < 0):
+        raise ValueError("background absorption must be finite and nonnegative")
+    background_absorbed = disk_mask*pump * -np.expm1(
+        -background_alpha*settings.thickness_m*thickness_scale)
+    pump = pump-background_absorbed
     dz = settings.thickness_m / settings.z_steps
     time = np.linspace(-3 * seed_fwhm_s, 3 * seed_fwhm_s, 41)
     pulse_shape = np.exp(-4 * np.log(2) * (time / seed_fwhm_s)**2)
@@ -850,6 +1130,14 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
     coupled_mesh = None
     coupled_cold_field = None
     if architecture == "regenerative":
+        def regen_optics(local_temperature, thermal_opd):
+            return amplify_regenerative(
+                material, grid, seed, seed_energy_J, pump, scale,
+                settings.thickness_m, pump_passes, repetition_rate_Hz,
+                cavity, fluorescence_spectrum(material).mean_photon_energy_J,
+                settings.fluorescence_escape_yield,
+                temperature_K_by_slice=local_temperature,
+                encounter_opd_m=static_opd+thermal_opd)
         if compute_thermal and thermal_optical_mode == "coupled_steady":
             regen, coupled_assembly, coupled_mesh, coupled_history, coupled_cold_field = (
                 _coupled_regenerative_steady(
@@ -858,14 +1146,9 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
                     cavity,
                     fluorescence_spectrum(material).mean_photon_energy_J,
                     cooling_mode, cooling_target_C, cooling_h_max_W_m2K,
-                    temperature_probes))
+                     temperature_probes, optical_solver=regen_optics))
         else:
-            regen = amplify_regenerative(
-                material, grid, seed, seed_energy_J, pump, scale,
-                settings.thickness_m, pump_passes, repetition_rate_Hz,
-                cavity,
-                fluorescence_spectrum(material).mean_photon_energy_J,
-                settings.fluorescence_escape_yield)
+            regen = regen_optics(None, np.zeros(grid.shape))
         fluence_out = abs(regen["output_field"])**2
         signal = None  # Fluence-only map cannot predict a temporal output trace.
         heat_slices = regen["heat_W_m3_by_slice"]
@@ -882,60 +1165,40 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
         disk_output_J = regen["stored_energy_J"]
         field_out = regen["output_field"] / math.sqrt(seed_energy_J)
     else:
-        pump_state = steady_multipass_pump(
-            material, pump, scale, settings.thickness_m, pump_passes)
-        beta_steady = pump_state.excited_fraction_by_slice
-        up, down = material.rates_s1(pump_state.total_midpoint_intensity_W_m2_by_slice, 0)
-        recovery_rate = up + down + 1 / material.lifetime_s
-        dark_time = 1 / repetition_rate_Hz - (time[-1] - time[0])
-        if dark_time <= 0:
-            raise ValueError("pulse window exceeds repetition period")
-        beta_before = beta_steady.copy()
-        cycles = 0
-        residual = math.inf
-        for cycles in range(1, 101):
-            initial_beta = beta_before.copy()
-            signal = initial_signal
-            beta = beta_before.copy()
-            signal_gain_fluence = np.zeros_like(beta)
-            for _ in range(signal_traversals):
-                pulse = propagate_pulse(material, time, np.zeros_like(signal), signal,
-                                        settings.thickness_m, settings.z_steps,
-                                        initial_excited_fraction=beta,
-                                        density_scale_by_slice=scale)
-                signal = pulse.signal_out_W_m2
-                signal_gain_fluence += pulse.signal_fluence_change_J_m2_by_slice
-                beta = pulse.final_excited_fraction_by_slice
-            following = beta_steady + (beta - beta_steady) * np.exp(-recovery_rate * dark_time)
-            residual = float(np.max(abs(following - beta_before)))
-            beta_before = following
-            if residual <= 1e-6:
-                break
+        def ideal_optics(local_temperature, encounter_opd):
+            return _periodic_ideal_multipass(
+                material, settings, grid, seed, seed_energy_J, pump, scale,
+                pump_passes, repetition_rate_Hz, signal_traversals, time,
+                pulse_shape, fluorescence_spectrum(material).mean_photon_energy_J,
+                temperature_K_by_slice=local_temperature,
+                encounter_opd_m=static_opd+(0 if encounter_opd is None else encounter_opd))
+        if compute_thermal and thermal_optical_mode == "coupled_steady":
+            ideal, coupled_assembly, coupled_mesh, coupled_history, coupled_cold_field = (
+                _coupled_regenerative_steady(
+                    material, settings, grid, seed, seed_energy_J, pump,
+                    scale, pump_passes, repetition_rate_Hz, cavity,
+                    fluorescence_spectrum(material).mean_photon_energy_J,
+                    cooling_mode, cooling_target_C, cooling_h_max_W_m2K,
+                    temperature_probes, optical_solver=ideal_optics))
         else:
-            raise RuntimeError("pulsed Yb population did not converge within 100 cycles")
-        beta_dark_integral = (beta_steady * dark_time +
-                              (beta - beta_steady) *
-                              (-np.expm1(-recovery_rate * dark_time)) / recovery_rate)
-        beta_average = beta_dark_integral * repetition_rate_Hz
-        _, pump_absorbed, _ = transport_multipass_pump(
-            material, pump, scale, settings.thickness_m, pump_passes, beta_average)
-        fluorescence_potential = (density * beta_average / material.lifetime_s *
-                                  fluorescence_spectrum(material).mean_photon_energy_J * dz)
-        fluorescence = settings.fluorescence_escape_yield * fluorescence_potential
-        signal_gain = signal_gain_fluence * repetition_rate_Hz
-        excitation_storage = (density*dz*(following-initial_beta)*
-                              repetition_rate_Hz*
-                              fluorescence_spectrum(material).mean_photon_energy_J)
-        heat_slices = (pump_absorbed - signal_gain - fluorescence -
-                       excitation_storage) / dz
-        fluence_out = trapezoid(signal, time, axis=0)
-        disk_output_J = float(np.sum(fluence_out) * grid.dx * grid.dy)
-        gain_amplitude = np.sqrt(np.maximum(fluence_out, 0) / np.maximum(disk_input_fluence, 1e-30))
-        field_out = seed * gain_amplitude
-        mean_beta_before = float(np.mean(beta_before))
-        pre_pulse_beta = beta_before.copy()
-        optical_temperature = None
-        pump_iterations = pump_state.iterations
+            ideal = ideal_optics(None, None)
+        heat_slices = ideal["heat_W_m3_by_slice"]
+        pump_absorbed = ideal["pump_absorbed_W_m2_by_slice"]
+        signal_gain = ideal["signal_gain_W_m2_by_slice"]
+        fluorescence = ideal["escaping_fluorescence_W_m2_by_slice"]
+        fluorescence_potential = ideal["fluorescence_potential_W_m2_by_slice"]
+        excitation_storage = ideal["excitation_storage_change_W_m2_by_slice"]
+        cycles, residual = ideal["cycles"], ideal["residual"]
+        pre_pulse_beta = ideal["excited_fraction_before_pulse_by_slice"]
+        mean_beta_before = ideal["mean_excited_fraction_before_pulse"]
+        optical_temperature = ideal["local_temperature_K_by_slice"]
+        pump_iterations = ideal["pump_steady_iterations"]
+        disk_output_J = ideal["output_energy_J"]
+        field_out = ideal["output_field"] / math.sqrt(seed_energy_J)
+        signal = ideal["output_power_trace_W"]
+    if perturb:
+        heat_slices = heat_slices + background_absorbed[None]/settings.thickness_m
+        pump_absorbed = pump_absorbed + background_absorbed[None]/settings.z_steps
     pixel_area = grid.dx * grid.dy
     heat_W = float(np.sum(heat_slices) * dz * pixel_area)
     absorbed_W = float(np.sum(pump_absorbed) * pixel_area)
@@ -963,7 +1226,7 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
             "local-temperature spectroscopy and per-encounter scalar bulk/surface phase. "
             "The selected property assumption is uncalibrated; photoelasticity omitted.")
         if operation_duration_s:
-            configuration = _assembly_configuration(material, settings)
+            configuration = thermal_configuration()
             mesh = DiskThermalMesh.disk(
                 nr=settings.thermal_nr, nz=settings.thermal_nz,
                 nphi=settings.thermal_nphi, radius_m=settings.disk_radius_m,
@@ -974,7 +1237,7 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
                 cooling_mode, cooling_target_C, cooling_h_max_W_m2K,
                 thermal_internal_max_step_s, temperature_probes, probe_seed)
     elif compute_thermal:
-        configuration = _assembly_configuration(material, settings)
+        configuration = thermal_configuration()
         mesh = DiskThermalMesh.disk(nr=settings.thermal_nr, nz=settings.thermal_nz,
                                     nphi=settings.thermal_nphi,
                                     radius_m=settings.disk_radius_m, thickness_m=settings.thickness_m)
@@ -993,12 +1256,16 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
         except ValueError as exc:
             thermal = _empty_thermal("out_of_scope", str(exc))
         if operation_duration_s and thermal_optical_mode == "lumped_phase":
+            initial_fields=(None if "initial_disk_temperature_K" not in perturb else
+                (perturb["initial_disk_temperature_K"],
+                 perturb["initial_plate_temperature_K"]))
             timeline = _pulsed_thermal_timeline(mesh, heat_polar, grid,
                                                  configuration, operation_duration_s,
                                                  cooling_mode, cooling_target_C,
                                                  cooling_h_max_W_m2K,
                                                  thermal_internal_max_step_s,
-                                                 temperature_probes, probe_seed)
+                                                 temperature_probes, probe_seed,
+                                                 initial_fields)
     thermal_feedback_applied = (coupled_assembly is not None or
                                 (thermal_optical_mode == "lumped_phase" and
                                  timeline is not None and
@@ -1033,17 +1300,49 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
     else:
         target_field_out = seed
     observed_fluence = abs(field_out)**2 * seed_energy_J
+    steady_observation = None
+    if coupled_assembly is not None:
+        configuration = thermal_configuration()
+        cooler = yb_cooler_solver(coupled_mesh, configuration)
+        probe_array = ProbeArray(
+            default_five_probes(coupled_mesh.z_edges_m[-1],
+                                coupled_mesh.r_edges_m[-1])
+            if temperature_probes is None else temperature_probes,
+            coupled_mesh, cooler.plate,
+            initial_temperature_K=configuration["thermal"]["coolant_temperature_K"],
+            seed=probe_seed)
+        readings = probe_array.initial_samples(
+            coupled_assembly.temperature.disk_temperature_K,
+            coupled_assembly.temperature.plate_temperature_K)
+        steady_observation = {
+            "mode": "steady_state", "state_timestamp_s": 0.0,
+            "probe_seed": probe_seed,
+            "timestamp_convention": "settled-state reference time; not startup elapsed time",
+            "sensor_response": "assumed fully settled before sample",
+            "probe_specifications": [vars(p) for p in probe_array.probes],
+            "probe_samples": readings,
+            "beam_timestamp_s": 0.0, "slm_target_timestamp_s": 0.0,
+        }
     return {
         "grid": grid, "phase_mask": phase,
+        "slm_requested_phase_rad": np.mod(requested_phase, 2*np.pi),
+        "slm_actual_phase_rad": (np.mod(applied,2*np.pi)
+            if "slm_actual_phase_rad" in perturb else phase),
         "target_phase_mask": np.mod(target_phase, 2 * np.pi),
         "aberration_phase_mask": np.mod(aberration_phase, 2 * np.pi),
-        "yb_density_m3": density,
+        "slm_correction_phase_rad": correction_phase,
+        "static_cold_phase_rad": static_phase,
+        "yb_density_m3": true_density,
+        "dataset_physical_scope": (None if not perturb else
+            "Yb and thickness maps alter effective optical column density; Yb concentration also sets local thermal conductivity from measured-fit concentration trends (a cross-family relative-slope proxy near 15 at.%). Background loss is a first-order pre-pump absorption and distributed heat term. The FEM retains nominal thickness. Yb:YAG hot gain remains unavailable."),
         "pre_pulse_excited_fraction_by_slice": pre_pulse_beta,
         "optical_temperature_K_by_slice": optical_temperature,
         "selected_beam": selected_beam,
         "input_fluence_J_m2": input_fluence,
         "disk_input_fluence_J_m2": disk_input_fluence,
         "output_fluence_J_m2": observed_fluence,
+        "output_complex_field_sqrt_J_m": field_out*math.sqrt(seed_energy_J),
+        "heat_W_m3_by_slice": heat_slices,
         "extraction_fluence_J_m2": extraction_fluence,
         "extraction_shape_retention": extraction_shape_retention,
         "observed_shape_retention": intensity_overlap(disk_input_fluence, observed_fluence),
@@ -1065,8 +1364,7 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
         "output_phase": np.angle(field_out),
         "time_ps": (time * 1e12),
         "input_power_trace_W": np.sum(initial_signal, axis=(1, 2)) * grid.dx * grid.dy,
-        "output_power_trace_W": (np.sum(signal, axis=(1, 2)) * grid.dx * grid.dy
-                                 if signal is not None else None),
+        "output_power_trace_W": signal,
         "output_trace_status": ("not_calculated_fluence_only_regenerative"
                                 if signal is None else "time_sampled_intensity_transport"),
         "input_energy_J": seed_energy_J, "disk_output_energy_J": disk_output_J,
@@ -1080,14 +1378,24 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
                                          "excitation_storage_change_W_m2_by_slice",
                                          "excited_fraction_before_pulse_by_slice",
                                          "local_temperature_K_by_slice", "encounter_opd_m")}
-                         if regen is not None else None),
+                          if regen is not None else None),
+        "ideal_multipass": ({key: ideal[key] for key in
+                              ("ideal_relay", "ideal_relay_power_retention",
+                               "ideal_relay_loss_J", "encounter_exit_energies_J",
+                               "population_photon_balance_relative_L1",
+                               "optical_energy_balance_residual_J",
+                               "recovery_substeps", "recovery_scope")}
+                             if architecture == "ideal_multipass" else None),
         "thermal_optical_mode": ("cold" if not compute_thermal else thermal_optical_mode),
         "coupled_steady_convergence": (None if coupled_history is None else {
             "status": "converged", "iterations": len(coupled_history),
             "history": coupled_history,
-            "scope": "One shared regenerative disk state; local-temperature spectra and a scalar per-encounter thermal/surface screen. Generic assembly coefficients are not calibrated."}),
+            "scope": ("One shared " + architecture + " disk state; local-temperature spectra and a scalar per-encounter thermal/surface screen. Generic assembly coefficients are not calibrated.")}),
         "cycles": cycles, "residual": residual,
         "pump_passes": pump_passes,
+        "signal_traversals": signal_traversals,
+        "effective_signal_traversals": (2*cavity.round_trips
+                                          if architecture == "regenerative" else signal_traversals),
         "pump_steady_iterations": pump_iterations,
         "cycle_average_heat_W_upper_or_assumed": heat_W,
         "cycle_average_pump_absorbed_W": absorbed_W,
@@ -1099,6 +1407,7 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
         "fluorescence_escape_yield_assumed": settings.fluorescence_escape_yield,
         "thermal": thermal,
         "thermal_timeline": timeline,
+        "steady_state_observation": steady_observation,
         "thermal_feedback_applied": thermal_feedback_applied,
         "thermal_feedback_time_s": (None if coupled_assembly is not None else
                                     operation_duration_s if thermal_feedback_applied else None),
@@ -1106,7 +1415,7 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
             float(np.max(coupled_assembly.temperature.disk_temperature_K)-273.15)
             if coupled_assembly is not None else None),
         "mean_excited_fraction_before_pulse": mean_beta_before,
-        "scope": (("Coupled steady regenerative mode: one shared Yb disk, periodic pump and "
+        "scope": (("Coupled steady " + architecture + " mode: one shared Yb disk, periodic pump and "
                    "population, cycle-averaged heat, finite disk/plate, local-temperature "
                    "cross sections and scalar bulk/surface phase at each disk encounter. "
                    "The generic assembly and host thermo-optic/index proxies are not "
@@ -1120,8 +1429,8 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
                    "switch efficiencies, cavity geometry and host index are engineering assumptions. "
                    "The thermal screen is applied after extraction, not fed back into each cavity "
                    "round; spectral effects, gain narrowing, Kerr phase, ASE, Pockels rise time, "
-                   "and damage are not modeled. The displayed output time trace assumes the "
-                   "input Gaussian temporal shape; only pulse fluence is solved. "
+                   "and damage are not modeled. Output temporal shape is unavailable; "
+                   "only pulse fluence is solved. "
                    if architecture == "regenerative" else
                    f"Gaussian TEM00 source shaped by a phase-only target mask plus optional "
                   "added phase, then propagated to the disk. LG, HG, Bessel and flat-top names "
@@ -1135,7 +1444,7 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
                   "is applied as a lumped screen before output-plane diffraction "
                   "only when the requested operating time remains inside the 20–26.85 C "
                   "thermo-mechanical parameter range, which is not a crystal survival limit. "
-                  "Cycle-averaged heat uses the fixed pump profile "
+                  "Cycle-averaged heat integrates pump recovery with changing inversion "
                   "and an assumed fluorescence escape yield; the generic copper assembly "
                   "runs only inside its material temperature range. The output spatial "
                   "phase retains the shaped disk-incident phase "

@@ -13,13 +13,20 @@ concentration-dependent refractive index remain unavailable.
 
 ## Desktop calculator
 
-The Tkinter calculator has **Yb:LuAG** and **Ho:YAG** tabs. It runs the
+For the new Yb:YAG material, launch `examples/ybyag_desktop.py`. It uses the
+repository's `Yb-YAG/` dataset and defaults to 20 at.% Yb. See
+[Yb:YAG implementation and physical limits](docs/YBYAG_SIMULATION.md).
+Fully coupled hot YAG gain remains unavailable because temperature-dependent
+pump spectra are missing; the native app offers cold and near-RT lumped-phase modes.
+
+The Tkinter calculator has separate **Yb:YAG**, **Yb:LuAG** and **Ho:YAG** tabs. It runs the
 existing solvers locally and displays maps and profiles inside the window.
 The Yb tab offers the proposal pulse amplifier (including regenerative cavity),
 structured CW passes, and a CW material/coating screen. The Ho tab offers weak
 probe, modal thermal, and periodic seeded amplifier calculations. Calculations
-use the shared `.local_runtime/budget.json` limits; the window shows the budget
-and can explicitly archive an exhausted ledger. It does not start a web server.
+use the shared `.local_runtime/budget.json` run ledger; the window shows the
+per-run time and memory limits. There is no cumulative attempt cap. It does
+not start a web server.
 
 On Linux, install Tk for your system Python, then run:
 
@@ -35,6 +42,28 @@ timelines and thermal surfaces where the solver provides them. Its five-point
 pump curve recalculates the periodic optical state for the displayed pulse run
 without rerunning the cooler. Use `examples/desktop_simulation.py` to open the
 combined Yb and Ho desktop calculator with Ho selected first.
+
+After a pulsed Yb result, **Export camera data (1080p)…** generates bounded,
+reproducible monochrome frames with sensor noise and separate optical truth.
+See [camera data options and limitations](docs/YB_CAMERA_DATASET.md).
+The Yb:YAG tab also offers a [grouped physical-disturbance NN dataset generator](docs/YBYAG_NN_DATASET.md)
+with fresh solver runs, two camera planes and separate train/validation/test setups.
+
+On Windows, launch the Yb window from the repository directory with:
+
+```powershell
+& 'C:\Users\Aidas\AppData\Local\Programs\Python\Python311\python.exe' .\examples\ybluag_desktop.py
+```
+
+The Yb input controls start with the ideal multipass architecture and a 25 °C
+cooler target. A saved result can appear on opening, but it does not replace
+the current input defaults. The Tkinter window runs bounded local workers and
+does not require or start the browser server.
+
+The pulsed pump default is 969 nm. Controls are grouped by seed/phase, Yb
+crystal, pump/cooling, optics and numerical settings. See the
+[25 September physics and desktop audit](docs/YBLUAG_PHYSICS_DESKTOP_AUDIT_20260925.md)
+for conservation checks, the ten-traversal gain bound, and remaining physical limits.
 
 On Windows, use a Python installation with Tk and replace `.venv/bin/python`
 with its interpreter path. Results and execution logs are saved under
@@ -75,6 +104,10 @@ The plane rear coating of the disk is one resonator mirror. The signal crosses t
 ---
 
 ## 2. Coupled physics
+
+The separate Yb:LuAG amplifier's coupled ideal-multipass implementation and
+remaining calibration limits are documented in
+[Yb:LuAG remaining-model implementation](docs/YBLUAG_REMAINING_IMPLEMENTATION.md).
 
 The current Stage 7 closure is
 
@@ -404,7 +437,7 @@ That paper validated a different CW rod geometry. It does **not** directly valid
 
 ## 17. Bounded local work and scientific replay
 
-The local development path now has a persistent compute-budget supervisor,
+The local development path now has a persistent run supervisor,
 finite-bank polarization-family diagnostic, and immutable solver snapshots.
 Use [the local execution guide](docs/LOCAL_EXECUTION.md) for named bounded
 cases, [profiling evidence](docs/PROFILING.md) for measured replay changes,
@@ -465,7 +498,5 @@ is a separate undepleted one-pass probe of that background. The probe power
 does not affect populations or heat, and hot optics do not feed back into the
 oscillator. This is an estimate rather than a complete seeded amplifier or
 self-consistent cavity solution. It is bounded by the local supervisor and
-can take substantially longer. After the four coupled attempts are used,
-the calculator offers **Start new bounded compute budget**. Clicking it
-archives the old ledger and starts a new bounded session; restarting the app
-alone does not reset the budget.
+can take substantially longer. The supervisor records each run and enforces
+its own time and memory limits without a cumulative attempt limit.

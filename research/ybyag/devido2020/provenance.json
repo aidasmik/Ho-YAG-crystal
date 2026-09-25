@@ -1,0 +1,359 @@
+{
+  "doi": "10.5286/edata/737",
+  "author": "Mariastefania De Vido",
+  "license": "CC-BY-4.0",
+  "license_url": "https://creativecommons.org/licenses/by/4.0/",
+  "retrieved": "2026-09-25",
+  "files": [
+    {
+      "filename": "200K_raw_data.txt",
+      "url": "https://edata.stfc.ac.uk/server/api/core/bitstreams/a4c23d34-f0a1-4090-8cbb-78363cf23224/content",
+      "sha256": "fc2fc07525437c21eebf97f00e6ba8c42e0ae707b4e084aaa19235071a9f6bb3",
+      "bytes": 64646,
+      "metadata": {
+        "dc.description": [
+          {
+            "value": "Each file contains measurements of the absorption characteristics at the temperature stated in the title (e.g. file \"80K_raw_data.txt\" contains data collected at 80K. The files contain the following information - column 1: wavelength as measured by the spectrometer (apply an offset of -0.176 nm for calibration); column 3: power incident on the sample (multiply by a factor of 22.8 for calibration); column 4: power transmitted through the sample; column 5: sample temperature.",
+            "language": null,
+            "authority": null,
+            "confidence": -1,
+            "place": 0
+          }
+        ],
+        "dc.source": [
+          {
+            "value": "66250978930493340799094808410019090682",
+            "language": null,
+            "authority": null,
+            "confidence": -1,
+            "place": 0
+          }
+        ],
+        "dc.title": [
+          {
+            "value": "200K_raw_data.txt",
+            "language": null,
+            "authority": null,
+            "confidence": -1,
+            "place": 0
+          }
+        ]
+      }
+    },
+    {
+      "filename": "225K_raw_data.txt",
+      "url": "https://edata.stfc.ac.uk/server/api/core/bitstreams/8d108ab9-fa32-470a-b2cf-51507521d815/content",
+      "sha256": "0216fe634e7d439f03a9eb38d257489fb2c3bc929bcf825014fc2fd04e5d08e7",
+      "bytes": 71415,
+      "metadata": {
+        "dc.description": [
+          {
+            "value": "Each file contains measurements of the absorption characteristics at the temperature stated in the title (e.g. file \"80K_raw_data.txt\" contains data collected at 80K. The files contain the following information - column 1: wavelength as measured by the spectrometer (apply an offset of -0.176 nm for calibration); column 3: power incident on the sample (multiply by a factor of 22.8 for calibration); column 4: power transmitted through the sample; column 5: sample temperature.",
+            "language": null,
+            "authority": null,
+            "confidence": -1,
+            "place": 0
+          }
+        ],
+        "dc.source": [
+          {
+            "value": "76715677598558697790947252883338787655",
+            "language": null,
+            "authority": null,
+            "confidence": -1,
+            "place": 0
+          }
+        ],
+        "dc.title": [
+          {
+            "value": "225K_raw_data.txt",
+            "language": null,
+            "authority": null,
+            "confidence": -1,
+            "place": 0
+          }
+        ]
+      }
+    },
+    {
+      "filename": "250K_raw_data.txt",
+      "url": "https://edata.stfc.ac.uk/server/api/core/bitstreams/9e9ef4b2-6a49-423e-96ed-92d3a9238a3d/content",
+      "sha256": "4659f2d81de1d4c572d9c0e76e7a8318025411c070aa424416487925ae34035a",
+      "bytes": 71424,
+      "metadata": {
+        "dc.description": [
+          {
+            "value": "Each file contains measurements of the absorption characteristics at the temperature stated in the title (e.g. file \"80K_raw_data.txt\" contains data collected at 80K. The files contain the following information - column 1: wavelength as measured by the spectrometer (apply an offset of -0.176 nm for calibration); column 3: power incident on the sample (multiply by a factor of 22.8 for calibration); column 4: power transmitted through the sample; column 5: sample temperature.",
+            "language": null,
+            "authority": null,
+            "confidence": -1,
+            "place": 0
+          }
+        ],
+        "dc.source": [
+          {
+            "value": "160267824680671302886969403589844180968",
+            "language": null,
+            "authority": null,
+            "confidence": -1,
+            "place": 0
+          }
+        ],
+        "dc.title": [
+          {
+            "value": "250K_raw_data.txt",
+            "language": null,
+            "authority": null,
+            "confidence": -1,
+            "place": 0
+          }
+        ]
+      }
+    },
+    {
+      "filename": "275K_raw_data.txt",
+      "url": "https://edata.stfc.ac.uk/server/api/core/bitstreams/28124c6d-105e-4a44-b56c-aff33156a886/content",
+      "sha256": "41244bb51ac425953ae177ee07df8d0169fc0215a26ebc03a337afcb19cc11af",
+      "bytes": 104040,
+      "metadata": {
+        "dc.description": [
+          {
+            "value": "Each file contains measurements of the absorption characteristics at the temperature stated in the title (e.g. file \"80K_raw_data.txt\" contains data collected at 80K. The files contain the following information - column 1: wavelength as measured by the spectrometer (apply an offset of -0.176 nm for calibration); column 3: power incident on the sample (multiply by a factor of 22.8 for calibration); column 4: power transmitted through the sample; column 5: sample temperature.",
+            "language": null,
+            "authority": null,
+            "confidence": -1,
+            "place": 0
+          }
+        ],
+        "dc.source": [
+          {
+            "value": "51222901439373294184983446472660964477",
+            "language": null,
+            "authority": null,
+            "confidence": -1,
+            "place": 0
+          }
+        ],
+        "dc.title": [
+          {
+            "value": "275K_raw_data.txt",
+            "language": null,
+            "authority": null,
+            "confidence": -1,
+            "place": 0
+          }
+        ]
+      }
+    },
+    {
+      "filename": "300K_raw_data.txt",
+      "url": "https://edata.stfc.ac.uk/server/api/core/bitstreams/3d39e7e8-682c-4568-b5aa-0b5eaaee14dd/content",
+      "sha256": "b8770bab9958d3b24fede672675bfb398fe97e56cea0e13e8d29bb43bd84f35d",
+      "bytes": 68890,
+      "metadata": {
+        "dc.description": [
+          {
+            "value": "Each file contains measurements of the absorption characteristics at the temperature stated in the title (e.g. file \"80K_raw_data.txt\" contains data collected at 80K. The files contain the following information - column 1: wavelength as measured by the spectrometer (apply an offset of -0.176 nm for calibration); column 3: power incident on the sample (multiply by a factor of 22.8 for calibration); column 4: power transmitted through the sample; column 5: sample temperature.",
+            "language": null,
+            "authority": null,
+            "confidence": -1,
+            "place": 0
+          }
+        ],
+        "dc.source": [
+          {
+            "value": "10342577290036658622876811194243392982",
+            "language": null,
+            "authority": null,
+            "confidence": -1,
+            "place": 0
+          }
+        ],
+        "dc.title": [
+          {
+            "value": "300K_raw_data.txt",
+            "language": null,
+            "authority": null,
+            "confidence": -1,
+            "place": 0
+          }
+        ]
+      }
+    },
+    {
+      "filename": "80K_raw_data.txt",
+      "url": "https://edata.stfc.ac.uk/server/api/core/bitstreams/fd1f38db-ad6e-408a-9056-ce472623f411/content",
+      "sha256": "644932ce1470e5f3ba7541e8de16671408b8987189b8cb66df0c3b1183ffe6e3",
+      "bytes": 142740,
+      "metadata": {
+        "dc.description": [
+          {
+            "value": "Each file contains measurements of the absorption characteristics at the temperature stated in the title (e.g. file \"80K_raw_data.txt\" contains data collected at 80K. The files contain the following information - column 1: wavelength as measured by the spectrometer (apply an offset of -0.176 nm for calibration); column 3: power incident on the sample (multiply by a factor of 22.8 for calibration); column 4: power transmitted through the sample; column 5: sample temperature.",
+            "language": null,
+            "authority": null,
+            "confidence": -1,
+            "place": 0
+          }
+        ],
+        "dc.source": [
+          {
+            "value": "103456919829209907442973708926123686018",
+            "language": null,
+            "authority": null,
+            "confidence": -1,
+            "place": 0
+          }
+        ],
+        "dc.title": [
+          {
+            "value": "80K_raw_data.txt",
+            "language": null,
+            "authority": null,
+            "confidence": -1,
+            "place": 0
+          }
+        ]
+      }
+    },
+    {
+      "filename": "100K_raw_data.txt",
+      "url": "https://edata.stfc.ac.uk/server/api/core/bitstreams/55f14dfe-d07c-4c88-97e6-de7833eb8f8b/content",
+      "sha256": "951d051bd8eff6d520c98c3e84ca503be11a14ba54c129e46460e9b735b2ddf5",
+      "bytes": 54210,
+      "metadata": {
+        "dc.description": [
+          {
+            "value": "Each file contains measurements of the absorption characteristics at the temperature stated in the title (e.g. file \"80K_raw_data.txt\" contains data collected at 80K. The files contain the following information - column 1: wavelength as measured by the spectrometer (apply an offset of -0.176 nm for calibration); column 3: power incident on the sample (multiply by a factor of 22.8 for calibration); column 4: power transmitted through the sample; column 5: sample temperature.",
+            "language": null,
+            "authority": null,
+            "confidence": -1,
+            "place": 0
+          }
+        ],
+        "dc.source": [
+          {
+            "value": "68410074644666058191763180121041059126",
+            "language": null,
+            "authority": null,
+            "confidence": -1,
+            "place": 0
+          }
+        ],
+        "dc.title": [
+          {
+            "value": "100K_raw_data.txt",
+            "language": null,
+            "authority": null,
+            "confidence": -1,
+            "place": 0
+          }
+        ]
+      }
+    },
+    {
+      "filename": "125K_raw_data.txt",
+      "url": "https://edata.stfc.ac.uk/server/api/core/bitstreams/b02060b4-f359-4ac7-a256-de8d4763b6b9/content",
+      "sha256": "4ad8d5cece6d026d1ef7bb8922121c81439421c12656c00d079d710edcf7eb25",
+      "bytes": 61619,
+      "metadata": {
+        "dc.description": [
+          {
+            "value": "Each file contains measurements of the absorption characteristics at the temperature stated in the title (e.g. file \"80K_raw_data.txt\" contains data collected at 80K. The files contain the following information - column 1: wavelength as measured by the spectrometer (apply an offset of -0.176 nm for calibration); column 3: power incident on the sample (multiply by a factor of 22.8 for calibration); column 4: power transmitted through the sample; column 5: sample temperature.",
+            "language": null,
+            "authority": null,
+            "confidence": -1,
+            "place": 0
+          }
+        ],
+        "dc.source": [
+          {
+            "value": "117802330761676817324629404040127554094",
+            "language": null,
+            "authority": null,
+            "confidence": -1,
+            "place": 0
+          }
+        ],
+        "dc.title": [
+          {
+            "value": "125K_raw_data.txt",
+            "language": null,
+            "authority": null,
+            "confidence": -1,
+            "place": 0
+          }
+        ]
+      }
+    },
+    {
+      "filename": "150K_raw_data.txt",
+      "url": "https://edata.stfc.ac.uk/server/api/core/bitstreams/dd3f441a-b3fd-4f64-88f8-03eeb2886b45/content",
+      "sha256": "ca0ea8bd06d3a7363c1743474d1f0f1485e00e074daa1b6c615cb4a1479fc1f0",
+      "bytes": 19698,
+      "metadata": {
+        "dc.description": [
+          {
+            "value": "Each file contains measurements of the absorption characteristics at the temperature stated in the title (e.g. file \"80K_raw_data.txt\" contains data collected at 80K. The files contain the following information - column 1: wavelength as measured by the spectrometer (apply an offset of -0.176 nm for calibration); column 3: power incident on the sample (multiply by a factor of 22.8 for calibration); column 4: power transmitted through the sample; column 5: sample temperature.",
+            "language": null,
+            "authority": null,
+            "confidence": -1,
+            "place": 0
+          }
+        ],
+        "dc.source": [
+          {
+            "value": "27196528587433083003614040770851239947",
+            "language": null,
+            "authority": null,
+            "confidence": -1,
+            "place": 0
+          }
+        ],
+        "dc.title": [
+          {
+            "value": "150K_raw_data.txt",
+            "language": null,
+            "authority": null,
+            "confidence": -1,
+            "place": 0
+          }
+        ]
+      }
+    },
+    {
+      "filename": "175K_raw_data.txt",
+      "url": "https://edata.stfc.ac.uk/server/api/core/bitstreams/945947d5-a58e-48a1-9f08-4464aa0cec82/content",
+      "sha256": "5805b9a3575fa5f8b5624e2a8ba175542678df1f2c9e7d98115c208339f091da",
+      "bytes": 66532,
+      "metadata": {
+        "dc.description": [
+          {
+            "value": "Each file contains measurements of the absorption characteristics at the temperature stated in the title (e.g. file \"80K_raw_data.txt\" contains data collected at 80K. The files contain the following information - column 1: wavelength as measured by the spectrometer (apply an offset of -0.176 nm for calibration); column 3: power incident on the sample (multiply by a factor of 22.8 for calibration); column 4: power transmitted through the sample; column 5: sample temperature.",
+            "language": null,
+            "authority": null,
+            "confidence": -1,
+            "place": 0
+          }
+        ],
+        "dc.source": [
+          {
+            "value": "91112817957069038025048299223627642319",
+            "language": null,
+            "authority": null,
+            "confidence": -1,
+            "place": 0
+          }
+        ],
+        "dc.title": [
+          {
+            "value": "175K_raw_data.txt",
+            "language": null,
+            "authority": null,
+            "confidence": -1,
+            "place": 0
+          }
+        ]
+      }
+    }
+  ]
+}

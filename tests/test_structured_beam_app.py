@@ -37,17 +37,18 @@ def test_app_rejects_invalid_parameters(payload):
         validate_request(payload)
 
 
-def test_explicit_budget_renewal_archives_the_exhausted_ledger(tmp_path, monkeypatch):
+def test_legacy_exhausted_ledger_does_not_limit_new_runs(tmp_path, monkeypatch):
     monkeypatch.setattr(app, 'ROOT', tmp_path)
     ledger_path=tmp_path/'.local_runtime'/'budget.json'
     ledger_path.parent.mkdir()
     old={'schema':1,'total_seconds':7200,'max_attempts':4,'active':None,
          'attempts':[{'category':'coupled','elapsed_s':10.} for _ in range(4)]}
     ledger_path.write_text(json.dumps(old))
-    assert app.budget_status()['coupled_exhausted']
-    reset=app.start_new_budget()
-    assert json.loads(ledger_path.read_text())['attempts']==[]
-    assert json.loads(Path(reset['archive']).read_text())==old
-    assert not app.budget_status()['coupled_exhausted']
-    with pytest.raises(RuntimeError, match='still available'):
+    status=app.budget_status()
+    assert status['coupled_attempts_used']==4
+    assert status['coupled_attempts_limit'] is None
+    assert status['remaining_seconds'] is None
+    assert not status['coupled_exhausted']
+    with pytest.raises(RuntimeError, match='no renewal is needed'):
         app.start_new_budget()
+    assert json.loads(ledger_path.read_text())==old

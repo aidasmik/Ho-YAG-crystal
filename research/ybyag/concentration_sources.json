@@ -1,0 +1,23 @@
+{
+  "TANG2014": {
+    "title": "Dependence of optical and thermal properties on concentration and temperature for Yb:YAG laser ceramics",
+    "authors": "F. Tang et al.",
+    "journal": "Journal of Alloys and Compounds 593 (2014) 123-127",
+    "url": "https://origin.secure.website/wscfus/7885803/32406066/tang-yb-yag.pdf",
+    "coverage": "0, 5, 10, 15 and 20 at.% transparent ceramics",
+    "warning": "Reported fluorescence lifetimes include radiation trapping and must not be used as intrinsic radiative lifetimes. Laser efficiencies are setup-specific."
+  },
+  "AGGARWAL2005": {
+    "title": "Measurement of thermo-optic properties of laser crystals in the 80-300 K temperature range",
+    "authors": "R. L. Aggarwal, D. J. Ripin, J. R. Ochoa and T. Y. Fan",
+    "doi": "10.1063/1.2128696",
+    "coverage": "0, 2, 4 and 15 at.% Yb:YAG single crystals",
+    "warning": "Thermal conductivity uncertainty estimated by the authors as +/-7%."
+  },
+  "CINI2017": {
+    "title": "Analytical thermal model for end-pumped solid-state lasers",
+    "doi": "10.1007/s00340-017-6848-y",
+    "coverage": "Published fit families include 5, 9.4 and 15 at.% near the requested concentrations",
+    "warning": "Different CT and HT fit families are not measurements of one identical sample across all temperatures."
+  }
+}

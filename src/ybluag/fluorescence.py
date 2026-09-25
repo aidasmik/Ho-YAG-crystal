@@ -30,7 +30,7 @@ def fluorescence_spectrum(material: YbLuAGMaterial) -> FluorescenceSpectrum:
     fluorescence outside this interval is unknown.
     The energy-equivalent wavelength is hc/<E>, not the arithmetic mean lambda.
     """
-    wavelength, _, _, _ = _spectra()
+    wavelength = material.spectral_wavelengths_nm
     emission = np.array([material.cross_sections_m2(float(w))[1] for w in wavelength])
     photon_weight = emission / wavelength**4
     norm = float(trapezoid(photon_weight, wavelength))
@@ -41,4 +41,5 @@ def fluorescence_spectrum(material: YbLuAGMaterial) -> FluorescenceSpectrum:
                         trapezoid(probability / wavelength, wavelength))
     return FluorescenceSpectrum(wavelength.copy(), probability,
                                 H * C / mean_energy / 1e-9,
-                                mean_energy)
+                                mean_energy,
+                                scope=f"Derived from {material.name} emission on its available spectral band; optically thin shape, no fluorescence-transport solution")

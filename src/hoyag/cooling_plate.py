@@ -16,11 +16,15 @@ from .thermomechanics import positive,integer
 
 @dataclass(frozen=True)
 class ThermalMaterial:
-    conductivity_W_mK: float
+    conductivity_W_mK: float | np.ndarray
     density_kg_m3: float
     heat_capacity_J_kgK: float
     def __post_init__(self):
-        for k,v in vars(self).items(): positive(v,k)
+        conductivity=np.asarray(self.conductivity_W_mK,float)
+        if np.any(~np.isfinite(conductivity)) or np.any(conductivity<=0):
+            raise ValueError('conductivity_W_mK must be finite and positive')
+        positive(self.density_kg_m3,'density_kg_m3')
+        positive(self.heat_capacity_J_kgK,'heat_capacity_J_kgK')
 
 YAG_THERMAL=ThermalMaterial(14.,4560.,680.)
 # Rounded SI conversions of the CDA C10100 room-temperature table.

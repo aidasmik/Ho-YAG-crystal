@@ -40,13 +40,20 @@ class TemperatureProbe:
             raise ValueError("invalid temperature probe specification")
 
 
-def default_five_probes(disk_thickness_m: float) -> tuple[TemperatureProbe, ...]:
-    """Declared synthetic layout; edit positions before comparing to hardware."""
+def default_five_probes(disk_thickness_m: float,
+                        disk_radius_m: float = 5e-3) -> tuple[TemperatureProbe, ...]:
+    """Surface optical estimates and bonded-plate probes, not embedded sensors.
+
+    The three disk readings stand for calibrated noncontact front-surface
+    thermometry. They are samples of the modeled surface and do not recover
+    the internal temperature field or imply that a physical sensor fits there.
+    """
     d = disk_thickness_m
+    edge = min(3e-3, .7*disk_radius_m)
     return (
-        TemperatureProbe("disk_center", "disk", (0, 0, .5*d), 0.15e-3, .03),
-        TemperatureProbe("disk_x", "disk", (1e-3, 0, .5*d), 0.15e-3, .03),
-        TemperatureProbe("disk_y", "disk", (0, 1e-3, .5*d), 0.15e-3, .03),
+        TemperatureProbe("disk_center", "disk", (0, 0, 0), 0.15e-3, .03),
+        TemperatureProbe("disk_x", "disk", (edge, 0, 0), 0.15e-3, .03),
+        TemperatureProbe("disk_y", "disk", (0, edge, 0), 0.15e-3, .03),
         TemperatureProbe("plate_center", "plate", (0, 0, d+.5e-3), .3e-3, .1),
         TemperatureProbe("plate_x", "plate", (3e-3, 0, d+.5e-3), .3e-3, .1),
     )

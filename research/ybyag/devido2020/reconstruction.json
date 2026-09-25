@@ -1,0 +1,159 @@
+{
+  "source_doi": "10.5286/edata/737",
+  "paper_doi": "10.1364/OME.386436",
+  "sample_yb_at_percent": 1.1,
+  "sample_type": "ceramic",
+  "temperature_range_K": [
+    80,
+    300
+  ],
+  "wavelength_offset_nm": -0.176,
+  "incident_monitor_factor": 22.8,
+  "ion_density_cm3": 1.52e+20,
+  "path_length_cm": 0.108,
+  "power_handling": "Nonpositive powers and transmission >1 are retained as invalid; no clipping or inferred baseline correction.",
+  "80K_censoring": "Transmission <=0.001 is marked as a lower bound; source spectral impurity can dominate near the peak.",
+  "files": {
+    "80K_raw_data.txt": {
+      "raw_sha256": "644932ce1470e5f3ba7541e8de16671408b8987189b8cb66df0c3b1183ffe6e3",
+      "rows": 1438,
+      "quality_counts": {
+        "valid": 1371,
+        "invalid_power": 1,
+        "invalid_transmission": 26,
+        "censored_lower_bound": 35,
+        "isolated_high_spike": 5
+      },
+      "valid_peak_wavelength_nm": 968.3729999999999,
+      "valid_peak_sigma_abs_cm2": 4.205090776198172e-19,
+      "largest_censored_lower_bound_cm2": 4.904241290648167e-19
+    },
+    "100K_raw_data.txt": {
+      "raw_sha256": "951d051bd8eff6d520c98c3e84ca503be11a14ba54c129e46460e9b735b2ddf5",
+      "rows": 550,
+      "quality_counts": {
+        "valid": 521,
+        "invalid_power": 2,
+        "invalid_transmission": 19,
+        "censored_lower_bound": 0,
+        "isolated_high_spike": 8
+      },
+      "valid_peak_wavelength_nm": 968.4159999999999,
+      "valid_peak_sigma_abs_cm2": 2.740805155734014e-19,
+      "largest_censored_lower_bound_cm2": null
+    },
+    "125K_raw_data.txt": {
+      "raw_sha256": "4ad8d5cece6d026d1ef7bb8922121c81439421c12656c00d079d710edcf7eb25",
+      "rows": 610,
+      "quality_counts": {
+        "valid": 586,
+        "invalid_power": 0,
+        "invalid_transmission": 19,
+        "censored_lower_bound": 0,
+        "isolated_high_spike": 5
+      },
+      "valid_peak_wavelength_nm": 968.459,
+      "valid_peak_sigma_abs_cm2": 1.1293785324787763e-19,
+      "largest_censored_lower_bound_cm2": null
+    },
+    "150K_raw_data.txt": {
+      "raw_sha256": "ca0ea8bd06d3a7363c1743474d1f0f1485e00e074daa1b6c615cb4a1479fc1f0",
+      "rows": 195,
+      "quality_counts": {
+        "valid": 186,
+        "invalid_power": 2,
+        "invalid_transmission": 3,
+        "censored_lower_bound": 0,
+        "isolated_high_spike": 4
+      },
+      "valid_peak_wavelength_nm": 968.515,
+      "valid_peak_sigma_abs_cm2": 5.791429575887825e-20,
+      "largest_censored_lower_bound_cm2": null
+    },
+    "175K_raw_data.txt": {
+      "raw_sha256": "5805b9a3575fa5f8b5624e2a8ba175542678df1f2c9e7d98115c208339f091da",
+      "rows": 672,
+      "quality_counts": {
+        "valid": 657,
+        "invalid_power": 0,
+        "invalid_transmission": 4,
+        "censored_lower_bound": 0,
+        "isolated_high_spike": 11
+      },
+      "valid_peak_wavelength_nm": 968.574,
+      "valid_peak_sigma_abs_cm2": 3.4410737949852753e-20,
+      "largest_censored_lower_bound_cm2": null
+    },
+    "200K_raw_data.txt": {
+      "raw_sha256": "fc2fc07525437c21eebf97f00e6ba8c42e0ae707b4e084aaa19235071a9f6bb3",
+      "rows": 651,
+      "quality_counts": {
+        "valid": 618,
+        "invalid_power": 5,
+        "invalid_transmission": 18,
+        "censored_lower_bound": 0,
+        "isolated_high_spike": 10
+      },
+      "valid_peak_wavelength_nm": 968.641,
+      "valid_peak_sigma_abs_cm2": 2.300361346068774e-20,
+      "largest_censored_lower_bound_cm2": null
+    },
+    "225K_raw_data.txt": {
+      "raw_sha256": "0216fe634e7d439f03a9eb38d257489fb2c3bc929bcf825014fc2fd04e5d08e7",
+      "rows": 707,
+      "quality_counts": {
+        "valid": 690,
+        "invalid_power": 4,
+        "invalid_transmission": 2,
+        "censored_lower_bound": 0,
+        "isolated_high_spike": 11
+      },
+      "valid_peak_wavelength_nm": 968.7139999999999,
+      "valid_peak_sigma_abs_cm2": 1.6754278420412288e-20,
+      "largest_censored_lower_bound_cm2": null
+    },
+    "250K_raw_data.txt": {
+      "raw_sha256": "4659f2d81de1d4c572d9c0e76e7a8318025411c070aa424416487925ae34035a",
+      "rows": 707,
+      "quality_counts": {
+        "valid": 688,
+        "invalid_power": 2,
+        "invalid_transmission": 10,
+        "censored_lower_bound": 0,
+        "isolated_high_spike": 7
+      },
+      "valid_peak_wavelength_nm": 968.8309999999999,
+      "valid_peak_sigma_abs_cm2": 1.2869287057575866e-20,
+      "largest_censored_lower_bound_cm2": null
+    },
+    "275K_raw_data.txt": {
+      "raw_sha256": "41244bb51ac425953ae177ee07df8d0169fc0215a26ebc03a337afcb19cc11af",
+      "rows": 1030,
+      "quality_counts": {
+        "valid": 998,
+        "invalid_power": 4,
+        "invalid_transmission": 17,
+        "censored_lower_bound": 0,
+        "isolated_high_spike": 11
+      },
+      "valid_peak_wavelength_nm": 968.856,
+      "valid_peak_sigma_abs_cm2": 9.793083158811728e-21,
+      "largest_censored_lower_bound_cm2": null
+    },
+    "300K_raw_data.txt": {
+      "raw_sha256": "b8770bab9958d3b24fede672675bfb398fe97e56cea0e13e8d29bb43bd84f35d",
+      "rows": 682,
+      "quality_counts": {
+        "valid": 657,
+        "invalid_power": 0,
+        "invalid_transmission": 11,
+        "censored_lower_bound": 0,
+        "isolated_high_spike": 14
+      },
+      "valid_peak_wavelength_nm": 968.886,
+      "valid_peak_sigma_abs_cm2": 8.689051783687604e-21,
+      "largest_censored_lower_bound_cm2": null
+    }
+  },
+  "derived_sha256": "b1471f3efd694ad6867d4eeb5a0a899c7de16f88d5badb23d1ecc82ad56ee850"
+}

@@ -7,6 +7,18 @@ import numpy as np
 from .model import YbLuAGMaterial
 
 
+def exponential_cell_average(incoming, log_transmission):
+    """Exact spatial mean for a frozen, homogeneous Beer–Lambert cell.
+
+    The arithmetic mean of the two faces overestimates this intensity and
+    makes population rates inconsistent with the boundary photon flux.
+    """
+    depth = np.asarray(log_transmission, dtype=float)
+    ratio = np.ones_like(depth)
+    np.divide(np.expm1(depth), depth, out=ratio, where=depth != 0)
+    return np.asarray(incoming) * ratio
+
+
 @dataclass(frozen=True)
 class MultipassPumpState:
     excited_fraction_by_slice: np.ndarray
@@ -48,12 +60,50 @@ def transport_multipass_pump(material: YbLuAGMaterial, pump_in_W_m2,
             alpha, _ = material.coefficients_m1(
                 beta[iz], None if temperature is None else temperature[iz])
             next_pump = current * np.exp(-alpha * scale[iz] * dz)
-            total_midpoint[iz] += 0.5 * (current + next_pump)
+            total_midpoint[iz] += exponential_cell_average(current, -alpha * scale[iz] * dz)
             absorbed[iz] += current - next_pump
             current = next_pump
         if ipass < passes - 1:
             current *= relay_efficiency
     return total_midpoint, absorbed, current
+
+
+def recover_pumped_population(material, pump, scale, thickness_m, passes,
+                              beta, duration_s, substeps=8, *,
+                              temperature_K_by_slice=None):
+    """Advance inter-pulse recovery, recomputing pump bleaching at each step.
+
+    Exponential midpoint integration preserves population bounds. Pump and
+    excited-state time integrals are returned for an independent cycle ledger.
+    Temporal error is controlled by refining ``substeps``; this is not an exact
+    solution of the nonlinear pump/population coupling.
+    """
+    if (not np.isfinite(duration_s) or duration_s < 0 or
+            isinstance(substeps, bool) or not isinstance(substeps, int) or substeps < 1):
+        raise ValueError("invalid pump recovery time or substeps")
+    beta = np.asarray(beta, dtype=float).copy()
+    absorbed_integral = np.zeros_like(beta)
+    excited_integral = np.zeros_like(beta)
+    dt = duration_s / substeps
+    for _ in range(substeps):
+        intensity, _, _ = transport_multipass_pump(
+            material, pump, scale, thickness_m, passes, beta,
+            temperature_K_by_slice=temperature_K_by_slice)
+        up, down = material.rates_s1(intensity, 0, temperature_K_by_slice)
+        rate = up + down + 1/material.lifetime_s
+        equilibrium = up/rate
+        beta_mid = equilibrium + (beta-equilibrium)*np.exp(-rate*dt/2)
+        intensity, absorbed, _ = transport_multipass_pump(
+            material, pump, scale, thickness_m, passes, beta_mid,
+            temperature_K_by_slice=temperature_K_by_slice)
+        up, down = material.rates_s1(intensity, 0, temperature_K_by_slice)
+        rate = up + down + 1/material.lifetime_s
+        equilibrium = up/rate
+        factor = -np.expm1(-rate*dt)
+        excited_integral += equilibrium*dt + (beta-equilibrium)*factor/rate
+        absorbed_integral += absorbed*dt
+        beta = equilibrium + (beta-equilibrium)*np.exp(-rate*dt)
+    return beta, absorbed_integral, excited_integral
 
 
 def steady_multipass_pump(material: YbLuAGMaterial, pump_in_W_m2,

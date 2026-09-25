@@ -1,0 +1,4 @@
+kind,lifetime_s,uncertainty_s,temperature_K,source_id,note
+fluorescence,0.00094,5e-05,,KORNER2012,Experimental mean; not a calibrated temperature or concentration law.
+emission_normalization,0.00095,,,KORNER2012,Value used to normalize emission cross sections; not an independent measurement.
+legacy_model,0.000941,,293.15,HASEONGPU,Repository model choice; no experimental uncertainty supplied.

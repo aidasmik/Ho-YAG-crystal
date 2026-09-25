@@ -1,0 +1,58 @@
+{
+  "source": "User YbSLAM target specification; YAG data imported from repository Yb-YAG/ at origin/main 7aa9904.",
+  "material": {
+    "name": "Yb:YAG",
+    "yb_at_percent": 20.0,
+    "lifetime_s": 0.00095,
+    "lifetime_status": "Korner2012 model/normalization parameter; not measured tau(T,20 at.%)",
+    "thermal_conductivity_status": "Cini2017 HT 300 K doping-resistivity interpolation, held constant in explicit near-RT proxy assembly."
+  },
+  "optics": {
+    "pump_wavelength_nm": 969.0,
+    "signal_wavelength_nm": 1030.0,
+    "wavelength_status": "969 nm ZPL pump from the user's YbSLAM target specification; 1030 nm signal design center. The former 938 nm exploratory pump remains selectable. Pump linewidth and exact source spectra are unmeasured."
+  },
+  "geometry": {
+    "disk_thickness_um": 100.0,
+    "disk_thickness_status": "proposal method on page 12; overall preparation range 100-200 um",
+    "pump_beam_diameter_mm": 2.0,
+    "pump_beam_diameter_status": "proposal preliminary thermal model on page 11; Gaussian 1/e2 diameter assumed here"
+  },
+  "pump": {
+    "passes": 10,
+    "incident_average_power_W": 40.0,
+    "incident_average_power_status": "exploratory assumption; proposal gives intensity below 10 kW/cm2 but no pump power",
+    "relay_efficiency_per_pass": 1.0,
+    "relay_efficiency_status": "idealized; no measured pump relay loss"
+  },
+  "seed": {
+    "source_type": "femtosecond laser",
+    "energy_nJ": 10.0,
+    "repetition_rate_kHz": 10.0,
+    "source_intensity_fwhm_fs": 300.0,
+    "source_duration_status": "adjustable placeholder requested by user; proposal does not state a femtosecond duration",
+    "amplifier_intensity_fwhm_ps": 10.0,
+    "amplifier_duration_status": "adjustable chirped-pulse placeholder; proposal calls the amplifier seed picosecond but does not specify duration",
+    "signal_traversals": 10,
+    "signal_traversals_status": "proposal phase budget quotes ten passes; actual optical relay layout is unspecified"
+  },
+  "targets": {
+    "output_energy_uJ_min": 100.0,
+    "energy_gain_min": 10000.0,
+    "pattern_fidelity_min": 0.8,
+    "roundtrip_phase_distortion_rad_max": 0.5,
+    "temperature_rise_K_design": 5.0,
+    "temperature_rise_K_preliminary_model": 40.0,
+    "note": "The proposal contains both <5 K design target and ~40 K preliminary surface variation; neither is a measured value."
+  },
+  "coatings": {
+    "front_AR_reflectance_max": 0.001,
+    "rear_HR_reflectance_min": 0.999,
+    "HR_band_nm": [
+      940.0,
+      1090.0
+    ],
+    "damage_threshold_J_cm2_min": 10.0,
+    "status": "proposal requirements; not measured coating curves"
+  }
+}

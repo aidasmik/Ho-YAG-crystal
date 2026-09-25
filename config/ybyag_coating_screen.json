@@ -1,0 +1,42 @@
+{
+  "material": "Yb:YAG; generic coating targets, no measured coating data",
+  "status": "optical coating design targets and output-coupler screening, not measured coating curves",
+  "wavelengths_nm": {
+    "pump": 969,
+    "laser": 1030
+  },
+  "disk_front": {
+    "type": "dual-band antireflection",
+    "target_max_reflectance_pump": 0.002,
+    "target_max_reflectance_laser": 0.002,
+    "angle_of_incidence_deg": 0.0,
+    "status": "procurement target; verify pump-pass angle and polarization"
+  },
+  "disk_rear": {
+    "type": "dual-band high reflection",
+    "target_min_reflectance_pump": 0.999,
+    "target_min_reflectance_laser": 0.9995,
+    "angle_of_incidence_deg": 0.0,
+    "status": "procurement target; coating absorption, phase and group-delay dispersion unmeasured"
+  },
+  "output_coupler": {
+    "screening_candidates": [
+      0.004,
+      0.01,
+      0.015,
+      0.022,
+      0.03,
+      0.035,
+      0.04
+    ],
+    "screening_assumed_pump_W": 40.0,
+    "screening_assumed_pump_radius_m": 0.0006,
+    "screening_disk_thickness_m": 0.00015,
+    "screening_other_roundtrip_survival": 0.995,
+    "screening_selected_transmission": 0.015,
+    "status": "Generic candidate sweep, not an experimental optimum or material measurement"
+  },
+  "sources": {
+    "target_reflectances": "Generic design assumptions; must be measured at actual wavelength/polarization/angle."
+  }
+}

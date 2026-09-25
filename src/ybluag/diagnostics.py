@@ -16,7 +16,8 @@ def gain_feasibility(material: YbLuAGMaterial, *, thickness_m: float,
                      injection_efficiency: float = 1.0,
                      extraction_efficiency: float = 1.0,
                      held_roundtrip_retention: float = 1.0,
-                     disk_hr_reflectivity: float = 1.0) -> dict:
+                     disk_hr_reflectivity: float = 1.0,
+                     ideal_relay_power_retention: float = 1.0) -> dict:
     """Unsaturated gain ceilings under homogeneous fixed-temperature assumptions.
 
     The pump asymptote omits spontaneous decay and signal load, so even this
@@ -25,6 +26,8 @@ def gain_feasibility(material: YbLuAGMaterial, *, thickness_m: float,
     """
     if thickness_m <= 0 or signal_traversals < 1 or pump_passes < 1:
         raise ValueError("positive thickness and pass counts required")
+    if not np.isfinite(ideal_relay_power_retention) or not 0 < ideal_relay_power_retention <= 1:
+        raise ValueError("ideal relay retention must be in (0, 1]")
     sa, se = material.cross_sections_m2(material.signal_wavelength_nm)
     pa, pe = material.cross_sections_m2(material.pump_wavelength_nm)
     n = material.number_density_m3
@@ -38,6 +41,8 @@ def gain_feasibility(material: YbLuAGMaterial, *, thickness_m: float,
     configured_losses = (injection_efficiency*extraction_efficiency*
                          held_roundtrip_retention**(regenerative_round_trips or 0)*
                          disk_hr_reflectivity**(regenerative_round_trips or 0))
+    if regenerative_round_trips is None:
+        configured_losses *= ideal_relay_power_retention**(traversals-1)
     requested_gain = (requested_output_energy_J/input_energy_J
                       if requested_output_energy_J is not None and input_energy_J else None)
     return {
@@ -101,7 +106,7 @@ def spectral_gain_screen(material: YbLuAGMaterial, *, source_fwhm_fs: float,
     center = material.signal_wavelength_nm
     bandwidth = (center*1e-9)**2/C * (0.441/(source_fwhm_fs*1e-15))*1e9
     wavelengths = np.linspace(center-2*bandwidth, center+2*bandwidth, 41)
-    if wavelengths[0] < 880 or wavelengths[-1] > 1150:
+    if wavelengths[0] < material.spectral_range_nm[0] or wavelengths[-1] > material.spectral_range_nm[1]:
         return {"status": "not_calculated", "reason": "source band extends beyond reconstructed spectra"}
     if architecture != "ideal_multipass":
         return {"status": "not_calculated", "reason":
@@ -135,7 +140,7 @@ def spectral_gain_screen(material: YbLuAGMaterial, *, source_fwhm_fs: float,
     else:
         if shared_inversion is None or not 0 <= shared_inversion <= 1:
             raise ValueError("supply spatial population or valid homogeneous inversion")
-        sa, se = spectral_cross_sections_m2(wavelengths, material.temperature_K)
+        sa, se = np.asarray([material.cross_sections_m2(float(w)) for w in wavelengths]).T
         g = material.number_density_m3*(se*shared_inversion-sa*(1-shared_inversion))
         small_signal = np.exp(g*thickness_m*material_traversals)
     return {

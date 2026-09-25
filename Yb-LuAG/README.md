@@ -5,8 +5,14 @@ measurements, see [Yb:LuAG audit fixes](../docs/YBLUAG_AUDIT_FIXES.md).
 
 ## Native Tkinter simulator
 
-From the repository root, run `python examples/ybluag_desktop.py` using a
-Python environment with Tk, Matplotlib, Pillow and the project dependencies.
+From the repository root on Windows, run:
+
+```powershell
+& 'C:\Users\Aidas\AppData\Local\Programs\Python\Python311\python.exe' .\examples\ybluag_desktop.py
+```
+
+Use a Python environment with Tk, Matplotlib, Pillow and the project
+dependencies. The desktop application does not start a web server.
 The desktop window exposes the CW, structured CW, and proposal pulse solvers,
 including regenerative cavity controls. It restores the latest saved Yb result
 and displays beam maps with a horizontal center cut above and a vertical
@@ -22,18 +28,9 @@ configuration. Results and logs are saved in `results/desktop_runs/` under the
 shared bounded-run ledger. The physics scope and assumptions below apply to
 the desktop simulator as well.
 
-## Local browser calculator
+## Model and proposal configuration
 
-On Windows, from the repository root in Command Prompt:
-
-    cd /d "F:\BAKALAUSKARAS\YbYag Studeis\Ho-YAG-crystal"
-    "C:\Users\Aidas\AppData\Local\Programs\Python\Python311\python.exe" examples\ybluag_app.py
-
-In PowerShell use `cd 'F:\BAKALAUSKARAS\YbYag Studeis\Ho-YAG-crystal'` and
-`& 'C:\Users\Aidas\AppData\Local\Programs\Python\Python311\python.exe' .\examples\ybluag_app.py`.
-
-Open <http://127.0.0.1:8781/>. This is a separate Yb:LuAG app from the
-Ho:YAG structured-beam calculator on port 8780. It provides the same six
+The native Yb:LuAG desktop calculator provides the same six
 structured target shapes, phase-only SLM masks, synthetic clustered dopant maps,
 irradiance/phase/side-profile views, and output-plane diffraction. Three CW
 options are available: pump-only weak probe, a fixed Gaussian cavity-mode
@@ -43,8 +40,10 @@ The proposal pulse section defaults to 12 at.% Yb:LuAG, a 100 µm disk, a
 and 10 kHz repetition. The femtosecond laser seed is stretched before the
 disk: 300 fs at the source and 10 ps at the amplifier are editable assumptions,
 since the proposal only specifies a picosecond seed there. Forty watts incident
-pump, ten ideal relayed signal traversals, 938/1030 nm centers, and a 0.6 mm
-signal waist are also modeling assumptions. The 12 at.% lifetime (0.973 ms)
+pump, ten ideal relayed signal traversals and a 0.6 mm signal waist are modeling
+assumptions. The pulsed default uses the user's 969 nm ZPL pump target and a
+1030 nm signal design center; the former 938 nm pump remains selectable.
+The 12 at.% lifetime (0.973 ms)
 is interpolated from the 10 and 15 at.% pinhole data; it is not a measured
 12 at.% value. The exact inputs and their status are in
 `config/ybslam_proposal_luag.json`.
@@ -215,6 +214,14 @@ To reconstruct normal files:
 This creates the combined NPZ plus CSV tables for spectra, absorption coefficient, host refractive index, and heat capacity.
 
 ## Known model gap
+
+The ideal-multipass pulsed path now supports a bounded coupled steady
+thermal-optical calculation, distinct from the regenerative cavity path.
+It uses local temperature-dependent cross sections, shared inversion and a
+disk phase screen at every encounter. A settled-state synthetic-data export
+gate rejects unsynchronized transient labels and incomplete convergence
+evidence. See [remaining-model implementation](../docs/YBLUAG_REMAINING_IMPLEMENTATION.md)
+for numerical results and validity limits.
 
 A trustworthy LuAG-specific full photoelastic tensor p11, p12, p44 was not established. Do not silently substitute YAG values. Scalar thermo-optic phase distortion and elastic disk deformation are parameterized; rigorous stress-induced birefringence/depolarization remains underdetermined.
 

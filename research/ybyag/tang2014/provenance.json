@@ -1,0 +1,15 @@
+{
+  "source": "F. Tang et al., Journal of Alloys and Compounds 593 (2014) 123-127, Fig. 5",
+  "source_pdf": "https://files.secure.website/wscfus/7885803/32406066/tang-yb-yag.pdf",
+  "sample": "Three separate transparent ceramics, nominal 5, 10, 15 at.% Yb:YAG",
+  "temperature": "room temperature; exact specimen temperature not stated",
+  "quantity": "unsaturated absorption coefficient, cm^-1; not a per-ion cross section",
+  "method": "Color-pixel figure trace over 935-1040 nm at 170 dpi and 1 nm increments; the 915 nm region is obscured by annotation arrows; gaps linearly interpolated",
+  "minimum_ordinate_uncertainty_cm-1": 0.5,
+  "limits": "Cannot supply hot spectra, fluorescence absolute calibration, concentration-dependent lifetime or gain by itself.",
+  "detected_fraction": {
+    "5": 1.0,
+    "10": 0.9905660377358491,
+    "15": 0.9811320754716981
+  }
+}

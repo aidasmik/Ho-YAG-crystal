@@ -1,7 +1,8 @@
-"""Persistent local compute budget and owned process-tree supervision.
+"""Persistent run ledger and owned process-tree supervision.
 
 The ledger is shared by all bounded entry points. A run lock prevents concurrent
-expensive attempts; a crashed owner is charged for elapsed time before reuse.
+expensive attempts; a crashed owner is recorded before reuse. Cumulative caps
+are optional; individual run time and memory limits always remain in force.
 """
 from __future__ import annotations
 
@@ -26,6 +27,7 @@ class Limits:
     audit_seconds: float = 300
     viewer_seconds: float = 120
     max_attempts: int = 4
+    enforce_cumulative_budget: bool = False
     memory_bytes: int = 8 * 1024**3
     poll_seconds: float = .1
     termination_grace_seconds: float = 5
@@ -93,7 +95,9 @@ class BudgetLedger:
         self._acquire()
         try:
             data = self._read()
-            if data['total_seconds'] != self.limits.total_seconds or data['max_attempts'] != self.limits.max_attempts:
+            if (self.limits.enforce_cumulative_budget and
+                    (data['total_seconds'] != self.limits.total_seconds or
+                     data['max_attempts'] != self.limits.max_attempts)):
                 raise ValueError('ledger limits differ; use the original limits or a new ledger')
             if data['active'] is not None:
                 active = data['active']
@@ -104,12 +108,16 @@ class BudgetLedger:
             spent = sum(a['elapsed_s'] for a in data['attempts'])
             remaining = max(0., self.limits.total_seconds - spent)
             expensive=sum(a.get('category','coupled')=='coupled' for a in data['attempts'])
-            if remaining <= 0 or (category=='coupled' and expensive >= self.limits.max_attempts):
+            if (self.limits.enforce_cumulative_budget and
+                    (remaining <= 0 or
+                     (category=='coupled' and expensive >= self.limits.max_attempts))):
                 atomic_json(self.path, data)
                 raise RuntimeError('budget_exhausted')
             if configured_seconds <= 0:
                 raise ValueError('configured case limit must be positive')
-            effective = min(configured_seconds, self.category_limit(category), remaining)
+            effective = min(configured_seconds, self.category_limit(category))
+            if self.limits.enforce_cumulative_budget:
+                effective = min(effective, remaining)
             data['active'] = {'label': label, 'category':category, 'pid': os.getpid(),
                               'started_wall': time.time(), 'limit_s': effective}
             atomic_json(self.path, data)

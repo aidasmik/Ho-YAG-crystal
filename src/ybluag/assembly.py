@@ -19,7 +19,7 @@ class YbAssemblyResult:
     screens: HotDiskScreens
     material_range_valid: bool = True
     scope: str = ("steady linear thermal and isotropic elastic assembly; "
-                  "host thermo-optic proxy; LuAG photoelasticity omitted")
+                  "host thermo-optic proxy; photoelasticity omitted")
 
 
 def scalar_yb_screens(fem, displacement, mesh: DiskThermalMesh,
@@ -114,7 +114,7 @@ def solve_yb_assembly(mesh: DiskThermalMesh, heat_W_m3, grid, configuration, *,
     material_range_valid = bool(np.min(temperature.disk_temperature_K) >= 293.15 and
                                 np.max(temperature.disk_temperature_K) <= 300.0)
     if not material_range_valid and not allow_extrapolation:
-        raise ValueError("Yb:LuAG disk outside 293.15–300 K assembly-material range")
+        raise ValueError("Yb disk outside 293.15–300 K assembly-material range")
     fem = DiskPlateMesh.make(
         radius_m=geometry["disk_radius_m"],
         disk_thickness_m=geometry["disk_thickness_m"],

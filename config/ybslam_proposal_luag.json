@@ -9,9 +9,9 @@
     "thermal_conductivity_source": "Korner 2012 12 at.% crystal parameter"
   },
   "optics": {
-    "pump_wavelength_nm": 938.0,
+    "pump_wavelength_nm": 969.0,
     "signal_wavelength_nm": 1030.0,
-    "wavelength_status": "938 nm from Beil 2010 optimum pump band; 1030 nm laser design center; proposal does not give exact source spectra"
+    "wavelength_status": "969 nm ZPL pump from the user's YbSLAM target specification; 1030 nm signal design center. The former 938 nm exploratory pump remains selectable. Pump linewidth and exact source spectra are unmeasured."
   },
   "geometry": {
     "disk_thickness_um": 100.0,

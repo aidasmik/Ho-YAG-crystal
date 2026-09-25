@@ -1,0 +1,20 @@
+{
+  "source_doi": "10.5281/zenodo.1334966",
+  "paper": "Esmaeilzadeh, Roohbakhsh, Ghaedzadeh (2012), Figs. 4 and 6",
+  "sample_yb_at_percent": 25,
+  "sample_thickness_mm": 1,
+  "temperature_endpoints_K": [
+    300,
+    450
+  ],
+  "method": "Color-pixel tracing at 200 dpi, 1 nm intervals; missing pixels interpolated; Fig. 6 emission is reciprocity-derived by the authors.",
+  "calibration": "Fig. 4 axes 860-1040 nm, 0-8e-21 cm2; Fig. 6 axes 920-1040 nm, 0-2.2e-20 cm2.",
+  "uncertainty": "Approximate curve readout; at least +/-0.2e-21 cm2 absorption and +/-0.05e-20 cm2 emission, larger where curves overlap or pixels are interpolated.",
+  "caveat": "25 at.% measured sample only. This table does not calibrate 5, 10, 15 or 20 at.% samples or 523 K operation.",
+  "detected_fraction": {
+    "abs_300": 0.8453038674033149,
+    "abs_450": 1.0,
+    "em_300": 0.9090909090909091,
+    "em_450": 1.0
+  }
+}

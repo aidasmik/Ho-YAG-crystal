@@ -132,11 +132,17 @@ def budget_status():
     used_seconds = sum(float(row['elapsed_s']) for row in data['attempts'])
     coupled = sum(row.get('category', 'coupled') == 'coupled' for row in data['attempts'])
     return {
-        'remaining_seconds': max(0., ledger.limits.total_seconds-used_seconds),
+        'cumulative_budget_enabled': ledger.limits.enforce_cumulative_budget,
+        'remaining_seconds': (max(0., ledger.limits.total_seconds-used_seconds)
+                              if ledger.limits.enforce_cumulative_budget else None),
         'coupled_attempts_used': coupled,
-        'coupled_attempts_limit': ledger.limits.max_attempts,
-        'coupled_exhausted': (used_seconds >= ledger.limits.total_seconds or
-                              coupled >= ledger.limits.max_attempts),
+        'coupled_attempts_limit': (ledger.limits.max_attempts
+                                   if ledger.limits.enforce_cumulative_budget else None),
+        'coupled_exhausted': (ledger.limits.enforce_cumulative_budget and
+                              (used_seconds >= ledger.limits.total_seconds or
+                               coupled >= ledger.limits.max_attempts)),
+        'per_run_seconds': ledger.limits.case_seconds,
+        'memory_bytes': ledger.limits.memory_bytes,
         'active': data['active'] is not None,
     }
 
@@ -144,6 +150,8 @@ def budget_status():
 def start_new_budget():
     """Archive the exhausted global ledger after an explicit UI action."""
     ledger = BudgetLedger(ROOT / '.local_runtime' / 'budget.json', Limits())
+    if not ledger.limits.enforce_cumulative_budget:
+        raise RuntimeError('cumulative compute budget is disabled; no renewal is needed')
     ledger._acquire()
     try:
         data = ledger._read()

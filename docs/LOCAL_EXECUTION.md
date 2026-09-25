@@ -15,13 +15,12 @@ python3 -m venv --system-site-packages .venv
 
 The parent supervisor uses an owned POSIX process group or Windows Job Object,
 streams `execution.log`, records `execution_status.json`, and stops the process
-tree at wall time, memory, cancellation, or remaining global budget. Its shared
-ledger is `.local_runtime/budget.json`, persists across CLI restarts, permits at
-most four expensive coupled attempts, and charges crashed attempts when recovered.
-The global automated numerical allowance is 7200 s. Coupled cases are capped at
+tree at wall time, memory, or cancellation. Its shared ledger is
+`.local_runtime/budget.json` and persists across CLI restarts as a run history.
+There is no cumulative time or attempt cap. Coupled cases are capped at
 900 s each; profile, regression, audit, and viewer runs have category limits of
 180, 600, 300, and 120 s. One expensive worker is allowed at a time. A run that
-hits a limit receives `timed_out`, `resource_limit`, or `budget_exhausted`; no
+hits a limit receives `timed_out` or `resource_limit`; no
 limit status is scientific convergence. The default memory ceiling is the
 smaller of 8 GiB and 70% of installed RAM. A lower `--memory-mb` is allowed.
 
@@ -119,9 +118,8 @@ photoelastic Jones screen for the selected Ho map. Each of the six displayed
 inputs is then a separate weak one-pass probe. Their power does not deplete
 the shared inversion or enter the heat source. There is no hot-optics feedback
 or cavity eigenfield update. This mode is subject to the bounded local supervisor
-budget. If the four coupled-run
-slots are exhausted, the calculator offers an explicit action to archive the
-old ledger and start a new bounded session.
+supervisor per-run time and memory limits. There is no cumulative coupled-run
+limit and no ledger renewal is needed.
 Use `--help` for all density, phase-mask, and output-plane parameters.
 Open `results/structured_beams/index.html` in a browser to switch among the
 seven precomputed ideal-mask results for density seed 17. This selector changes

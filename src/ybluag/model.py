@@ -129,6 +129,16 @@ class YbLuAGMaterial:
     signal_wavelength_nm: float = 1030.0
     lifetime_s: float | None = None
 
+    name = "Yb:LuAG"
+    supports_coupled_temperature = True
+    spectral_range_nm = (880.0, 1150.0)
+    cavity_phase_index = 1.8302
+    cavity_group_index = 1.8488
+
+    @property
+    def spectral_wavelengths_nm(self):
+        return _spectra()[0].copy()
+
     def __post_init__(self):
         for name in ("yb_at_percent", "temperature_K", "pump_wavelength_nm",
                      "signal_wavelength_nm"):

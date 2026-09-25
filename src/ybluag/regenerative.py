@@ -14,7 +14,7 @@ from hoyag.propagation import Grid2D, angular_spectrum_transfer, optical_power
 from hoyag.resonator import ThinDiskResonator, fluence_transfer
 
 from .model import C, H, YbLuAGMaterial
-from .multipass_pump import steady_multipass_pump, transport_multipass_pump
+from .multipass_pump import steady_multipass_pump, recover_pumped_population
 
 # LuAG Sellmeier at 1.03 µm plus the measured 7 at.% film index offset.
 # These are assumptions for a 12 at.% bulk disk until its index is measured.
@@ -73,8 +73,8 @@ class RegenerativeCavity:
             output_transmission=1e-12, disk_hr_reflectivity=self.disk_hr_reflectivity,
             other_roundtrip_loss=1-self.held_roundtrip_retention,
             wavelength_m=material.signal_wavelength_nm*1e-9,
-            host_index=LUAG_PHASE_INDEX_ASSUMED,
-            host_group_index=LUAG_GROUP_INDEX_ASSUMED)
+            host_index=material.cavity_phase_index,
+            host_group_index=material.cavity_group_index)
         if not cavity.stable:
             raise ValueError("cold regenerative cavity is geometrically unstable")
         if grid.nx*grid.dx < self.disk_diameter_m or grid.ny*grid.dy < self.disk_diameter_m:
@@ -134,29 +134,10 @@ def amplify_regenerative(material: YbLuAGMaterial, grid: Grid2D, seed_field,
         return np.fft.ifft2(np.fft.fft2(field)*transfer)
 
     def recover(beta, duration_s, chunks):
-        absorbed_integral = np.zeros_like(beta)
-        excited_integral = np.zeros_like(beta)
-        for _ in range(chunks):
-            dt = duration_s/chunks
-            midpoint, _, _ = transport_multipass_pump(
-                material, pump, scale, thickness_m, pump_passes, beta,
-                temperature_K_by_slice=temperature)
-            up, down = material.rates_s1(midpoint, 0, temperature)
-            predictor_rate = up+down+1/material.lifetime_s
-            predictor_equilibrium = up/predictor_rate
-            beta_mid = predictor_equilibrium + (beta-predictor_equilibrium)*np.exp(
-                -predictor_rate*dt/2)
-            midpoint, absorbed, _ = transport_multipass_pump(
-                material, pump, scale, thickness_m, pump_passes, beta_mid,
-                temperature_K_by_slice=temperature)
-            up, down = material.rates_s1(midpoint, 0, temperature)
-            rate = up+down+1/material.lifetime_s
-            equilibrium = up/rate
-            factor = -np.expm1(-rate*dt)
-            excited_integral += equilibrium*dt + (beta-equilibrium)*factor/rate
-            absorbed_integral += absorbed*dt
-            beta = equilibrium + (beta-equilibrium)*np.exp(-rate*dt)
-        return beta, absorbed_integral, excited_integral
+        return recover_pumped_population(
+            material, pump, scale, thickness_m, pump_passes, beta,
+            duration_s, chunks, temperature_K_by_slice=temperature)
+
 
     def disk_pass(field, beta, order, signal_ledger):
         for iz in order:

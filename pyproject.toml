@@ -21,3 +21,4 @@ testpaths = ["tests"]
 
 [tool.setuptools.package-data]
 ybluag = ["data/*.part*"]
+ybyag = ["data/*.json", "data/*.csv", "data/mechanical/*.json", "data/spectra/*.csv", "data/thermal/*.csv", "data/provenance/*"]
