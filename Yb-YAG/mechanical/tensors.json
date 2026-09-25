@@ -1,0 +1,38 @@
+{
+  "elastic": {
+    "source_id": "SANTONOCITO2024",
+    "C11_Pa": 334000000000.0,
+    "C12_Pa": 111200000000.0,
+    "C44_Pa": 115100000000.0,
+    "quality": "Experimental host room-temperature values cited in text; not DFT Table4.",
+    "axes": [
+      "100",
+      "010",
+      "001"
+    ]
+  },
+  "photoelastic_sets": {
+    "dixon1967": {
+      "source_ids": [
+        "DIXON1967",
+        "BRICKUS2016"
+      ],
+      "p11": -0.029,
+      "p12": 0.0091,
+      "p44": -0.0615,
+      "quality": "Legacy full YAG set; conflicting literature, not exact Yb:YAG calibration."
+    },
+    "johnson1967_incomplete": {
+      "source_ids": [
+        "JOHNSON1967",
+        "BRICKUS2016"
+      ],
+      "p11": 0.06,
+      "p12": 0.022,
+      "p44": null,
+      "quality": "Incomplete competing set. Do not fill p44 from Dixon silently."
+    }
+  },
+  "convention": "Delta B_ii=p11*e_ii+p12*(trace(e)-e_ii); Delta B_ij=2*p44*e_ij (i!=j). B is inverse relative dielectric tensor. e is mechanical elastic strain, not total strain.",
+  "warning": "Do not combine total thermal strain photoelasticity with stress-free dn/dT: that double-counts free thermal dilation. Explicit rotation is required for non-[100] crystal frames."
+}

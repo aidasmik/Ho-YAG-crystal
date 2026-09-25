@@ -1,0 +1,21 @@
+{
+  "source_id": "KORNER2012",
+  "role": "Published illustrative model configuration, NOT an experimental validation target.",
+  "Yb_at_percent": 12,
+  "thickness_m": 0.00015,
+  "pump_radius_m": 0.001375,
+  "pump_passes": 24,
+  "pump_wavelength_nm": 940,
+  "laser_wavelength_nm": 1030,
+  "coolant_K": 300,
+  "heat_sink_thickness_m": 0.0012,
+  "heat_sink_k_W_mK_approx": 2000,
+  "k_YbYAG_RT_W_mK": 5.7,
+  "output_coupling_fraction": 0.05,
+  "internal_loss_fraction_approx": 0.01,
+  "source_contact_resistance": {
+    "printed_value": 5e-05,
+    "printed_unit": "K/W",
+    "status": "Do not use as an area-normalized interface resistance without resolving source convention."
+  }
+}

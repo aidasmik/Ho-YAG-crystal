@@ -1,0 +1,95 @@
+{
+  "HASEONGPU": {
+    "title": "HASEonGPU legacy Yb:YAG material data",
+    "url": "https://github.com/ComputationalRadiationPhysics/haseongpu",
+    "revision": "5af022b40635b6cf22178252e243467d3d7aed90",
+    "location": "material_library/data/legacy_yb_yag/; material_library/data/generate.py; CrossSectionTable.fromTextDirectory",
+    "quality": "Exact repository numerical arrays; upstream experimental provenance, concentration and uncertainty are unspecified. Not claimed to be raw measured data.",
+    "license": "GPL-3.0-or-later; see provenance/COPYING.GPL-3"
+  },
+  "KORNER2012": {
+    "title": "Measurement of temperature-dependent absorption and emission spectra of Yb:YAG, Yb:LuAG, and Yb:CaF2 between 20 C and 200 C and predictions on their influence on laser performance",
+    "authors": "J. Korner et al.",
+    "doi": "10.1364/JOSAB.29.002493",
+    "url": "https://opg.optica.org/josab/abstract.cfm?uri=josab-29-9-2493",
+    "location": "Tables 1-4; Fig. 7",
+    "quality": "Published measurement/normalization parameters. Original numerical spectral arrays not obtained."
+  },
+  "KORNER_FIGURE_COPY": {
+    "title": "Reproduction of Korner2012 emission figure in Laser Engineering exercises, winter 2021/22",
+    "url": "https://martin-beyer.uni-jena.de/%C3%9Cbungsserien/LaserEngineering_Serien.pdf",
+    "location": "PDF page 13 (zero-based 12), Fig. 4, explicitly attributed to Korner et al. 2012",
+    "quality": "Only the reproduced authors figure is used, not student solution calculations."
+  },
+  "AGGARWAL2005": {
+    "title": "Measurement of thermo-optic properties of laser crystals in the 80-300 K temperature range",
+    "authors": "R. L. Aggarwal, D. J. Ripin, J. R. Ochoa, T. Y. Fan",
+    "doi": "10.1063/1.2128696",
+    "url": "https://doi.org/10.1063/1.2128696",
+    "location": "Tables I-III: diffusivity, RT density and volumetric heat capacity, conductivity; host thermo-optic polynomial coefficients",
+    "quality": "Measured YAG/Yb:YAG tables and fits. k is calculated from diffusivity, density and heat capacity."
+  },
+  "CINI2017": {
+    "title": "Analytical thermal model for end-pumped solid-state lasers",
+    "authors": "L. Cini, J. I. Mackenzie",
+    "doi": "10.1007/s00340-017-6848-y",
+    "url": "https://link.springer.com/content/pdf/10.1007/s00340-017-6848-y.pdf",
+    "location": "Table 1, printed page 3; k=k0*(T/T0)^m",
+    "quality": "Published empirical fits to earlier measurement datasets; CT and HT are different source families."
+  },
+  "SATO2025": {
+    "title": "Comprehensive thermal properties of Y3Al5O12 from 160 K to 500 K",
+    "authors": "Y. Sato, T. Taira, T. Takemasa",
+    "doi": "10.1364/OE.540655",
+    "url": "https://doi.org/10.1364/OE.540655",
+    "text_url": "https://www.researchgate.net/publication/388339787_Comprehensive_thermal_properties_of_Y3Al5O12_from_160_K_to_500_K",
+    "location": "Tables 1-7, Eqs. 4-9; section 4.2",
+    "quality": "Host tables combine measured diffusivity, calibrated/calculated heat capacity and expansion, and derived conductivity. dn/dT may contain mounting-stress photoelasticity; authors explicitly discuss this."
+  },
+  "ZELMON1998": {
+    "title": "Refractive-index measurements of undoped yttrium aluminum garnet from 0.4 to 5.0 um",
+    "authors": "D. E. Zelmon, D. L. Small, R. Page",
+    "doi": "10.1364/AO.37.004933",
+    "url": "https://doi.org/10.1364/AO.37.004933",
+    "equation_copy": "https://refractiveindex.info/?shelf=main&book=Y3Al5O12&page=Zelmon",
+    "quality": "Room-temperature undoped-host Sellmeier fit, not a doping-dependent dielectric function."
+  },
+  "SANTONOCITO2024": {
+    "title": "Cost-effective method for computational prediction of thermal conductivity in optical materials based on cubic oxides",
+    "authors": "A. Santonocito et al.",
+    "doi": "10.1038/s41598-024-63302-6",
+    "url": "https://doi.org/10.1038/s41598-024-63302-6",
+    "text_url": "https://www.researchgate.net/publication/381314421_Cost-effective_method_for_computational_prediction_of_thermal_conductivity_in_optical_materials_based_on_cubic_oxides",
+    "location": "Text on printed pages 8-9 citing experimental YAG values in reference 52; not the calculated values in Table 4",
+    "quality": "Host room-temperature experimental constants as cited in this paper; not Yb-dependent measurements."
+  },
+  "BRICKUS2016": {
+    "title": "On the use of photoelastic effect and plane strain or plane stress approximations for the description of thermal lensing",
+    "authors": "A. Brickus, A. S. Dementev",
+    "doi": "10.3952/physics.v56i1.3272",
+    "url": "https://www.lmaleidykla.lt/ojs/index.php/physics/article/download/3272/2077",
+    "location": "Printed page 12, discussion of Dixon and Johnson/Olson sets and stress-free thermo-optic convention",
+    "quality": "Primary analysis documenting conflicting legacy photoelastic measurements; coefficients must retain their conventions."
+  },
+  "DIXON1967": {
+    "title": "Photoelastic properties of selected materials and their relevance for applications to acoustic light modulators and scanners",
+    "authors": "R. W. Dixon",
+    "url": "https://doi.org/10.3952/physics.v56i1.3272",
+    "location": "J. Appl. Phys. 38, 5149-5153 (1967); numerical coefficients verified through BRICKUS2016 reference 39",
+    "quality": "Legacy YAG photoelastic set; wavelength and doping dependence not calibrated here."
+  },
+  "JOHNSON1967": {
+    "title": "Photoelastic properties of YAG",
+    "authors": "V. R. Johnson, F. A. Olson",
+    "url": "https://doi.org/10.3952/physics.v56i1.3272",
+    "location": "Proc. IEEE 55, 709-710 (1967); values cited in BRICKUS2016 reference 40",
+    "quality": "Conflicting p11/p12 measurements. p44 not established from the accessed citation; left null."
+  },
+  "DONG2003": {
+    "title": "Dependence of the Yb3+ emission cross section and lifetime on temperature and concentration in yttrium aluminum garnet",
+    "authors": "J. Dong et al.",
+    "doi": "10.1364/JOSAB.20.001975",
+    "url": "https://opg.optica.org/josab/abstract.cfm?uri=josab-20-9-1975",
+    "quality": "Relevant extension source only; no numerical tau(T,c) or concentration-resolved spectra imported."
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "method": "Manual visual readings from native PDF screenshot; not automatic tracing or author raw data.",
+  "source_ids": [
+    "KORNER2012",
+    "KORNER_FIGURE_COPY"
+  ],
+  "page": 13,
+  "figure": 4,
+  "figure_axis_calibration_screenshot_pixels": {
+    "x900_nm": 338,
+    "x1150_nm": 728,
+    "y0_cm2": 489,
+    "y2p5e-20_cm2": 168
+  },
+  "selected_range_nm": [
+    1020,
+    1060
+  ],
+  "nodes_per_curve": 21,
+  "selection": "Main laser band only, chosen where curves are visible. Values rounded to 1e-22 cm^2.",
+  "suggested_sensitivity_not_statistical_uncertainty": {
+    "wavelength_shift_nm": 1.0,
+    "relative_cross_section_change": 0.2,
+    "absolute_cross_section_floor_cm2": 5e-22
+  },
+  "limitations": [
+    "Line overlap, finite figure resolution and steep peak cause substantial error.",
+    "No claim of a calibrated confidence interval or 2-nm instrument resolution.",
+    "The independent HASEonGPU RT spectrum is NOT renormalized to these readings.",
+    "Do not use this dataset as publication-grade or validated NN-training ground truth."
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "status": "PASS",
+  "test_count": 34,
+  "unit_test_command": "python -m unittest discover -s tests -v",
+  "unit_test_process_runtime_s": 0.6425974680000763,
+  "export_roundtrip": "Exact rt NPZ equality to source API; no pickle loading",
+  "python_version": "3.13.5",
+  "numpy_version": "2.3.5",
+  "validation_scope": "Software correctness and source-file integrity only; NOT experimental model validation.",
+  "rt_anchors": {
+    "n_host_1030_nm": 1.8153338160948316,
+    "N_Yb_5at_m-3": 6.92685170804218e+26,
+    "sigma_abs_940_cm2": 7.7796e-21,
+    "sigma_em_1030_cm2": 2.4778e-20,
+    "alpha_940_5at_m-1": 538.8813554788495,
+    "gain_1030_5at_beta0p2_m-1": 278.9914208744733,
+    "Fsat_1030_J_m2": 74354.06146311776,
+    "quantum_defect_940_1030": 0.08737864077669899
+  },
+  "upstream_hash_validation": "Four HASEonGPU original Git blob hashes match exactly.",
+  "failures": [],
+  "guard_examples": [
+    "Reject RT spectra at T!=293.15 K",
+    "Reject approximate spectra unless explicitly opted in",
+    "Reject high-T pump-band request",
+    "Reject incomplete photoelastic alternative",
+    "Reject nonfinite and out-of-range inputs"
+  ]
+}

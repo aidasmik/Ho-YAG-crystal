@@ -1,0 +1,13 @@
+item,status,detail,action
+temperature_pump_spectra,missing,No verified numeric pump-band spectra above 293.15 K. RT spectrum is not silently reused at another T.,Obtain author arrays from Korner2012.
+temperature_laser_spectra,approximate,21 manual figure readings per curve at four temperatures; absorption inferred by same-T McCumber.,Replace with original numerical arrays.
+rt_spectra_provenance,limited,"Exact research-software arrays, but original measurement metadata/doping/uncertainty unspecified.",Trace upstream experimental provenance or compare to your sample.
+tau_vs_temperature_and_doping,missing,Only scalar lifetime anchors; no fitted lifetime law provided.,Use Dong2003 raw data or calibrated measurements.
+sigma_vs_doping,missing,Cross sections do not acquire concentration dependence merely by scaling N.,Add concentration-resolved spectra.
+host_to_doped_thermooptic,proxy,"Host n, alpha, Cp(T), elastic and photoelastic values are not doping-specific.",Measure sample corrections and propagate uncertainty.
+high_T_dn_dT,mounting_sensitive,Sato2025 reports possible mounting-stress contamination; explicit allow_apparent required.,Use a stress-free calibration for rigorous thermo-photoelastic modeling.
+photoelastic_tensor,disputed,Legacy full set and conflicting incomplete alternative; no calibrated Yb-specific tensor.,Run sensitivity analysis; never silently mix tensor sets.
+nonlinear_index_and_damage,missing,No n2 or damage threshold imported. Damage is pulse/surface/coating dependent.,Add wavelength/pulse-specific sources.
+cooling_and_interface,setup_specific,"Contact conductance, cooling geometry, coating properties, emissivity are not universal crystal constants.",Calibrate against the actual mount.
+heat_budget_and_ASE,model_required,"Quantum defect alone is not total heat if fluorescence escape, ASE or nonradiative decay matter.",Use energy-conserving population/radiation model.
+NN_dataset_validation,not_established,"Unit tests check implementation, not agreement with experiment.","Benchmark gain, pump absorption and temperature/phase maps before training for experimental deployment."
