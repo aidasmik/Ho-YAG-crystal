@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 from dataclasses import asdict
+import hashlib
 import json
 from pathlib import Path
 import sys
@@ -47,6 +48,13 @@ def _jsonable(value):
     if isinstance(value, (tuple, list)):
         return [_jsonable(v) for v in value]
     return value
+
+
+def _command_key(command):
+    """Identify an SLM command without copying its full pixel map into the trace."""
+    return hashlib.sha256(
+        np.ascontiguousarray(command, dtype=np.float64).tobytes()
+    ).hexdigest()
 
 
 def run(config, *, progress_path=None):
@@ -139,6 +147,14 @@ def run(config, *, progress_path=None):
 
     def measured(observation, count):
         nonlocal latest_observation
+        command_key = _command_key(observation.delivered_coefficients_rad)
+        try:
+            measured_score = measurement_metrics(
+                observation, target, target_energy, controller,
+                black_level_adu=plant.camera.black_level_adu,
+            )
+        except ValueError:
+            measured_score = {"camera_loss": None}
         timeline = plant.last_result["thermal_timeline"]
         ideal_compensation, delivered_compensation = plant.phase_compensation_truth()
         ledger = plant.last_result["ideal_multipass"]
@@ -151,6 +167,9 @@ def run(config, *, progress_path=None):
         operating = plant.latest_operating_point
         latest_observation = dict(
             evaluation=count,
+            command_key=command_key,
+            camera_loss=measured_score["camera_loss"],
+            trial_outcome="pending",
             camera_adu=observation.camera_adu[:, ::4, ::4],
             camera_profiles=camera_profiles(observation.camera_adu),
             output_fluence_J_m2=plant.last_result["output_fluence_J_m2"],
@@ -171,6 +190,9 @@ def run(config, *, progress_path=None):
         observation_trace.append(
             dict(
                 evaluation=count,
+                command_key=command_key,
+                camera_loss=measured_score["camera_loss"],
+                trial_outcome="pending",
                 time_s=observation.time_s,
                 saturated_fraction=observation.saturated_fraction,
                 measured_energy_J=observation.measured_energy_J,
@@ -206,6 +228,24 @@ def run(config, *, progress_path=None):
         publish()
 
     def record(row, observation):
+        nonlocal latest_observation
+        # Every observed command is a physical trial, including candidates
+        # that were measured and then rejected. The controller's `iteration`
+        # remains the outer optimization cycle for backward compatibility.
+        previous_evaluation = steps[-1]["evaluation"] if steps else 0
+        retained_key = _command_key(row["coefficients_rad"])
+        for trial in observation_trace:
+            if previous_evaluation < trial["evaluation"] <= row["evaluation"]:
+                trial["optimization_cycle"] = row["iteration"]
+                trial["trial_outcome"] = (
+                    row.get("update_status", "retained")
+                    if trial["evaluation"] == row["evaluation"]
+                    else ("same_command" if trial["command_key"] == retained_key
+                          else "not_retained")
+                )
+        if (latest_observation is not None
+                and latest_observation["evaluation"] == row["evaluation"]):
+            latest_observation["trial_outcome"] = row.get("update_status", "retained")
         result = plant.last_result
         correction = plant.correction_phase(row["coefficients_rad"])
         ideal_compensation, delivered_compensation = plant.phase_compensation_truth(result)

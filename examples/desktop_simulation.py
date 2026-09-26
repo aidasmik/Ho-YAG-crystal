@@ -939,8 +939,8 @@ class DesktopSimulation(tk.Tk):
                         panel.control_view.show(len(progress["steps"])-1)
                         self.control_progress_mtime=changed
                         live=progress.get("latest_observation") or {}
-                        self.status.set(f"Correction running: {progress['steps'][-1]['iteration']} "
-                                        f"command updates · probe {live.get('evaluation', 0)} "
+                        self.status.set(f"Correction running: physical iteration {live.get('evaluation', 0)} "
+                                        f"· optimization cycle {progress['steps'][-1]['iteration']} "
                                         "shown with active camera noise · Stop correction to cancel")
         except (OSError,ValueError,KeyError,TypeError):
             pass  # An atomic snapshot may not be available yet.
@@ -993,7 +993,7 @@ class DesktopSimulation(tk.Tk):
             ("improvement_tolerance","Camera-loss allowance","0.002",None),
             ("restore_best_at_end","Recheck best command at end","yes",("yes","no")),
             ("max_update_rad","Max phase update (rad)","0.4",None),
-            ("iterations","Command update limit","30",None),
+            ("iterations","Optimization cycle limit","30",None),
             ("evaluation_limit","Full-solver evaluation limit","400",None),
             ("diagnostic_astigmatism_waves","Diagnostic astigmatism (waves)","0.25",None),
             ("slm_delay_s","SLM delay (s)","0.01",None),

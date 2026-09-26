@@ -1,4 +1,4 @@
-"""Playback of accepted physical correction steps in the Tkinter application."""
+"""Playback of correction cycles and every measured physical trial."""
 
 from __future__ import annotations
 
@@ -146,7 +146,7 @@ class ControlResultPanel(ttk.Frame):
             (initial, "Uncorrected output", "inferno", common),
             (
                 current,
-                f"Output at recorded step {step['iteration']}",
+                f"Output at recorded cycle {step['iteration']}",
                 "inferno",
                 common,
             ),
@@ -172,7 +172,7 @@ class ControlResultPanel(ttk.Frame):
             slots[1, 1],
             camera,
             (
-                f"Live probe #{live['evaluation']} · focus camera"
+                f"Live physical iteration #{live['evaluation']} · focus camera"
                 if show_live
                 else "Measured focus camera"
             ),
@@ -186,48 +186,49 @@ class ControlResultPanel(ttk.Frame):
         )
         history = self.figure.add_subplot(slots[1, 2])
         iterations = [s["iteration"] for s in steps]
-        losses = [s["camera_loss"] for s in steps]
-        energies = [s["measured_energy_J"] * 1e9 for s in steps]
-        if all(v is not None for v in losses):
-            history.plot(iterations, losses, "o-", label="Camera loss")
-            if hardware:
-                colors = {
-                    "improved": "#1a8c6a",
-                    "regressed": "#c66335",
-                    "energy_rollback": "#8b3a77",
-                    "rejected_restore": "#9b3f45",
-                    "initial": "#116d83",
-                    "best_restore": "#1769aa",
-                    "best_rejected": "#707070",
-                }
-                history.scatter(
-                    iterations,
-                    losses,
-                    c=[colors.get(s.get("update_status"), "#116d83") for s in steps],
-                    s=18,
-                    zorder=3,
-                )
-                rejected = [
-                    s for s in steps
-                    if s.get("rejected_trial_camera_loss") is not None
-                ]
-                if rejected:
-                    history.scatter(
-                        [s["iteration"] for s in rejected],
-                        [s["rejected_trial_camera_loss"] for s in rejected],
-                        marker="x", color="#b54040", s=42,
-                        label="Rejected trial", zorder=4,
-                    )
-                    history.legend(fontsize=7, loc="best")
+        trace = result.get("observation_trace", [])
+        scored_trials = [r for r in trace if r.get("camera_loss") is not None]
+        if scored_trials:
+            trial_numbers = [r["evaluation"] for r in scored_trials]
+            trial_losses = [r["camera_loss"] for r in scored_trials]
+            history.plot(trial_numbers, trial_losses, "-", color="#8f9aa1",
+                         linewidth=1, label="Every measured trial")
+            retained = [r for r in scored_trials if r.get("trial_outcome") not in
+                        ("not_retained", "pending")]
+            not_retained = [r for r in scored_trials if r.get("trial_outcome") == "not_retained"]
+            pending = [r for r in scored_trials if r.get("trial_outcome") == "pending"]
+            for group, marker, color, label in (
+                (retained, "o", "#116d83", "Command at cycle end"),
+                (not_retained, "x", "#b54040", "Trial/probe not retained"),
+                (pending, ".", "#116d83", "Trial pending"),
+            ):
+                if group:
+                    history.scatter([r["evaluation"] for r in group],
+                                    [r["camera_loss"] for r in group],
+                                    marker=marker, color=color, s=28,
+                                    label=label, zorder=3)
+            history.legend(fontsize=7, loc="best")
             history.set_ylabel("Camera loss")
+            energy_x = [r["evaluation"] for r in trace]
+            energies = [r["measured_energy_J"] * 1e9 for r in trace]
+            selected_trial = live["evaluation"] if show_live else step["evaluation"]
+            history.set_xlabel("Physical iteration (measured trial)")
+            history.set_title("All measured SLM trials", fontsize=10)
+        else:
+            energy_x = [s["evaluation"] for s in steps]
+            energies = [s["measured_energy_J"] * 1e9 for s in steps]
+            losses = [s["camera_loss"] for s in steps]
+            if all(v is not None for v in losses):
+                history.plot(energy_x, losses, "o-", label="Camera loss")
+                history.set_ylabel("Camera loss")
+            selected_trial = step["evaluation"]
+            history.set_xlabel("Physical measurement")
+            history.set_title("Recorded correction cycles", fontsize=10)
         twin = history.twinx()
-        twin.plot(iterations, energies, "s--", color="#087f8c", label="Measured energy")
+        twin.plot(energy_x, energies, "s--", color="#087f8c", markersize=2,
+                  label="Measured energy")
         twin.set_ylabel("Measured energy (nJ)")
-        history.axvline(step["iteration"], color="#cc5a37", alpha=0.6)
-        history.set_xlabel(
-            "Physical command update" if hardware else "Accepted correction iteration"
-        )
-        history.set_title("Progress through the physical solver", fontsize=10)
+        history.axvline(selected_trial, color="#cc5a37", alpha=0.6)
         self.canvas.draw_idle()
         self.camera_figure.clear()
         has_measured_phase = (
@@ -314,7 +315,9 @@ class ControlResultPanel(ttk.Frame):
             self.camera_figure.colorbar(phase_image, ax=phase_ax,
                                          label="Phase error (rad)", shrink=.7)
         self.camera_canvas.draw_idle()
-        live_note = f" · live probe {live['evaluation']}" if show_live else ""
+        physical_iteration = live["evaluation"] if show_live else step["evaluation"]
+        final_physical_iteration = trace[-1]["evaluation"] if trace else physical_iteration
+        live_note = " · live measurement" if show_live else ""
         status_note = (
             f" · {step.get('update_status', 'applied')}" if hardware and index else ""
         )
@@ -330,7 +333,9 @@ class ControlResultPanel(ttk.Frame):
             if index == len(steps) - 1 and run_status in stop_messages else ""
         )
         self.info.set(
-            f"Step {step['iteration']}/{steps[-1]['iteration']} · {step['full_solves']} full solves{live_note}{status_note} · "
+            f"Physical iteration {physical_iteration}/{final_physical_iteration} "
+            f"· optimization cycle {step['iteration']}/{steps[-1]['iteration']} "
+            f"· {step['full_solves']} full solves{live_note}{status_note} · "
             f"measured {step['measured_energy_J']*1e9:.3g} nJ · "
             f"camera loss {step['camera_loss'] if step['camera_loss'] is not None else 'off'}"
             f"{final_note}."
@@ -367,10 +372,9 @@ class ControlResultPanel(ttk.Frame):
         phase_axes[2].axvline(step["iteration"], color="#cc5a37", alpha=0.6)
         phase_axes[2].legend(fontsize=8)
         phase_axes[2].set_xlabel(
-            "Physical command update" if hardware else "Accepted correction iteration"
+            "Optimization cycle"
         )
         phase_axes[2].set_title("Truth-assisted validation only")
-        trace = result.get("observation_trace", [])
         if trace and "disk_peak_temperature_C" in trace[0]:
             chronological = result["episode"]["mode"] == "in_situ"
             xx = np.asarray(

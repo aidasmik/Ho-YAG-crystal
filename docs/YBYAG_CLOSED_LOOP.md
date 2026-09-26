@@ -59,14 +59,17 @@ selectable controllers. A camera-shape improvement does not by itself prove
 recovery of the intended complex field; inspect both camera loss and measured
 phase RMS, then the separate validation overlap.
 The **Correction loop** tab opens at the latest recorded SLM command, including
-when a run stops before reaching the target. Use the slider to inspect the
-uncorrected frame at step zero. The status line says when phase and camera
-updates stalled, or when a numerical limit ended the run. The tab updates
-after each reported physical step while
-the bounded worker runs. Its camera panel also updates for each response-matrix
-probe, labelled by full-solver evaluation number; accepted output fields update
-only when a correction is accepted. It can replay the saved accepted steps
-afterward. If Windows temporarily locks the live progress file, the worker
+when a run stops before reaching the target. The progress graph uses one
+**physical iteration** per measured SLM trial, including commands subsequently
+rejected. Its red crosses mark measurements under commands not retained at the
+end of that optimizer cycle. An **optimization cycle** can contain several such
+physical iterations; the slider selects saved cycle outputs, not every trial
+image. Use it to inspect the uncorrected frame at cycle zero. The status line
+says when phase and camera updates stalled, or when a numerical limit ended
+the run. The camera panel also updates for each live trial. Every trial's
+camera loss and measured energy are saved in `observation_trace`; the saved
+cycle output field updates after the optimizer chooses a command. If Windows
+temporarily locks the live progress file, the worker
 retries the update and continues the physical run even if that snapshot cannot
 be displayed. The **Cameras + residual phase** view shows both measured
 camera arms with horizontal and vertical mean-signal profiles; dashed curves
