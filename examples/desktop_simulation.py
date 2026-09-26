@@ -33,6 +33,8 @@ from structured_beam_app import (budget_status, latest_completed_run,
                                  run_calculation,
                                  validate_request)
 from ybluag_desktop_views import YbResultPanel
+from run_ybyag_control import run_bounded_episode
+from scientific_style import apply_scientific_style, PAPER, MUTED, NAVY
 
 NUMERIC_RANGES = {
     "pump_W": (.001, 1000), "radius_mm": (.01, 10),
@@ -255,24 +257,30 @@ class InputPanel(ttk.Frame):
         self.vars, self.rows = {}, {}
         self.group = tk.StringVar(value="Seed & phase")
         if self.grouped:
-            heading = ttk.Frame(self, padding=(14, 14, 14, 8))
+            heading = ttk.Frame(self, padding=(12, 10, 12, 8))
             heading.pack(fill="x")
-            ttk.Label(heading, text="SIMULATION INPUTS", style="Eyebrow.TLabel").pack(anchor="w")
+            ttk.Label(heading, text="MODEL PARAMETERS", style="Eyebrow.TLabel").pack(anchor="w")
             concentration = next((item for item in fields if item[0] == "yb_at_percent"), None)
             if concentration is not None:
                 key, label, default, choices = concentration
-                ttk.Label(heading, text=label, style="Input.TLabel").pack(anchor="w", pady=(8, 4))
+                row = ttk.Frame(heading)
+                row.pack(fill="x", pady=(9, 4))
+                ttk.Label(row, text=label, style="Field.TLabel").pack(side="left")
                 var = tk.StringVar(value=default)
-                ttk.Combobox(heading, textvariable=var, values=choices,
-                             state="readonly", width=25).pack(fill="x", ipady=2)
+                ttk.Combobox(row, textvariable=var, values=choices,
+                             state="readonly", width=10).pack(side="right")
                 self.vars[key] = var
+            ttk.Label(heading, text="PARAMETER GROUP", style="Input.TLabel").pack(
+                anchor="w", pady=(7, 2))
             selector = ttk.Combobox(heading, textvariable=self.group,
                                    values=tuple(YB_CONTROL_GROUPS), state="readonly", width=27)
-            selector.pack(fill="x", pady=(8, 0))
+            selector.pack(fill="x")
             selector.bind("<<ComboboxSelected>>", lambda *_: self.show_only(self.active_keys))
-        self.canvas = canvas = tk.Canvas(self, width=305, highlightthickness=0, background="#f3f6fa")
+            ttk.Separator(heading, orient="horizontal").pack(fill="x", pady=(10, 0))
+        self.canvas = canvas = tk.Canvas(self, width=320, highlightthickness=0,
+                                         background=PAPER)
         scroll = ttk.Scrollbar(self, orient="vertical", command=canvas.yview)
-        self.inner = ttk.Frame(canvas, padding=(14, 4, 14, 14))
+        self.inner = ttk.Frame(canvas, padding=(12, 4, 12, 12))
         self.inner.bind("<Configure>",
                         lambda event: canvas.configure(scrollregion=canvas.bbox("all")))
         window = canvas.create_window((0, 0), window=self.inner, anchor="nw")
@@ -284,13 +292,15 @@ class InputPanel(ttk.Frame):
             if key in self.vars:
                 continue
             holder = ttk.Frame(self.inner)
-            holder.grid(row=row, column=0, sticky="ew", pady=(5, 7))
-            ttk.Label(holder, text=label, style="Input.TLabel").pack(anchor="w", pady=(0, 4))
+            holder.grid(row=row, column=0, sticky="ew", pady=(2, 5))
+            holder.columnconfigure(0, weight=1)
+            ttk.Label(holder, text=label, style="Field.TLabel", wraplength=178).grid(
+                row=0, column=0, sticky="w", padx=(0, 7))
             var = tk.StringVar(value=default)
             widget = (ttk.Combobox(holder, textvariable=var, values=choices,
-                                   state="readonly", width=25)
-                      if choices else ttk.Entry(holder, textvariable=var, width=28))
-            widget.pack(fill="x", ipady=2)
+                                   state="readonly", width=11)
+                      if choices else ttk.Entry(holder, textvariable=var, width=13))
+            widget.grid(row=0, column=1, sticky="e")
             self.vars[key], self.rows[key] = var, holder
         self.inner.columnconfigure(0, weight=1)
         # Scope wheel scrolling to this panel, including its child controls.
@@ -490,34 +500,23 @@ class ResultPanel(ttk.Frame):
 class DesktopSimulation(tk.Tk):
     def __init__(self, initial_material="Ho:YAG"):
         super().__init__()
-        self.title(f"{initial_material} simulation · native desktop")
-        self.configure(background="#f3f6fa")
-        style = ttk.Style(self)
-        style.theme_use("clam")
-        style.configure(".", font=("Segoe UI", 10), background="#f3f6fa", foreground="#213247")
-        style.configure("TNotebook", tabmargins=(4, 6, 4, 0), borderwidth=0)
-        style.configure("TNotebook.Tab", padding=(12, 9))
-        style.map("TNotebook.Tab", background=[("selected", "#ffffff")],
-                  foreground=[("selected", "#087f8c")])
-        style.configure("TEntry", fieldbackground="white", padding=4)
-        style.configure("TCombobox", fieldbackground="white", padding=4)
-        style.configure("TButton", padding=(10, 7))
-        style.configure("Accent.TButton", background="#087f8c", foreground="white", font=("Segoe UI", 11, "bold"))
-        style.map("Accent.TButton", background=[("active", "#096672"), ("disabled", "#adbcc5")])
-        style.configure("Input.TLabel", font=("Segoe UI", 9), foreground="#526378")
-        style.configure("Eyebrow.TLabel", font=("Segoe UI", 9, "bold"), foreground="#087f8c")
-        style.configure("Card.TFrame", background="white")
-        style.configure("Card.TLabel", background="white", foreground="#526378", font=("Segoe UI", 9))
-        style.configure("Metric.TLabel", background="white", font=("Segoe UI", 19, "bold"), foreground="#173b52")
+        self.title(f"Thin-disk laser simulator | {initial_material}")
+        self.configure(background=PAPER)
+        apply_scientific_style(self)
         self.geometry(f"{min(1550, self.winfo_screenwidth()-60)}x{min(960, self.winfo_screenheight()-100)}")
-        header = tk.Frame(self, background="#173b52", padx=20, pady=12)
+        header = tk.Frame(self, background=PAPER, padx=16, pady=10)
         header.pack(fill="x")
-        tk.Label(header, text="Thin-disk amplifier", background="#173b52", foreground="white",
-                 font=("Segoe UI", 20, "bold")).pack(side="left")
-        tk.Label(header, text="Gaussian seed  →  phase mask  →  shared disk  →  output",
-                 background="#173b52", foreground="#c3dde7", font=("Segoe UI", 10)).pack(side="right")
+        tk.Label(header, text="THIN-DISK LASER  /  OPTICAL SIMULATION",
+                 background=PAPER, foreground=NAVY,
+                 font=("Segoe UI", 13, "bold")).pack(side="left")
+        tk.Label(header, text="SOURCE  →  SLM  →  DISK  →  DETECTOR",
+                 background=PAPER, foreground=MUTED,
+                 font=("Cascadia Mono", 9)).pack(side="right")
+        ttk.Separator(self, orient="horizontal").pack(fill="x")
         self.minsize(1000, 650)
         self.running = False
+        self.control_progress_path = None
+        self.control_progress_mtime = None
         self.last_yb_payload = None
         self.yb_pages = {}
         self.status = tk.StringVar(value="Ready. Calculations have per-run time and memory limits.")
@@ -538,8 +537,14 @@ class DesktopSimulation(tk.Tk):
                 dataset = ttk.Button(inputs.master, text="Generate NN dataset…",
                     command=self.dataset_dialog)
                 dataset.pack(fill="x", padx=8, pady=(0, 8))
+                control = ttk.Button(inputs.master, text="Closed-loop correction…",
+                    command=self.control_dialog)
+                control.pack(fill="x", padx=8, pady=(0, 8))
+            else:
+                control = None
             self.yb_pages[material] = dict(input=inputs, result=result, button=button,
                                            sweep=sweep, camera=camera, dataset=dataset,
+                                           control=control,
                                            last_payload=None)
             for key in ("kind", "architecture"):
                 inputs.vars[key].trace_add("write", lambda *_, name=material: self.update_yb_fields(name))
@@ -551,11 +556,16 @@ class DesktopSimulation(tk.Tk):
         self.yb_sweep_button = luag['sweep']
         self.ho_input, self.ho_result, self.ho_button = self.make_tab(
             notebook, "Ho:YAG", HO_FIELDS, self.calculate_ho)
-        bar = ttk.Frame(self, padding=(12, 8))
+        ttk.Separator(self, orient="horizontal").pack(fill="x")
+        bar = ttk.Frame(self, padding=(12, 6))
         self.progress = ttk.Progressbar(bar, mode="indeterminate", length=95)
         self.progress.pack(side="left", padx=(0, 10))
         bar.pack(fill="x")
-        ttk.Label(bar, textvariable=self.status).pack(side="left", fill="x", expand=True)
+        ttk.Label(bar, textvariable=self.status, style="Info.TLabel").pack(
+            side="left", fill="x", expand=True)
+        self.cancel_button = ttk.Button(bar, text="Stop correction", command=self.cancel_control,
+                                        state="disabled")
+        self.cancel_button.pack(side="right", padx=(8, 0))
         ttk.Button(bar, text="Run limits", command=self.show_budget).pack(side="right")
         self.protocol("WM_DELETE_WINDOW", self.close)
         latest = latest_completed_run()
@@ -688,8 +698,10 @@ class DesktopSimulation(tk.Tk):
             return
         self.start(lambda: ("ho", run_calculation(values)))
 
-    def start(self, task):
+    def start(self, task, *, cancellable=False):
         self.running = True
+        self.cancel_event = threading.Event()
+        self.cancel_button.configure(state="normal" if cancellable else "disabled")
         self.progress.start(12)
         for page in self.yb_pages.values():
             page["button"].configure(state="disabled")
@@ -697,6 +709,8 @@ class DesktopSimulation(tk.Tk):
             page["camera"].configure(state="disabled")
             if page["dataset"] is not None:
                 page["dataset"].configure(state="disabled")
+            if page["control"] is not None:
+                page["control"].configure(state="disabled")
         self.ho_button.configure(state="disabled")
         self.status.set("Calculating in a bounded worker…")
 
@@ -711,7 +725,9 @@ class DesktopSimulation(tk.Tk):
 
     def _enable_controls(self):
         self.running = False
+        self.control_progress_path = None
         self.progress.stop()
+        self.cancel_button.configure(state="disabled")
         self.ho_button.configure(state="normal")
         for page in self.yb_pages.values():
             page['button'].configure(state="normal")
@@ -723,6 +739,8 @@ class DesktopSimulation(tk.Tk):
                                      "output_fluence_J_m2" in panel.result else "disabled")
             if page['dataset'] is not None:
                 page['dataset'].configure(state="normal")
+            if page['control'] is not None:
+                page['control'].configure(state="normal")
 
     def complete(self, value):
         if value[0] == "yb":
@@ -746,6 +764,11 @@ class DesktopSimulation(tk.Tk):
         elif value[0] == "dataset":
             self.status.set(f"Yb:YAG grouped dataset generated: {value[1]}")
             messagebox.showinfo("Dataset generation complete", str(value[1]))
+        elif value[0] == "control":
+            _, directory, result = value
+            self.yb_pages["Yb:YAG"]["result"].load_control(result)
+            self.status.set(f"Correction episode: {result['status']}; "
+                            f"{result['evaluations']} full solves; saved in {directory}")
         else:
             self.ho_result.draw_ho(value[1])
             self.status.set(f"Ho:YAG calculation completed: {value[1]['run_id']}")
@@ -895,6 +918,234 @@ class DesktopSimulation(tk.Tk):
         if run.returncode:
             raise RuntimeError((run.stderr or run.stdout)[-3000:])
         return output/"manifest.json"
+
+    def cancel_control(self):
+        if self.running and hasattr(self, "cancel_event"):
+            self.cancel_event.set()
+            self.status.set("Stopping the supervised correction worker…")
+
+    def _poll_control_progress(self):
+        path=self.control_progress_path
+        if not self.running or path is None:
+            return
+        try:
+            if path.is_file():
+                changed=path.stat().st_mtime_ns
+                if changed!=self.control_progress_mtime:
+                    progress=json.loads(path.read_text(encoding="utf-8"))
+                    if progress.get("steps"):
+                        panel=self.yb_pages["Yb:YAG"]["result"]
+                        panel.load_control(progress)
+                        panel.control_view.show(len(progress["steps"])-1)
+                        self.control_progress_mtime=changed
+                        live=progress.get("latest_observation") or {}
+                        self.status.set(f"Correction running: {progress['steps'][-1]['iteration']} "
+                                        f"command updates · probe {live.get('evaluation', 0)} "
+                                        "shown with active camera noise · Stop correction to cancel")
+        except (OSError,ValueError,KeyError,TypeError):
+            pass  # An atomic snapshot may not be available yet.
+        self.after(400,self._poll_control_progress)
+
+    def control_dialog(self):
+        if self.running:
+            return
+        dialog=tk.Toplevel(self)
+        dialog.title("Yb:YAG | correction experiment")
+        dialog.transient(self)
+        dialog.geometry(f"{min(1340, self.winfo_screenwidth()-80)}x"
+                        f"{min(740, self.winfo_screenheight()-100)}")
+        body=ttk.Frame(dialog,padding=(14,12))
+        body.pack(fill="both",expand=True)
+        ttk.Label(body,text="CLOSED-LOOP / EXPERIMENT SETUP",
+                  style="Eyebrow.TLabel").grid(
+                  row=0,column=0,columnspan=3,sticky="w",pady=(0,3))
+        ttk.Label(body,text="Gaussian seed → SLM → thin disk → two diagnostic cameras → phase update",
+                  style="Info.TLabel").grid(
+                  row=1,column=0,columnspan=3,sticky="w",pady=(0,10))
+        current=self.yb_pages["Yb:YAG"]["input"].values()
+        specifications=(
+            ("target","Structured target",current["selected_beam"],BEAM_NAMES),
+            ("correction_enabled","Correction enabled","yes",("yes","no")),
+            ("mode","Episode mode","in_situ",("snapshot","in_situ")),
+            ("method","Controller method","interferometric",("interferometric","spgd","response_matrix")),
+            ("enable_material","Crystal/contact variation","yes",("yes","no")),
+            ("enable_slm_error","Imperfect SLM","yes",("yes","no")),
+            ("enable_external_optics","External optical phase","yes",("yes","no")),
+            ("enable_camera_noise","Camera and probe noise","yes",("yes","no")),
+            ("enable_thermal_variation","Changing coolant/pump","yes",("yes","no")),
+            ("coolant_setpoint_C","Coolant setpoint (°C)","20.2",None),
+            ("coolant_jitter_K","Coolant jitter (K RMS)","0.03",None),
+            ("pump_jitter_fraction","Pump power jitter (fraction)","0.005",None),
+            ("pump_radius_jitter_fraction","Pump radius jitter (fraction)","0.003",None),
+            ("pump_pointing_jitter_um","Pump pointing jitter (µm RMS)","5",None),
+            ("camera_read_noise_e","Camera read noise (e⁻ RMS)","3",None),
+            ("camera_background_e","Camera background (e⁻)","2",None),
+            ("camera_gain_jitter_fraction","Exposure gain jitter (fraction)","0.005",None),
+            ("camera_gain_random_walk_per_sqrt_s","Gain drift (fraction/√s)","0.001",None),
+            ("probe_noise_scale","Probe noise multiplier","1",None),
+            ("photodiode_noise_fraction","Photodiode noise (fraction RMS)","0.005",None),
+            ("mode_count","Modal modes (SPGD/matrix)","14",None),
+            ("perturbation_rad","Probe step (rad)","0.08",None),
+            ("spgd_gain","SPGD update gain","0.25",None),
+            ("phase_gain_rad","Interferometric update (rad RMS)","0.12",None),
+            ("phase_smoothing_pixels","Phase-map smoothing (pixels)","0.7",None),
+            ("phase_target_rms_rad","Measured phase target (rad RMS)","0.5",None),
+            ("improvement_tolerance","Camera-loss allowance","0.002",None),
+            ("restore_best_at_end","Recheck best command at end","yes",("yes","no")),
+            ("max_update_rad","Max phase update (rad)","0.4",None),
+            ("iterations","Command update limit","30",None),
+            ("evaluation_limit","Full-solver evaluation limit","400",None),
+            ("diagnostic_astigmatism_waves","Diagnostic astigmatism (waves)","0.25",None),
+            ("slm_delay_s","SLM delay (s)","0.01",None),
+            ("slm_settle_s","SLM settle (s)","0.02",None),
+            ("control_period_s","Measurement period (s)","0.1",None),
+            ("exposure_s","Exposure (s)","0.01",None),
+            ("pump_W","Pump power (W; near-RT start)",
+             str(min(float(current["pump_W"]),.1)),None),
+            ("yb_at_percent","Yb concentration (at.%)",current["yb_at_percent"],None),
+            ("grid_n","Optical grid",current["grid_n"],None),
+            ("operation_duration_s","Thermal warm-up (s; per solve in snapshot)",
+             current["operation_duration_s"],None),
+        )
+        sections=(
+            ("OPTICAL / THERMAL STATE", {
+                "target","mode","enable_material","enable_slm_error",
+                "enable_external_optics","enable_thermal_variation",
+                "coolant_setpoint_C","pump_W","yb_at_percent","grid_n",
+                "operation_duration_s","diagnostic_astigmatism_waves"}),
+            ("MEASUREMENT / DRIFT", {
+                "enable_camera_noise","coolant_jitter_K","pump_jitter_fraction",
+                "pump_radius_jitter_fraction","pump_pointing_jitter_um",
+                "camera_read_noise_e","camera_background_e",
+                "camera_gain_jitter_fraction","camera_gain_random_walk_per_sqrt_s",
+                "probe_noise_scale","photodiode_noise_fraction","exposure_s",
+                "slm_delay_s","slm_settle_s","control_period_s"}),
+            ("CONTROL / LIMITS", {
+                "correction_enabled","method","mode_count","perturbation_rad",
+                "spgd_gain","phase_gain_rad","phase_smoothing_pixels",
+                "phase_target_rms_rad",
+                "improvement_tolerance",
+                "restore_best_at_end","max_update_rad",
+                "iterations","evaluation_limit"}),
+        )
+        variables={}
+        for column,(title,keys) in enumerate(sections):
+            group=ttk.LabelFrame(body,text=title,padding=(10,9))
+            group.grid(row=2,column=column,sticky="nsew",padx=(0,10 if column<2 else 0))
+            group.columnconfigure(0,weight=1)
+            body.columnconfigure(column,weight=1,uniform="experiment")
+            row=0
+            for key,label,default,choices in specifications:
+                if key not in keys:
+                    continue
+                ttk.Label(group,text=label,style="Field.TLabel",wraplength=220).grid(
+                    row=row,column=0,sticky="w",padx=(0,8),pady=4)
+                var=tk.StringVar(value=default)
+                variables[key]=var
+                control=(ttk.Combobox(group,textvariable=var,values=choices,
+                                      state="readonly",width=16)
+                         if choices else ttk.Entry(group,textvariable=var,width=18))
+                control.grid(row=row,column=1,sticky="e",pady=4)
+                row+=1
+        def controller_method_changed(*_):
+            if variables["method"].get()=="spgd":
+                variables["iterations"].set("60")
+                variables["evaluation_limit"].set("400")
+                variables["control_period_s"].set("0.1")
+            elif variables["method"].get()=="interferometric":
+                variables["iterations"].set("30")
+                variables["evaluation_limit"].set("100")
+                variables["control_period_s"].set("0.1")
+            else:
+                variables["iterations"].set("3")
+                variables["evaluation_limit"].set("100")
+                variables["control_period_s"].set("0")
+        variables["method"].trace_add("write",controller_method_changed)
+        ttk.Label(body,text="Current Yb:YAG spectra and thermal properties permit only near-room-temperature states. "
+                  "Changing coolant/pump requires in-situ mode. The worker rejects unsupported hot runs. "
+                  "Interferometric mode uses four phase-stepped exposures and a pixelwise SLM map. "
+                  "At the selected grid the Nyquist spatial frequency is grid_n/(2 × field_size_mm); "
+                  "the proposal's 40 mm⁻¹ needs a finer grid. SPGD and response-matrix modes remain separate.",
+                  wraplength=1250,style="Info.TLabel").grid(
+                      row=3,column=0,columnspan=3,sticky="w",pady=(10,4))
+        def submit():
+            try:
+                config=json.loads((ROOT/"config/ybyag_control.json").read_text(encoding="utf-8"))
+                ep=config["episode"];ctrl=config["controller"]
+                ep.update(target=variables["target"].get(),mode=variables["mode"].get(),
+                    correction_enabled=variables["correction_enabled"].get()=="yes",
+                    enable_material=variables["enable_material"].get()=="yes",
+                    enable_slm_error=variables["enable_slm_error"].get()=="yes",
+                    enable_external_optics=variables["enable_external_optics"].get()=="yes",
+                    enable_camera_noise=variables["enable_camera_noise"].get()=="yes",
+                    enable_thermal_variation=variables["enable_thermal_variation"].get()=="yes",
+                    coolant_setpoint_C=float(variables["coolant_setpoint_C"].get()),
+                    coolant_jitter_K=float(variables["coolant_jitter_K"].get()),
+                    pump_jitter_fraction=float(variables["pump_jitter_fraction"].get()),
+                    pump_radius_jitter_fraction=float(variables[
+                        "pump_radius_jitter_fraction"].get()),
+                    pump_pointing_jitter_um=float(variables["pump_pointing_jitter_um"].get()),
+                    camera_read_noise_e=float(variables["camera_read_noise_e"].get()),
+                    camera_background_e=float(variables["camera_background_e"].get()),
+                    camera_gain_jitter_fraction=float(variables["camera_gain_jitter_fraction"].get()),
+                    camera_gain_random_walk_per_sqrt_s=float(
+                        variables["camera_gain_random_walk_per_sqrt_s"].get()),
+                    probe_noise_scale=float(variables["probe_noise_scale"].get()),
+                    photodiode_noise_fraction=float(variables["photodiode_noise_fraction"].get()),
+                    pump_W=float(variables["pump_W"].get()),
+                    yb_at_percent=float(variables["yb_at_percent"].get()),
+                    grid_n=int(variables["grid_n"].get()),
+                    operation_duration_s=float(variables["operation_duration_s"].get()),
+                    diagnostic_astigmatism_waves=float(variables["diagnostic_astigmatism_waves"].get()),
+                    slm_delay_s=float(variables["slm_delay_s"].get()),
+                    slm_settle_s=float(variables["slm_settle_s"].get()),
+                    control_period_s=float(variables["control_period_s"].get()),
+                    slm_drift_fraction_per_sqrt_s=(0.0005 if variables["method"].get() in ("spgd","interferometric")
+                                                  else 0.),
+                    exposure_s=float(variables["exposure_s"].get()),
+                    thickness_um=float(current["thickness_um"]),
+                    pump_radius_mm=float(current["radius_mm"]),
+                    disk_radius_mm=float(current["disk_radius_mm"]),
+                    waist_mm=float(current["waist_mm"]),
+                    seed_energy_nj=float(current["seed_energy_nj"]),
+                    seed_fwhm_ps=float(current["seed_fwhm_ps"]),
+                    repetition_rate_kHz=float(current["repetition_rate_kHz"]),
+                    pump_passes=int(current["pump_passes"]),
+                    signal_traversals=int(current["signal_traversals"]),
+                    field_size_mm=float(current["field_size_mm"]))
+                ctrl.update(method=variables["method"].get(),
+                    mode_count=int(variables["mode_count"].get()),
+                    perturbation_rad=float(variables["perturbation_rad"].get()),
+                    spgd_gain=float(variables["spgd_gain"].get()),
+                    phase_gain_rad=float(variables["phase_gain_rad"].get()),
+                    phase_smoothing_pixels=float(variables["phase_smoothing_pixels"].get()),
+                    phase_target_rms_rad=float(variables["phase_target_rms_rad"].get()),
+                    improvement_tolerance=float(variables["improvement_tolerance"].get()),
+                    restore_best_at_end=variables["restore_best_at_end"].get()=="yes",
+                    max_update_rad=float(variables["max_update_rad"].get()),
+                    iterations=int(variables["iterations"].get()),
+                    evaluation_limit=int(variables["evaluation_limit"].get()))
+                from ybyag_control.adapter import EpisodeConfig
+                from ybyag_control import ControllerConfig
+                EpisodeConfig(**ep);ControllerConfig(**ctrl)
+            except (OSError,ValueError,KeyError) as exc:
+                messagebox.showerror("Invalid correction settings",str(exc),parent=dialog)
+                return
+            run_id=time.strftime("%Y%m%d_%H%M%S")+"_"+uuid.uuid4().hex[:8]
+            directory=ROOT/"results/ybyag_control"/run_id
+            directory.mkdir(parents=True,exist_ok=True)
+            request=directory/"controller_config.json"
+            request.write_text(json.dumps(config,indent=2),encoding="utf-8")
+            dialog.destroy()
+            self.control_progress_path=directory/"progress.json"
+            self.control_progress_mtime=None
+            def task():
+                result_path=run_bounded_episode(request,directory,cancel=self.cancel_event)
+                return "control",directory,json.loads(result_path.read_text(encoding="utf-8"))
+            self.start(task,cancellable=True)
+            self.after(400,self._poll_control_progress)
+        ttk.Button(body,text="Run bounded correction",style="Accent.TButton",
+                   command=submit).grid(row=4,column=2,sticky="e",pady=(12,0))
 
     def failed(self, error):
         self._enable_controls()

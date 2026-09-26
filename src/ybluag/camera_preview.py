@@ -14,6 +14,7 @@ from scipy.ndimage import gaussian_filter
 from hoyag.propagation import Grid2D, angular_spectrum_propagate
 from ybyag_dataset.distortions.camera import capture
 from ybluag.camera_dataset import CameraSettings
+from ybluag.phase_diagnostics import piston_removed_residual
 
 
 @dataclass(frozen=True)
@@ -100,11 +101,16 @@ def preview_frame(result: dict, settings: PreviewSettings):
         screen -= screen[pupil].mean()
         screen_rms = float(np.sqrt(np.mean(screen[pupil]**2)))
         phase_waves += settings.residual_rms_waves*screen/max(screen_rms, 1e-12)
-    field = np.sqrt(fluence)*np.exp(1j*(phase+2*np.pi*phase_waves))
+    reference_field = np.sqrt(fluence)*np.exp(1j*phase)
+    field = reference_field*np.exp(2j*np.pi*phase_waves)
     wavelength_m = float(result["signal_wavelength_nm"])*1e-9
     if settings.focus_offset_mm:
         field = angular_spectrum_propagate(field, grid, wavelength_m,
                                            settings.focus_offset_mm*1e-3)
+        reference_field = angular_spectrum_propagate(
+            reference_field, grid, wavelength_m, settings.focus_offset_mm*1e-3)
+    residual_phase_rad, residual_rms_rad = piston_removed_residual(
+        field, reference_field)
     repetition_rate_hz = (float(result["average_output_W"])/
                           float(result["output_energy_J"]))
     camera = CameraSettings(
@@ -135,5 +141,9 @@ def preview_frame(result: dict, settings: PreviewSettings):
         abs(field)**2, x, y, wavelength_m, camera, setup, settings.seed+1)
     diagnostics.update(pupil_radius_mm=pupil_radius_m*1e3,
                        phase_screen_rms_waves=settings.residual_rms_waves,
+                       residual_phase_rad=residual_phase_rad,
+                       residual_phase_rms_rad=residual_rms_rad,
+                       residual_phase_extent_mm=(float(x[0]*1e3), float(x[-1]*1e3),
+                                                 float(y[0]*1e3), float(y[-1]*1e3)),
                        output_energy_J=float(np.sum(abs(field)**2)*grid.dx*grid.dy))
     return adu, clean, diagnostics

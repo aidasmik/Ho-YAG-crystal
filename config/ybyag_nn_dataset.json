@@ -65,7 +65,7 @@
     "camera_scale_fraction": 0.002,
     "probe_noise_K": [0.1, 0.5],
     "probe_bias_K": 0.25,
-    "probe_drift_K_per_s": 0.001,
+    "probe_drift_K_per_sqrt_s": 0.001,
     "probe_response_time_s": [0.03, 0.3],
     "probe_position_uncertainty_mm": 0.1,
     "probe_dropout_probability": 0.01,

@@ -14,6 +14,7 @@ import matplotlib.patheffects as path_effects
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
 from ybluag_camera_preview_view import CameraPreviewPanel
+from ybyag_control_view import ControlResultPanel
 
 
 def _array(value):
@@ -29,26 +30,29 @@ class YbResultPanel(ttk.Frame):
     """Solver output organized as native plots and readable scientific metrics."""
 
     NAMES = ("Overview", "Beam and profiles", "Beam on crystal", "Phase and Yb", "Gain and pulse",
-             "Cooling timeline", "Thermal surfaces", "Camera preview")
+             "Cooling timeline", "Thermal surfaces", "Camera preview", "Correction loop")
 
     def __init__(self, parent):
         super().__init__(parent)
         self.provenance = tk.StringVar(value="Run a simulation to display calculated fields")
         self.model_note = tk.StringVar(value="Spectra reconstructed from figures; generic copper assembly is uncalibrated.")
-        top = ttk.Frame(self, padding=(12, 12, 12, 4))
+        top = ttk.Frame(self, padding=(12, 9, 12, 4))
         top.pack(fill="x")
         ttk.Label(top, textvariable=self.provenance, style="Eyebrow.TLabel").pack(anchor="w")
-        cards = ttk.Frame(top)
-        cards.pack(fill="x", pady=(8, 7))
+        cards = ttk.Frame(top, style="Panel.TFrame", padding=(7, 4))
+        cards.pack(fill="x", pady=(7, 7))
         self.metrics = {}
         for column, label in enumerate(("OUTPUT ENERGY", "ENERGY GAIN", "AVERAGE OUTPUT", "DISK HEAT")):
-            card = ttk.Frame(cards, style="Card.TFrame", padding=(12, 9))
-            card.grid(row=0, column=column, sticky="nsew", padx=(0, 7))
-            cards.columnconfigure(column, weight=1, uniform="metric")
+            card = ttk.Frame(cards, style="Panel.TFrame", padding=(10, 4))
+            card.grid(row=0, column=2*column, sticky="nsew")
+            cards.columnconfigure(2*column, weight=1, uniform="metric")
             ttk.Label(card, text=label, style="Card.TLabel").pack(anchor="w")
             variable = tk.StringVar(value="—")
             ttk.Label(card, textvariable=variable, style="Metric.TLabel").pack(anchor="w")
             self.metrics[label] = variable
+            if column < 3:
+                ttk.Separator(cards, orient="vertical").grid(
+                    row=0, column=2*column+1, sticky="ns", pady=5)
         ttk.Label(top, textvariable=self.model_note, wraplength=1000,
                   foreground="#855515").pack(anchor="w", pady=(0, 5))
         viewbar = ttk.Frame(top)
@@ -72,6 +76,7 @@ class YbResultPanel(ttk.Frame):
         self.toolbars = {}
         self.overview = None
         self.camera_preview = None
+        self.control_view = None
         for name in self.NAMES:
             frame = ttk.Frame(self.tabs)
             self.tabs.add(frame, text=name)
@@ -87,6 +92,9 @@ class YbResultPanel(ttk.Frame):
             elif name == "Camera preview":
                 self.camera_preview = CameraPreviewPanel(frame)
                 self.camera_preview.pack(fill="both", expand=True)
+            elif name == "Correction loop":
+                self.control_view = ControlResultPanel(frame)
+                self.control_view.pack(fill="both", expand=True)
             else:
                 if name == "Phase and Yb":
                     choice = ttk.Combobox(frame, textvariable=self.phase_view,
@@ -207,9 +215,16 @@ class YbResultPanel(ttk.Frame):
                            "Gain and pulse", "Thermal surfaces"))
             self._structured()
         else:
-            self._visible(self.NAMES)
+            shown=(self.NAMES if result.get("material")=="Yb:YAG" else
+                   tuple(name for name in self.NAMES if name!="Correction loop"))
+            self._visible(shown)
             self._pulsed()
             self.camera_preview.set_result(result)
+
+    def load_control(self, result):
+        self.tabs.tab(self.frames["Correction loop"], state="normal")
+        self.control_view.load(result)
+        self.tabs.select(self.frames["Correction loop"])
 
     def _map(self, ax, values, title, x=None, y=None, *, cmap="viridis", vmin=None, vmax=None,
              disk=False):

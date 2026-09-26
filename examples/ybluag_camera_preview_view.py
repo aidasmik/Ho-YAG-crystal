@@ -6,12 +6,15 @@ from queue import Empty, Queue
 import threading
 import tkinter as tk
 from tkinter import ttk
+import numpy as np
 
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 
 from ybluag.camera_preview import PreviewSettings, preview_frame
 from ybluag.camera_dataset import CameraSettings, suggest_optical_throughput
+from beam_profile_view import add_camera_profiles
+from scientific_style import PAPER
 
 
 class CameraPreviewPanel(ttk.Frame):
@@ -63,18 +66,20 @@ class CameraPreviewPanel(ttk.Frame):
         self.values = {f.name: tk.StringVar(value=str(getattr(PreviewSettings(), f.name)))
                        for f in fields(PreviewSettings)}
         self.status = tk.StringVar(value="Run a pulsed simulation to preview its camera image.")
-        left = ttk.Frame(self, width=255)
+        left = ttk.Frame(self, width=290)
         left.pack(side="left", fill="y", padx=(8, 0), pady=8)
         left.pack_propagate(False)
-        ttk.Label(left, text="CAMERA PREVIEW", style="Eyebrow.TLabel").pack(anchor="w")
-        ttk.Label(left, text="Adjust downstream optics and detector settings. The saved laser state stays fixed.",
-                  wraplength=238, style="Input.TLabel").pack(anchor="w", pady=(5, 8))
+        ttk.Label(left, text="DETECTOR / OPTICS", style="Eyebrow.TLabel").pack(anchor="w")
+        ttk.Label(left, text="Adjust downstream optics and sensor response; the laser solution stays fixed.",
+                  wraplength=265, style="Info.TLabel").pack(anchor="w", pady=(5, 8))
+        ttk.Separator(left, orient="horizontal").pack(fill="x", pady=(0, 8))
         buttons = ttk.Frame(left)
         buttons.pack(fill="x")
-        self.render_button = ttk.Button(buttons, text="Render camera", command=self.render)
+        self.render_button = ttk.Button(buttons, text="Render camera",
+                                        style="Accent.TButton", command=self.render)
         self.render_button.pack(side="left", fill="x", expand=True)
         ttk.Button(buttons, text="New noise", command=self.new_noise).pack(side="left", padx=(4, 0))
-        canvas = tk.Canvas(left, highlightthickness=0, width=234)
+        canvas = tk.Canvas(left, highlightthickness=0, width=274, background=PAPER)
         scroll = ttk.Scrollbar(left, orient="vertical", command=canvas.yview)
         body = ttk.Frame(canvas)
         body.bind("<Configure>", lambda *_: canvas.configure(scrollregion=canvas.bbox("all")))
@@ -84,15 +89,20 @@ class CameraPreviewPanel(ttk.Frame):
         canvas.pack(side="left", fill="both", expand=True, pady=(8, 0))
         scroll.pack(side="right", fill="y", pady=(8, 0))
         for heading, keys in self.GROUPS:
-            group = ttk.LabelFrame(body, text=heading, padding=7)
-            group.pack(fill="x", pady=(0, 8))
-            for key in keys:
-                ttk.Label(group, text=self.LABELS[key], style="Input.TLabel").pack(anchor="w")
-                ttk.Entry(group, textvariable=self.values[key], width=21).pack(fill="x", pady=(0, 6))
+            group = ttk.LabelFrame(body, text=heading.upper(), padding=(8, 7))
+            group.pack(fill="x", pady=(0, 10))
+            group.columnconfigure(0, weight=1)
+            for row, key in enumerate(keys):
+                ttk.Label(group, text=self.LABELS[key], style="Field.TLabel",
+                          wraplength=160).grid(row=row, column=0, sticky="w",
+                                               padx=(0, 6), pady=3)
+                ttk.Entry(group, textvariable=self.values[key], width=11).grid(
+                    row=row, column=1, sticky="e", pady=3)
         right = ttk.Frame(self)
         right.pack(side="left", fill="both", expand=True, padx=8, pady=8)
-        ttk.Label(right, textvariable=self.status, wraplength=780).pack(fill="x", pady=(0, 5))
-        self.figure = Figure(figsize=(11, 6), dpi=100, constrained_layout=True)
+        ttk.Label(right, textvariable=self.status, style="Info.TLabel",
+                  wraplength=900).pack(fill="x", pady=(0, 5))
+        self.figure = Figure(figsize=(15, 6), dpi=100, constrained_layout=True)
         self.canvas = FigureCanvasTkAgg(self.figure, master=right)
         self.canvas.get_tk_widget().pack(fill="both", expand=True)
         ax = self.figure.subplots()
@@ -171,26 +181,39 @@ class CameraPreviewPanel(ttk.Frame):
             return
         adu, clean, diagnostics = frame
         self.figure.clear()
-        left, right = self.figure.subplots(1, 2)
-        stride = 2  # Display at 960 × 540; the detector calculation is 1920 × 1080.
-        left.imshow(clean[::stride, ::stride], origin="lower", cmap="inferno",
-                    interpolation="nearest")
-        right.imshow(adu[::stride, ::stride], origin="lower", cmap="gray",
-                     vmin=0, vmax=2**12-1, interpolation="nearest")
-        left.set_title("Clean camera-plane fluence (J/m²)")
-        right.set_title("CCD observation (12-bit ADU)")
-        for ax in (left, right):
-            ax.set_xlabel("Camera x")
-            ax.set_ylabel("Camera y")
-            ax.set_xticks([])
-            ax.set_yticks([])
+        slots=self.figure.add_gridspec(1,3,wspace=.27)
+        add_camera_profiles(self.figure,slots[0,0],clean,
+            "Clean camera-plane fluence",fov_width_mm=settings.fov_width_mm,
+            unit="J/m²",cmap="inferno",display_stride=2)
+        add_camera_profiles(self.figure,slots[0,1],adu,
+            "CCD observation (12-bit ADU)",fov_width_mm=settings.fov_width_mm,
+            baseline=32.,unit="ADU",cmap="gray",vmax=2**12-1,
+            display_stride=2)
+        phase = np.asarray(diagnostics["residual_phase_rad"], float)
+        phase_ax = self.figure.add_subplot(slots[0,2])
+        phase_image = phase_ax.imshow(
+            phase, origin="lower", cmap="twilight", vmin=-np.pi, vmax=np.pi,
+            extent=diagnostics["residual_phase_extent_mm"], interpolation="nearest",
+        )
+        camera_height_mm = settings.fov_width_mm * adu.shape[0] / adu.shape[1]
+        phase_ax.set_xlim(-settings.fov_width_mm/2, settings.fov_width_mm/2)
+        phase_ax.set_ylim(-camera_height_mm/2, camera_height_mm/2)
+        phase_ax.set_xlabel("x (mm)")
+        phase_ax.set_ylabel("y (mm)")
+        phase_ax.set_title("Added phase residual (simulation truth)", fontsize=11)
+        self.figure.colorbar(phase_image, ax=phase_ax, label="Phase error (rad)",
+                             shrink=.7)
         self.canvas.draw_idle()
         self.rendered_generation = generation
         self.status.set(
             f"1920 × 1080 detector · {settings.pulses_per_exposure} pulses · "
             f"peak {diagnostics['expected_electron_peak']:.0f} e⁻ · "
             f"saturated {100*diagnostics['saturated_fraction']:.3f}% · "
+            f"added phase RMS {diagnostics['residual_phase_rms_rad']:.3g} rad · "
             f"saved output energy {diagnostics['output_energy_J']*1e9:.3g} nJ. "
-            "External optics and sensor preview only; laser state is unchanged."
+            "Top/right curves are mean x/y profiles (camera black level removed). "
+            "Residual phase compares the camera-plane field with the saved field "
+            "propagated to the same plane; the CCD does not measure phase. "
+            "Laser state is unchanged."
             + (" Saved hot phase is unavailable; this camera image uses the cold optical output."
                if self.result.get("hot_phase_validity") == "outside_supported_conditions" else ""))

@@ -45,6 +45,15 @@ combined Yb and Ho desktop calculator with Ho selected first.
 
 After a pulsed Yb result, **Export camera data (1080p)…** generates bounded,
 reproducible monochrome frames with sensor noise and separate optical truth.
+The **Camera preview** shows the clean fluence, noisy CCD image, beam profiles,
+and the added phase residual against the saved field at the same camera plane.
+The Yb:YAG **Correction loop** shows diagnostic-camera profiles and the output
+phase residual against a uniform, cold-phase target during fitting and replay.
+Its interferometric mode reconstructs a measured phase from four phase-shifted
+camera exposures; the separate truth phase and ideal-compensation maps come
+from the simulator and are never passed to the controller. SPGD remains a
+separate chronological mode that records noisy updates and regressions.
+See [the correction physics and code map](docs/YBYAG_CLOSED_LOOP.md).
 See [camera data options and limitations](docs/YB_CAMERA_DATASET.md).
 The Yb:YAG tab also offers a [grouped physical-disturbance NN dataset generator](docs/YBYAG_NN_DATASET.md)
 with fresh solver runs, two camera planes and separate train/validation/test setups.
@@ -500,3 +509,10 @@ oscillator. This is an estimate rather than a complete seeded amplifier or
 self-consistent cavity solution. It is bounded by the local supervisor and
 can take substantially longer. The supervisor records each run and enforces
 its own time and memory limits without a cumulative attempt limit.
+
+# Yb:YAG closed-loop correction
+
+The native Yb:YAG tab includes a bounded measurement-only structured-light
+correction episode with physical forward solves and correction playback. See
+[Yb:YAG closed-loop instructions](docs/YBYAG_CLOSED_LOOP.md) for controls,
+run commands, validation metrics and model limits.

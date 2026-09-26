@@ -96,6 +96,11 @@ def _phase_target(result, desired_disk_field, grid, wavelength_m,
     return correction, disk_phase
 
 
+def absolute_oracle_command(target_phase,correction_phase):
+    """Compose the intentional structure with an absolute oracle correction."""
+    return np.mod(np.asarray(target_phase)+np.asarray(correction_phase),2*np.pi)
+
+
 def _plot_validation(path, arrays, sensor):
     fig, axes = plt.subplots(4,3,figsize=(13,14),constrained_layout=True)
     panels = [
@@ -361,7 +366,10 @@ def generate(config_path, output_dir, *, split_counts=None, points_per_setup=1,
                 slm_valid=np.exp(-2*(x*x+y*y)/settings.waist_m**2) >= 1e-3
                 correction=np.where(slm_valid,correction,0.)
                 previous_oracle_correction=correction.copy()
-                corrected_command=np.mod(requested+correction,2*np.pi)
+                # The oracle returns an absolute correction relative to the
+                # intentional target. `requested` may already contain the
+                # previous point's oracle, so adding it here double-counts.
+                corrected_command=absolute_oracle_command(target_phase,correction)
                 corrected_slm,_=apply_slm(corrected_command,slm_setup,
                     drift_fraction=ranges["slm_drift_fraction_per_s"]*elapsed)
                 corrected=simulate_pulsed_seed(material,settings,nominal["selected_beam"],

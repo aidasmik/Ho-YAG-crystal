@@ -7,7 +7,7 @@ import pytest
 from ybyag import YbYAGMaterial
 from ybyag import material_data
 from ybluag.model import YbLuAGMaterial, H, C
-from ybluag.gallery import YbGallerySettings, _assembly_configuration
+from ybluag.gallery import YbGallerySettings, _assembly_configuration, simulate_pulsed_seed
 from ybluag.fluorescence import fluorescence_spectrum
 from ybluag.regenerative import RegenerativeCavity
 from hoyag.propagation import Grid2D
@@ -128,3 +128,28 @@ def test_yag_desktop_payload_and_plain_cw():
     assert cw['material'] == 'Yb:YAG'
     assert cw['wavelength_nm'][0] == 905
     assert cw['signal_out_W'] > 0
+
+
+def test_cold_thickness_and_rear_surface_phase_are_per_traversal():
+    material = YbYAGMaterial()
+    settings = YbGallerySettings(grid_n=32, z_steps=1, pump_power_W=.01)
+    thickness_scale = np.ones((32, 32))
+    thickness_scale[16, 16] = 1.01
+    rear_height = np.zeros((32, 32))
+    rear_height[16, 16] = 10e-9
+    result = simulate_pulsed_seed(
+        material, settings, 'Gaussian TEM00', 10e-9, 10e-12, 10_000, 2, 2,
+        compute_thermal=False,
+        dataset_physical={
+            'thickness_scale': thickness_scale,
+            'surface_figure_m': rear_height,
+        },
+    )
+    wavelength_m = material.signal_wavelength_nm * 1e-9
+    thickness_error_m = .01 * settings.thickness_m
+    expected_opd_per_traversal_m = (
+        (material.cavity_phase_index - 1) * thickness_error_m + 10e-9
+    )
+    assert result['static_cold_phase_rad'][16, 16] == pytest.approx(
+        2 * np.pi * expected_opd_per_traversal_m / wavelength_m
+    )

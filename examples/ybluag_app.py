@@ -463,7 +463,8 @@ def calculate_pulsed(data, *, compute_thermal=True, summary_only=False):
         thickness_m=settings.thickness_m)
     return {
         **{key: jsonable(value) for key, value in result.items()
-           if key not in ("grid", "output_complex_field_sqrt_J_m")},
+           if key not in ("grid", "output_complex_field_sqrt_J_m",
+                          "cold_output_complex_field_sqrt_J_m")},
         "material": material.name,
         "material_status": material_status(material),
         "scope": result["scope"].replace("Yb:LuAG", material.name),

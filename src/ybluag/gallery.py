@@ -29,7 +29,8 @@ from .model import H, C, YbLuAGMaterial, trapezoid
 from .assembly import (solve_yb_assembly, solve_yb_cooler_temperature,
                        yb_cooler_solver)
 from .pulsed import propagate_pulse
-from .multipass_pump import recover_pumped_population, steady_multipass_pump, transport_multipass_pump
+from .multipass_pump import (pump_backend_name, recover_pumped_population,
+                             steady_multipass_pump, transport_multipass_pump)
 from .beam_shaping import gaussian_seed_and_target_mask
 from .regenerative import RegenerativeCavity, amplify_regenerative
 from .field_metrics import coherent_overlap, intensity_overlap as field_intensity_overlap
@@ -392,7 +393,8 @@ def _pulsed_thermal_timeline(mesh, heat_polar, grid, configuration, duration_s,
                              cooling_mode="fixed", cooling_target_C=40.0,
                              cooling_h_max_W_m2K=100000.0,
                              internal_max_step_s=10.0, temperature_probes=None,
-                             probe_seed=0, initial_temperature_fields=None):
+                             probe_seed=0, initial_temperature_fields=None,
+                             include_stabilization=True):
     """Thermal internal steps independent of the scheduled output times.
 
     Optical heat is an explicitly quasi-steady periodic source. The initial
@@ -430,25 +432,32 @@ def _pulsed_thermal_timeline(mesh, heat_polar, grid, configuration, duration_s,
                          if probe.region == "disk" and not probe.missing]
         return max(disk_readings) if disk_readings else bath
 
-    # The sensor steady reference uses noiseless settled readings with fixed
-    # calibration bias. Transient control below uses only delivered readings.
-    if cooling_mode in ("feedback", "sensor_feedback"):
-        low, high = h_min, cooling_h_max_W_m2K
-        for _ in range(20):
-            mid = 0.5 * (low + high)
-            candidate = solver_at(mid).steady(heat_polar)
-            observation = control_observation(candidate.disk_temperature_K,
-                                              candidate.plate_temperature_K)
-            if mid < command_h(observation):
-                low = mid
-            else:
-                high = mid
-        steady_h = 0.5 * (low + high)
-    else:
-        steady_h = h_min
-    steady = solver_at(steady_h).steady(heat_polar)
-    steady_disk_max_C = float(np.max(steady.disk_temperature_K) - 273.15)
-    tolerance_K = max(0.05, 0.005 * max(steady_disk_max_C - (bath - 273.15), 0))
+    # A controller observation only needs the state at duration_s. Do not
+    # solve a counterfactual steady state or future continuation for it.
+    steady_h = None
+    steady = None
+    steady_disk_max_C = None
+    tolerance_K = None
+    if include_stabilization:
+        # The sensor steady reference uses noiseless settled readings with
+        # fixed calibration bias. Transient control uses delivered readings.
+        if cooling_mode in ("feedback", "sensor_feedback"):
+            low, high = h_min, cooling_h_max_W_m2K
+            for _ in range(20):
+                mid = 0.5 * (low + high)
+                candidate = solver_at(mid).steady(heat_polar)
+                observation = control_observation(candidate.disk_temperature_K,
+                                                  candidate.plate_temperature_K)
+                if mid < command_h(observation):
+                    low = mid
+                else:
+                    high = mid
+            steady_h = 0.5 * (low + high)
+        else:
+            steady_h = h_min
+        steady = solver_at(steady_h).steady(heat_polar)
+        steady_disk_max_C = float(np.max(steady.disk_temperature_K) - 273.15)
+        tolerance_K = max(0.05, 0.005 * max(steady_disk_max_C - (bath - 273.15), 0))
     solver = initial_solver
     if initial_temperature_fields is None:
         disk = np.full(mesh.shape, bath)
@@ -465,22 +474,32 @@ def _pulsed_thermal_timeline(mesh, heat_polar, grid, configuration, duration_s,
     x, y = grid.mesh
     inside = x*x + y*y <= configuration["geometry"]["disk_radius_m"]**2
     startup = np.geomspace(min(2.5e-5, duration_s / 1000), duration_s, 16)
-    end_s = max(30.0, min(300.0, 10 * duration_s))
-    continuation = np.geomspace(duration_s * 1.5, end_s, 10) if end_s > duration_s * 1.5 else np.array([])
+    end_s = max(30.0, min(300.0, 10 * duration_s)) if include_stabilization else duration_s
+    continuation = (np.geomspace(duration_s * 1.5, end_s, 10)
+                    if end_s > duration_s * 1.5 else np.array([]))
     times = np.r_[0.0, startup, continuation]
-    max_temperature = [float(np.max(disk)-273.15)]
-    initial_assembly=solve_yb_assembly(mesh,heat_polar,grid,configuration,
-        temperature=SimpleNamespace(disk_temperature_K=disk,
-                                    plate_temperature_K=plate),allow_extrapolation=True)
-    opd_pv = [float(np.ptp(initial_assembly.screens.mean_roundtrip_opd_m[inside])*1e9)]
-    front_pv = [float(np.ptp(initial_assembly.screens.front_uz_m[inside])*1e9)]
-    valid = [initial_assembly.material_range_valid]
-    conductance = [h_min]
+    if include_stabilization:
+        initial_assembly=solve_yb_assembly(mesh,heat_polar,grid,configuration,
+            temperature=SimpleNamespace(disk_temperature_K=disk,
+                                        plate_temperature_K=plate),allow_extrapolation=True)
+        max_temperature = [float(np.max(disk)-273.15)]
+        opd_pv = [float(np.ptp(initial_assembly.screens.mean_roundtrip_opd_m[inside])*1e9)]
+        front_pv = [float(np.ptp(initial_assembly.screens.front_uz_m[inside])*1e9)]
+        valid = [initial_assembly.material_range_valid]
+        conductance = [h_min]
+    else:
+        # Transient heat transport still takes every internal step. The
+        # quasistatic elastic solve does not feed back into temperature, so
+        # only the observation-time displacement and OPD are needed.
+        initial_assembly = None
+        max_temperature, opd_pv, front_pv, valid, conductance = [], [], [], [], []
     balance = []
     internal_steps = 0
     largest_internal_step = 0.0
-    latest_valid = initial_assembly if initial_assembly.material_range_valid else None
+    latest_valid = (initial_assembly if initial_assembly is not None and
+                    initial_assembly.material_range_valid else None)
     latest_valid_time = 0.0
+    intermediate_states_valid = bool(293.15 <= np.min(disk) and np.max(disk) <= 300.0)
     requested = None
     stabilized_at = None
     for previous, now in zip(times[:-1], times[1:]):
@@ -502,6 +521,8 @@ def _pulsed_thermal_timeline(mesh, heat_polar, grid, configuration, duration_s,
                 solver = solver_at(h)
             step = solver.advance(disk, plate, heat_polar, dt)
             disk, plate = step.disk_temperature_K, step.plate_temperature_K
+            intermediate_states_valid &= bool(293.15 <= np.min(disk) and
+                                              np.max(disk) <= 300.0)
             new_samples = probes.advance(float(previous+(substep+1)*dt),
                                          disk, plate)
             probe_samples.extend(new_samples)
@@ -509,6 +530,8 @@ def _pulsed_thermal_timeline(mesh, heat_polar, grid, configuration, duration_s,
             internal_steps += 1
             largest_internal_step = max(largest_internal_step, dt)
             balance.append(step.relative_balance_error)
+        if not include_stabilization and not np.isclose(now, duration_s, rtol=0, atol=1e-12):
+            continue
         assembly = solve_yb_assembly(mesh, heat_polar, grid, configuration,
                                      temperature=step, allow_extrapolation=True)
         screen = assembly.screens.mean_roundtrip_opd_m[inside]
@@ -523,13 +546,14 @@ def _pulsed_thermal_timeline(mesh, heat_polar, grid, configuration, duration_s,
         if assembly.material_range_valid:
             latest_valid = assembly
             latest_valid_time = float(now)
-        if (now >= duration_s and
+        if (include_stabilization and now >= duration_s and
                 np.max(np.abs(disk - steady.disk_temperature_K)) <= tolerance_K and
                 np.max(np.abs(plate - steady.plate_temperature_K)) <= tolerance_K and
                 abs(h - steady_h) <= max(1.0, 0.01 * steady_h)):
             stabilized_at = float(now)
             break
-    times = times[:len(max_temperature)]
+    times = (times[:len(max_temperature)] if include_stabilization else
+             np.asarray([duration_s]))
     requested_valid = requested.material_range_valid
     return {
         "time_s": times, "disk_max_C": np.asarray(max_temperature),
@@ -546,11 +570,13 @@ def _pulsed_thermal_timeline(mesh, heat_polar, grid, configuration, duration_s,
         "requested_disk_temperature_K": requested.temperature.disk_temperature_K,
         "requested_plate_temperature_K": requested.temperature.plate_temperature_K,
         "requested_material_range_valid": requested_valid,
+        "all_intermediate_material_states_valid": intermediate_states_valid,
         "steady_disk_max_C": steady_disk_max_C,
         "steady_coolant_conductance_W_m2K": steady_h,
         "stabilization_tolerance_K": tolerance_K,
         "stabilization_time_s": stabilized_at,
         "stabilized": stabilized_at is not None,
+        "stabilization_status": ("evaluated" if include_stabilization else "not_requested"),
         "energy_balance_relative_max": float(max(balance)),
         "internal_steps": internal_steps,
         "internal_max_step_s": internal_max_step_s,
@@ -582,7 +608,10 @@ def _pulsed_thermal_timeline(mesh, heat_polar, grid, configuration, duration_s,
                   "The optional flow controller changes only the water-side conductance; its slope and "
                   "instantaneous response are assumptions. The fixed-temperature coolant bath is idealized. "
                   "Results outside the currently supported 20–26.85 °C thermo-mechanical parameter "
-                  "range are unvalidated extrapolations, not crystal failure claims or device predictions."),
+                  "range are unvalidated extrapolations, not crystal failure claims or device predictions. "
+                  + ("Mechanical/OPD history and steady stabilization were calculated."
+                     if include_stabilization else
+                     "Only observation-time mechanics/OPD were calculated; thermal and sensor stepping remain resolved.")),
     }
 
 
@@ -944,6 +973,7 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
                          regenerative_cavity: RegenerativeCavity | None = None,
                          thermal_optical_mode: str = "lumped_phase",
                          thermal_internal_max_step_s: float = 10.0,
+                         thermal_timeline_mode: str = "full",
                          temperature_probes=None, probe_seed: int = 0,
                          static_cold_phase_rad=None,
                          slm_correction_phase_rad=None,
@@ -972,10 +1002,15 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
             not 10000 <= cooling_h_max_W_m2K <= 200000 or
             architecture not in ("ideal_multipass", "regenerative") or
             thermal_optical_mode not in ("cold", "lumped_phase", "coupled_steady") or
+            thermal_timeline_mode not in ("full", "requested_only") or
             not np.isfinite(thermal_internal_max_step_s) or
             thermal_internal_max_step_s <= 0 or
             not isinstance(probe_seed, int)):
         raise ValueError("invalid pulsed seed settings")
+    if (thermal_timeline_mode == "requested_only" and
+            (not compute_thermal or thermal_optical_mode != "lumped_phase" or
+             operation_duration_s <= 0)):
+        raise ValueError("requested-only thermal mode requires a transient lumped-phase solve")
     if (architecture == "regenerative" and regenerative_cavity is not None and
             not np.isclose(regenerative_cavity.disk_diameter_m,
                            2*settings.disk_radius_m, rtol=0, atol=1e-12)):
@@ -1043,13 +1078,19 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
         raise ValueError("static cold phase must be a finite disk-plane map")
     if "thickness_scale" in perturb:
         delta_thickness = settings.thickness_m*(optical_map("thickness_scale")-1)
+        # One encounter is one crystal traversal. The air-referenced OPD of
+        # one traversal is (n-1) times the thickness error; the previous
+        # factor of two was the *round-trip* OPD and doubled this phase.
         static_phase = static_phase + disk_mask*(2*np.pi/(material.signal_wavelength_nm*1e-9)*
-                                       2*(material.cavity_phase_index-1)*delta_thickness)
+                                       (material.cavity_phase_index-1)*delta_thickness)
     if "surface_figure_m" in perturb:
         height = np.asarray(perturb["surface_figure_m"], float)
         if height.shape != grid.shape or not np.all(np.isfinite(height)):
             raise ValueError("surface figure must match optical grid in metres")
-        static_phase = static_phase + disk_mask*4*np.pi*height/(material.signal_wavelength_nm*1e-9)
+        # Interpret surface_figure_m as rear-HR displacement. Reflection
+        # contributes 2h of OPD per two crystal traversals, or h per
+        # encounter in this symmetric thin-disk approximation.
+        static_phase = static_phase + disk_mask*2*np.pi*height/(material.signal_wavelength_nm*1e-9)
     static_opd = static_phase*(material.signal_wavelength_nm*1e-9)/(2*np.pi)
     correction_phase = (np.zeros(grid.shape) if slm_correction_phase_rad is None else
                         np.asarray(slm_correction_phase_rad, dtype=float))
@@ -1242,19 +1283,24 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
                                     nphi=settings.thermal_nphi,
                                     radius_m=settings.disk_radius_m, thickness_m=settings.thickness_m)
         heat_polar = _conservative_heat_polar(heat_slices, grid, mesh)
-        cooler_sensitivity = _fixed_heat_cooler_sensitivity(
-            mesh, heat_polar, configuration)
-        try:
-            thermal = _thermal_or_design_reference(
-                mesh, heat_polar, grid, configuration,
-                ("Periodic pump and signal heat on generic C10100 copper; scalar optical path "
-                 "and surface deformation; photoelasticity omitted. The regenerative pump "
-                 "transport is recomputed during recovery."
-                 if architecture == "regenerative" else
-                 "Fixed pump-profile periodic heat on generic C10100 copper; scalar optical "
-                 "path and surface deformation; photoelasticity omitted."))
-        except ValueError as exc:
-            thermal = _empty_thermal("out_of_scope", str(exc))
+        if thermal_timeline_mode == "full":
+            cooler_sensitivity = _fixed_heat_cooler_sensitivity(
+                mesh, heat_polar, configuration)
+            try:
+                thermal = _thermal_or_design_reference(
+                    mesh, heat_polar, grid, configuration,
+                    ("Periodic pump and signal heat on generic C10100 copper; scalar optical path "
+                     "and surface deformation; photoelasticity omitted. The regenerative pump "
+                     "transport is recomputed during recovery."
+                     if architecture == "regenerative" else
+                     "Fixed pump-profile periodic heat on generic C10100 copper; scalar optical "
+                     "path and surface deformation; photoelasticity omitted."))
+            except ValueError as exc:
+                thermal = _empty_thermal("out_of_scope", str(exc))
+        else:
+            thermal = _empty_thermal(
+                "not_requested", "Steady cooler and sensitivity diagnostics omitted; "
+                "the requested transient temperature, deformation and OPD are solved.")
         if operation_duration_s and thermal_optical_mode == "lumped_phase":
             initial_fields=(None if "initial_disk_temperature_K" not in perturb else
                 (perturb["initial_disk_temperature_K"],
@@ -1265,7 +1311,8 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
                                                  cooling_h_max_W_m2K,
                                                  thermal_internal_max_step_s,
                                                  temperature_probes, probe_seed,
-                                                 initial_fields)
+                                                 initial_fields,
+                                                 include_stabilization=(thermal_timeline_mode == "full"))
     thermal_feedback_applied = (coupled_assembly is not None or
                                 (thermal_optical_mode == "lumped_phase" and
                                  timeline is not None and
@@ -1342,6 +1389,10 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
         "disk_input_fluence_J_m2": disk_input_fluence,
         "output_fluence_J_m2": observed_fluence,
         "output_complex_field_sqrt_J_m": field_out*math.sqrt(seed_energy_J),
+        # The same pumped optical solution before the lumped thermal screen.
+        # A controller may use this as a uniform, cold-phase reference while
+        # retaining the heated result for the physical thermal state.
+        "cold_output_complex_field_sqrt_J_m": cold_field_out*math.sqrt(seed_energy_J),
         "heat_W_m3_by_slice": heat_slices,
         "extraction_fluence_J_m2": extraction_fluence,
         "extraction_shape_retention": extraction_shape_retention,
@@ -1387,12 +1438,15 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
                                "recovery_substeps", "recovery_scope")}
                              if architecture == "ideal_multipass" else None),
         "thermal_optical_mode": ("cold" if not compute_thermal else thermal_optical_mode),
+        "thermal_timeline_mode": thermal_timeline_mode,
         "coupled_steady_convergence": (None if coupled_history is None else {
             "status": "converged", "iterations": len(coupled_history),
             "history": coupled_history,
             "scope": ("One shared " + architecture + " disk state; local-temperature spectra and a scalar per-encounter thermal/surface screen. Generic assembly coefficients are not calibrated.")}),
         "cycles": cycles, "residual": residual,
         "pump_passes": pump_passes,
+        "pump_transport_backend": ("numpy_python_local_temperature"
+                                    if coupled_assembly is not None else pump_backend_name()),
         "signal_traversals": signal_traversals,
         "effective_signal_traversals": (2*cavity.round_trips
                                           if architecture == "regenerative" else signal_traversals),

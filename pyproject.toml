@@ -13,6 +13,7 @@ dependencies = ["numpy>=1.24", "scipy>=1.10", "psutil>=5.9"]
 dev = ["pytest>=7"]
 plots = ["matplotlib>=3.7"]
 desktop = ["matplotlib>=3.7", "Pillow>=9"]
+speed = ["numba>=0.67,<0.68"]
 viewer = ["pyvista>=0.43", "trame>=3", "trame-vtk>=2", "trame-vuetify>=2"]
 
 [tool.pytest.ini_options]
