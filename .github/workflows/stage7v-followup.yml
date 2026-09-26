@@ -1,0 +1,199 @@
+name: Stage 7V two-mode refinement follow-up
+on:
+  push:
+    branches: [stage7v-two-mode-followup]
+    paths: ['examples/stage7v_two_mode_plan.py','tests/test_stage7v_two_mode_plan.py','.github/workflows/stage7v-followup.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+    env:
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+      MPLBACKEND: Agg
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11.16'
+      - run: python -m pip install 'numpy==2.4.6' 'scipy==1.17.1' -e '.[dev,plots]'
+      - name: Verify source before scientific execution
+        run: |
+          mkdir -p /tmp/followup-plans /tmp/followup-tests
+          python -m pytest -q --junitxml=/tmp/followup-tests/pytest.xml
+          python audit/deep_check.py
+          cp results/deep_audit/report.json /tmp/followup-tests/audit.json
+          git archive --format=tar.gz --output=/tmp/followup-plans/source.tar.gz HEAD
+      - name: Retrieve exact original distributed evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api /repos/${{ github.repository }}/actions/artifacts/10740066509/zip > /tmp/previous.zip
+          echo '861c3e54f0addccdedda8b909062bc971aaf4446b6adf488f02dd9e28a74220a  /tmp/previous.zip' | sha256sum -c -
+          mkdir -p /tmp/previous
+          unzip -q /tmp/previous.zip -d /tmp/previous
+      - name: Select identical completed evidence and build changed-case matrix
+        id: plan
+        run: |
+          python examples/stage7v_two_mode_plan.py --input /tmp/previous/coupled/plan.json --output /tmp/followup-plans/coupled.json
+          python - <<'PY'
+          import json,os,shutil
+          from pathlib import Path
+          from hoyag.validation_backend import source_manifest,sha256_file
+          current=source_manifest(Path.cwd())
+          original=Path('/tmp/previous');reuse=Path('/tmp/reused');reuse.mkdir()
+          plan=json.loads(Path('/tmp/followup-plans/coupled.json').read_text())
+          selected=[];rerun=[]
+          for case in plan['cases']:
+              directory=original/'coupled'/case['id']
+              record=json.loads((directory/'summary.json').read_text())
+              eligible=(record['status']=='completed' and record['spec_hash']==case['spec_hash']
+                        and record['source_hash']==current['source_hash'] and (directory/'state.npz').exists()
+                        and sha256_file(directory/'state.npz')==record.get('state_sha256'))
+              if eligible:
+                  shutil.copytree(directory,reuse/'coupled'/case['id']);selected.append(case['id'])
+              else:rerun.append({'id':case['id']})
+          frozen_manifest=json.loads((original/'frozen/source_manifest.json').read_text())
+          if frozen_manifest['source_hash']==current['source_hash']:
+              shutil.copytree(original/'frozen',reuse/'frozen')
+          else:
+              (reuse/'frozen_not_reused.json').write_text(json.dumps({'reason':'runtime/source fingerprint mismatch','old':frozen_manifest['source_hash'],'current':current['source_hash']}))
+          for kind in ('coupled','frozen'):
+              for name in ('qualification.json','plan.json','source_manifest.json'):
+                  target=reuse/'original_reports'/kind/name;target.parent.mkdir(parents=True,exist_ok=True)
+                  shutil.copy2(original/kind/name,target)
+          (Path('/tmp/followup-plans')/'reuse.json').write_text(json.dumps({'reused_cases':selected,'new_cases':rerun,'source':current},indent=2)+'\n')
+          with open(os.environ['GITHUB_OUTPUT'],'a') as stream:stream.write('matrix='+json.dumps({'include':rerun})+'\n')
+          print('FOLLOWUP_PLAN '+json.dumps({'reused':selected,'rerun':[r['id'] for r in rerun]}))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage7v-followup-plans-source
+          path: /tmp/followup-plans
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage7v-followup-reused-evidence
+          path: /tmp/reused
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage7v-followup-tests
+          path: /tmp/followup-tests
+          retention-days: 30
+  cases:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 38
+    strategy:
+      fail-fast: false
+      max-parallel: 24
+      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+    env:
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+      MPLBACKEND: Agg
+      PYTHONUNBUFFERED: '1'
+      CASE_ID: ${{ matrix.id }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11.16'
+      - uses: actions/download-artifact@v4
+        with:
+          name: stage7v-followup-plans-source
+          path: /tmp/followup-plans
+      - run: python -m pip install 'numpy==2.4.6' 'scipy==1.17.1' -e '.[dev,plots]'
+      - name: Execute unchanged physical model with two retained vector branches
+        id: calculation
+        continue-on-error: true
+        run: |
+          python examples/stage7v_bounded.py --plan /tmp/followup-plans/coupled.json \
+            --cases "$CASE_ID" --seconds-per-case 1800 --output results/stage7v/two-mode
+      - name: Preserve exact runtime source and outcome
+        if: always()
+        env:
+          CALCULATION_OUTCOME: ${{ steps.calculation.outcome }}
+        run: |
+          python - <<'PY'
+          import os,json,shutil
+          from pathlib import Path
+          root=Path('results/stage7v/two-mode');case=root/os.environ['CASE_ID'];case.mkdir(parents=True,exist_ok=True)
+          if (root/'source_manifest.json').exists():shutil.copy2(root/'source_manifest.json',case/'source_manifest.json')
+          (case/'workflow_outcome.json').write_text(json.dumps({'outcome':os.environ['CALCULATION_OUTCOME'],'qualification_is_separate':True},indent=2)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage7v-followup-case-${{ matrix.id }}
+          path: results/stage7v/two-mode
+          retention-days: 30
+  collect:
+    needs: [prepare,cases]
+    if: always() && needs.prepare.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+      MPLBACKEND: Agg
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11.16'
+      - uses: actions/download-artifact@v4
+        with:
+          name: stage7v-followup-plans-source
+          path: /tmp/followup-plans
+      - uses: actions/download-artifact@v4
+        with:
+          name: stage7v-followup-reused-evidence
+          path: results/stage7v/followup
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: stage7v-followup-case-*
+          merge-multiple: true
+          path: results/stage7v/followup/coupled
+      - run: python -m pip install 'numpy==2.4.6' 'scipy==1.17.1' -e '.[dev,plots]'
+      - name: Assess full plan including missing and nonconverged cases
+        run: |
+          python - <<'PY'
+          import json,shutil
+          from pathlib import Path
+          from hoyag.validation_backend import source_manifest
+          from hoyag.validation_campaign import build_report,write_json
+          root=Path('results/stage7v/followup');out=root/'coupled'
+          plan=json.loads(Path('/tmp/followup-plans/coupled.json').read_text())
+          manifest=source_manifest(Path.cwd())
+          write_json(out/'source_manifest.json',manifest);write_json(out/'plan.json',plan)
+          report=build_report(plan,out,manifest)
+          compact=Path('results/stage7v/followup-summary');compact.mkdir(parents=True,exist_ok=True)
+          for p in root.rglob('*'):
+              if p.is_file() and p.suffix in ('.json','.jsonl','.csv','.log','.md'):
+                  dst=compact/p.relative_to(root);dst.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(p,dst)
+          shutil.copy2('/tmp/followup-plans/reuse.json',compact/'reuse.json')
+          print('FOLLOWUP_REPORT '+json.dumps({'status':report['status'],'case_status':report['case_status'],
+                 'groups':[{k:g.get(k) for k in ('name','status')} for g in report['groups']],
+                 'dataset_ready':False}))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage7v-followup-complete-evidence
+          path: results/stage7v/followup
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage7v-followup-compact-report
+          path: results/stage7v/followup-summary
+          retention-days: 30
