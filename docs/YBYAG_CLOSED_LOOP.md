@@ -46,17 +46,29 @@ stay fixed for one camera session; new random shot/read noise, gain jitter and
 probe noise are drawn for every measurement during fitting. Gain drift follows
 the episode's simulated observation time. Set **Camera and probe noise** to
 **no** for a deterministic detector baseline.
-The default controller is **interferometric**. It uses four phase-stepped
+The default controller is **hybrid**. It uses four phase-stepped
 camera exposures to recover a complex output field, compares that measurement
 with a frozen structured-field reference, and updates a pixelwise SLM phase
 map through a calibrated free-space adjoint. The intended vortex or other
 structured phase remains in the SLM target; the update adds only a correction.
-**SPGD** and **response_matrix** remain separate selectable controllers.
-The **Correction loop** tab updates after each reported physical step while
+If three phase updates fail the measured camera-intensity guard, hybrid mode
+measures a local plus/minus response matrix in the configured modal basis and
+tries a camera-shape update under fresh observations. The pure
+**interferometric**, **SPGD** and **response_matrix** methods remain separate
+selectable controllers. A camera-shape improvement does not by itself prove
+recovery of the intended complex field; inspect both camera loss and measured
+phase RMS, then the separate validation overlap.
+The **Correction loop** tab opens at the latest recorded SLM command, including
+when a run stops before reaching the target. Use the slider to inspect the
+uncorrected frame at step zero. The status line says when phase and camera
+updates stalled, or when a numerical limit ended the run. The tab updates
+after each reported physical step while
 the bounded worker runs. Its camera panel also updates for each response-matrix
 probe, labelled by full-solver evaluation number; accepted output fields update
 only when a correction is accepted. It can replay the saved accepted steps
-afterward. The **Cameras + residual phase** view shows both measured
+afterward. If Windows temporarily locks the live progress file, the worker
+retries the update and continues the physical run even if that snapshot cannot
+be displayed. The **Cameras + residual phase** view shows both measured
 camera arms with horizontal and vertical mean-signal profiles; dashed curves
 are the frozen target-camera profiles. It also shows the piston-removed,
 wrapped output phase residual against the ideal structured-field target.

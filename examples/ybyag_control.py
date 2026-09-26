@@ -60,7 +60,7 @@ def run(config, *, progress_path=None):
         )
     plant = SimulationPlant(
         episode, controller.mode_count,
-        measurement_mode=("interferometric" if controller.method == "interferometric"
+        measurement_mode=("interferometric" if controller.method in ("interferometric", "hybrid")
                           else "intensity"),
     )
     start = time.perf_counter()
@@ -94,10 +94,23 @@ def run(config, *, progress_path=None):
     steps = []
     observation_trace = []
     latest_observation = None
+    progress_lock_reported = False
+
+    def write_progress(path, value):
+        nonlocal progress_lock_reported
+        try:
+            atomic_json(path, value)
+        except PermissionError as exc:
+            # The Tk reader (or a file scanner) may hold progress.json while
+            # Windows refuses replacement. Progress is a disposable snapshot;
+            # the next update can replace it, and the physical run must continue.
+            if not progress_lock_reported:
+                print(f"Live progress temporarily unavailable: {exc}", file=sys.stderr)
+                progress_lock_reported = True
 
     def publish():
         if progress_path is not None:
-            atomic_json(
+            write_progress(
                 Path(progress_path),
                 _jsonable(
                     dict(
@@ -223,10 +236,10 @@ def run(config, *, progress_path=None):
             on_step=record,
             on_observation=measured,
             phase_geometry=(plant.phase_geometry()
-                            if controller.method == "interferometric" else None),
+                            if controller.method in ("interferometric", "hybrid") else None),
         )
     else:
-        zero = (np.zeros(plant.grid.shape) if controller.method == "interferometric"
+        zero = (np.zeros(plant.grid.shape) if controller.method in ("interferometric", "hybrid")
                 else np.zeros(controller.mode_count))
         uncorrected = plant.observe(zero)
         record(

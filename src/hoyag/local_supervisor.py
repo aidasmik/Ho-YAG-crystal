@@ -49,7 +49,16 @@ def atomic_json(path: Path, value: dict) -> None:
         stream.write('\n')
         stream.flush()
         os.fsync(stream.fileno())
-    os.replace(temporary, path)
+    # Windows readers can briefly hold the destination without delete sharing.
+    # Keep the old complete JSON visible until the replacement succeeds.
+    for attempt in range(10):
+        try:
+            os.replace(temporary, path)
+            return
+        except PermissionError:
+            if attempt == 9:
+                raise
+            time.sleep(.02 * (attempt + 1))
 
 
 def _alive(pid: int) -> bool:

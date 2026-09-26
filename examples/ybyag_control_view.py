@@ -69,7 +69,11 @@ class ControlResultPanel(ttk.Frame):
         self.result = result
         self.playing = False
         self.slider.configure(to=max(0, len(result["steps"]) - 1))
-        self.show(0)
+        # A finished run should open on the command that was actually left on
+        # the SLM. The slider still lets the user inspect the uncorrected step.
+        last = max(0, len(result["steps"]) - 1)
+        self.slider.set(last)
+        self.show(last)
 
     def _slide(self, value):
         if self.result is not None:
@@ -100,8 +104,7 @@ class ControlResultPanel(ttk.Frame):
             return
         steps = result["steps"]
         step = steps[index]
-        hardware = result.get("controller", {}).get("method") in ("spgd", "interferometric")
-        update_kind = "command updates" if hardware else "accepted updates"
+        hardware = result.get("controller", {}).get("method") in ("spgd", "interferometric", "hybrid")
         reference = np.asarray(result["reference_fluence_J_m2"], float)
         initial = np.asarray(steps[0]["output_fluence_J_m2"], float)
         current = np.asarray(step["output_fluence_J_m2"], float)
@@ -143,7 +146,7 @@ class ControlResultPanel(ttk.Frame):
             (initial, "Uncorrected output", "inferno", common),
             (
                 current,
-                f"Output after {step['iteration']} {update_kind}",
+                f"Output at recorded step {step['iteration']}",
                 "inferno",
                 common,
             ),
@@ -315,10 +318,22 @@ class ControlResultPanel(ttk.Frame):
         status_note = (
             f" · {step.get('update_status', 'applied')}" if hardware and index else ""
         )
+        run_status = result.get("status")
+        stop_messages = {
+            "shape_and_phase_stalled": "Stopped: measured phase and camera-shape trials stalled; target not reached",
+            "no_measured_improvement": "Stopped: no measured improvement; target not reached",
+            "evaluation_budget": "Stopped at the full-solver evaluation limit; target may remain unmet",
+            "iteration_limit": "Command update limit reached; check target and residual",
+        }
+        final_note = (
+            f" · {stop_messages[run_status]}"
+            if index == len(steps) - 1 and run_status in stop_messages else ""
+        )
         self.info.set(
-            f"Update {step['iteration']}/{steps[-1]['iteration']} · {step['full_solves']} full solves{live_note}{status_note} · "
+            f"Step {step['iteration']}/{steps[-1]['iteration']} · {step['full_solves']} full solves{live_note}{status_note} · "
             f"measured {step['measured_energy_J']*1e9:.3g} nJ · "
-            f"camera loss {step['camera_loss'] if step['camera_loss'] is not None else 'off'}."
+            f"camera loss {step['camera_loss'] if step['camera_loss'] is not None else 'off'}"
+            f"{final_note}."
         )
         self.truth_figure.clear()
         truth_axes = self.truth_figure.subplots(2, 3)

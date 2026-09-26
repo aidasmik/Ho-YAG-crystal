@@ -126,6 +126,55 @@ def test_camera_regression_is_rejected_even_if_phase_can_improve():
     np.testing.assert_allclose(result["final_coefficients_rad"], 0)
 
 
+def test_hybrid_recovers_camera_shape_after_phase_update_stalls():
+    grid = Grid2D.square(64, .012)
+    x, y = grid.mesh
+    source = np.exp(-(x*x+y*y)/(.0006**2))
+    tip = x / .0006
+    weight = abs(source)**2
+    geometry = PhaseControlGeometry(
+        grid, 1030e-9, .25, source, np.zeros(grid.shape), tip[None],
+    )
+    target_field = angular_spectrum_propagate(source, grid, 1030e-9, .25)
+    rows, columns = np.indices(grid.shape)
+
+    def camera_frame(shift):
+        image = np.exp(-((columns - 31.5 - shift)**2 + (rows - 31.5)**2) / 50)
+        return np.rint(32 + 10000 * image).astype(np.uint16)
+
+    reference_frame = camera_frame(0)
+    reference = Observation(
+        np.stack((reference_frame, reference_frame)), 1.0,
+        np.zeros(5), np.ones(5, bool), np.zeros(grid.shape), 0., 0.,
+        phase_field=target_field,
+    )
+
+    class ShapePlant:
+        def observe(self, command):
+            tip_coefficient = np.sum(weight * command * tip) / np.sum(weight * tip**2)
+            frame = camera_frame(5 * (1 - tip_coefficient))
+            # This separate fixed phase error makes the pure phase-gradient
+            # path stall; only camera measurements reveal the tip correction.
+            field = target_field * np.exp(1j * .4 * (x*x-y*y) / .0006**2)
+            return Observation(
+                np.stack((frame, frame)), 1.0,
+                np.zeros(5), np.ones(5, bool), command.copy(), 0., 0.,
+                phase_field=field,
+            )
+
+    config = ControllerConfig(
+        method="hybrid", mode_count=1, iterations=8,
+        evaluation_limit=80, target_confirmations=20,
+    )
+    result = run_controller(
+        ShapePlant(), reference, 1.0, config, phase_geometry=geometry,
+    )
+    recovered = [row for row in result["history"]
+                 if row["update_status"] == "camera_shape_recovery"]
+    assert recovered
+    assert recovered[0]["camera_loss"] < result["history"][0]["camera_loss"]
+
+
 def test_truth_compensation_excludes_intentional_mask_and_tracks_delivered_phase():
     plant = SimulationPlant(EpisodeConfig(grid_n=64, enable_external_optics=False), 1)
     x, y = plant.grid.mesh

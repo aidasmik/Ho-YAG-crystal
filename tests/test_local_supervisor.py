@@ -9,7 +9,26 @@ import time
 import psutil
 import pytest
 
-from hoyag.local_supervisor import BudgetLedger, Limits, run_bounded
+from hoyag.local_supervisor import BudgetLedger, Limits, atomic_json, run_bounded
+
+
+def test_atomic_json_retries_transient_destination_lock(tmp_path, monkeypatch):
+    destination = tmp_path / 'progress.json'
+    atomic_json(destination, {'step': 1})
+    real_replace = os.replace
+    attempts = 0
+
+    def briefly_locked(source, target):
+        nonlocal attempts
+        attempts += 1
+        if attempts <= 2:
+            raise PermissionError(5, 'destination is open in a viewer')
+        real_replace(source, target)
+
+    monkeypatch.setattr(os, 'replace', briefly_locked)
+    atomic_json(destination, {'step': 2})
+    assert attempts == 3
+    assert json.loads(destination.read_text()) == {'step': 2}
 
 
 def _run(tmp_path, code, *, seconds=2, memory=256*1024**2, cancel=None):

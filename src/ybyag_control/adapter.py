@@ -440,7 +440,7 @@ class SimulationPlant:
         """Nominal calibrated SLM-to-output path supplied to the controller."""
         return PhaseControlGeometry(
             self.grid, 1030e-9, self.settings.slm_to_disk_distance_m,
-            self.source_field.copy(), self.target_phase.copy(),
+            self.source_field.copy(), self.target_phase.copy(), self.basis.copy(),
         )
 
     def correction_phase(self, command):

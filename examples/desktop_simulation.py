@@ -967,7 +967,7 @@ class DesktopSimulation(tk.Tk):
             ("target","Structured target",current["selected_beam"],BEAM_NAMES),
             ("correction_enabled","Correction enabled","yes",("yes","no")),
             ("mode","Episode mode","in_situ",("snapshot","in_situ")),
-            ("method","Controller method","interferometric",("interferometric","spgd","response_matrix")),
+            ("method","Controller method","hybrid",("hybrid","interferometric","response_matrix","spgd")),
             ("enable_material","Crystal/contact variation","yes",("yes","no")),
             ("enable_slm_error","Imperfect SLM","yes",("yes","no")),
             ("enable_external_optics","External optical phase","yes",("yes","no")),
@@ -984,7 +984,7 @@ class DesktopSimulation(tk.Tk):
             ("camera_gain_random_walk_per_sqrt_s","Gain drift (fraction/√s)","0.001",None),
             ("probe_noise_scale","Probe noise multiplier","1",None),
             ("photodiode_noise_fraction","Photodiode noise (fraction RMS)","0.005",None),
-            ("mode_count","Modal modes (SPGD/matrix)","14",None),
+            ("mode_count","Modal modes (hybrid/SPGD/matrix)","14",None),
             ("perturbation_rad","Probe step (rad)","0.08",None),
             ("spgd_gain","SPGD update gain","0.25",None),
             ("phase_gain_rad","Interferometric update (rad RMS)","0.12",None),
@@ -1052,9 +1052,9 @@ class DesktopSimulation(tk.Tk):
                 variables["iterations"].set("60")
                 variables["evaluation_limit"].set("400")
                 variables["control_period_s"].set("0.1")
-            elif variables["method"].get()=="interferometric":
+            elif variables["method"].get() in ("interferometric", "hybrid"):
                 variables["iterations"].set("30")
-                variables["evaluation_limit"].set("100")
+                variables["evaluation_limit"].set("400")
                 variables["control_period_s"].set("0.1")
             else:
                 variables["iterations"].set("3")
@@ -1063,9 +1063,10 @@ class DesktopSimulation(tk.Tk):
         variables["method"].trace_add("write",controller_method_changed)
         ttk.Label(body,text="Current Yb:YAG spectra and thermal properties permit only near-room-temperature states. "
                   "Changing coolant/pump requires in-situ mode. The worker rejects unsupported hot runs. "
-                  "Interferometric mode uses four phase-stepped exposures and a pixelwise SLM map. "
+                  "Hybrid mode uses measured interferometric phase updates and camera-based shape recovery when phase steps stall. "
+                  "Pure interferometric, SPGD and response-matrix modes remain selectable. "
                   "At the selected grid the Nyquist spatial frequency is grid_n/(2 × field_size_mm); "
-                  "the proposal's 40 mm⁻¹ needs a finer grid. SPGD and response-matrix modes remain separate.",
+                  "the proposal's 40 mm⁻¹ needs a finer grid.",
                   wraplength=1250,style="Info.TLabel").grid(
                       row=3,column=0,columnspan=3,sticky="w",pady=(10,4))
         def submit():
@@ -1100,7 +1101,7 @@ class DesktopSimulation(tk.Tk):
                     slm_delay_s=float(variables["slm_delay_s"].get()),
                     slm_settle_s=float(variables["slm_settle_s"].get()),
                     control_period_s=float(variables["control_period_s"].get()),
-                    slm_drift_fraction_per_sqrt_s=(0.0005 if variables["method"].get() in ("spgd","interferometric")
+                    slm_drift_fraction_per_sqrt_s=(0.0005 if variables["method"].get() in ("spgd","interferometric","hybrid")
                                                   else 0.),
                     exposure_s=float(variables["exposure_s"].get()),
                     thickness_um=float(current["thickness_um"]),

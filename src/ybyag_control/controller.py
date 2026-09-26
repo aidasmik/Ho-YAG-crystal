@@ -58,7 +58,7 @@ class ControllerConfig:
 
     def __post_init__(self):
         if (
-            self.method not in ("response_matrix", "spgd", "interferometric")
+            self.method not in ("response_matrix", "spgd", "interferometric", "hybrid")
             or not 1 <= self.mode_count <= 14
             or not 1 <= self.iterations <= 200
             or not 1 <= self.evaluation_limit <= 500
@@ -120,6 +120,7 @@ class PhaseControlGeometry:
     slm_to_disk_m: float
     source_field: np.ndarray
     desired_slm_phase_rad: np.ndarray
+    modal_basis_rad: np.ndarray | None = None
 
     def __post_init__(self):
         if (
@@ -131,6 +132,11 @@ class PhaseControlGeometry:
             or self.wavelength_m <= 0
             or not np.isfinite(self.slm_to_disk_m)
             or self.slm_to_disk_m <= 0
+            or (self.modal_basis_rad is not None and (
+                np.ndim(self.modal_basis_rad) != 3
+                or np.shape(self.modal_basis_rad)[1:] != self.grid.shape
+                or not np.all(np.isfinite(self.modal_basis_rad))
+            ))
         ):
             raise ValueError("invalid public phase-control geometry")
 
@@ -231,13 +237,18 @@ def run_controller(
     phase_geometry: PhaseControlGeometry | None = None,
 ):
     """Run the selected measurement-only controller."""
-    if config.method == "interferometric":
+    if config.method in ("interferometric", "hybrid"):
         if phase_geometry is None:
             raise ValueError("interferometric control requires calibrated geometry")
+        if (config.method == "hybrid" and
+                (phase_geometry.modal_basis_rad is None or
+                 len(phase_geometry.modal_basis_rad) < config.mode_count)):
+            raise ValueError("hybrid control requires a calibrated modal basis")
         return run_interferometric_controller(
             plant, reference_observation, target_energy_J, config, phase_geometry,
             black_level_adu=black_level_adu, on_step=on_step,
             on_observation=on_observation, cancelled=cancelled,
+            camera_shape_fallback=(config.method == "hybrid"),
         )
     if config.method == "spgd":
         return run_spgd_controller(
@@ -447,12 +458,15 @@ def run_interferometric_controller(
     on_step: Callable | None = None,
     on_observation: Callable | None = None,
     cancelled: Callable[[], bool] | None = None,
+    camera_shape_fallback: bool = False,
 ):
     """Correct a pixelwise SLM map from four measured interferograms per update.
 
     The adjoint is the calibrated free-space SLM-to-output path. Disk gain and
     thermal feedback are *not* differentiated; the following exposure measures
-    their actual response. No solver truth enters this controller.
+    their actual response. Optional camera-shape recovery probes a measured
+    modal response if phase steps repeatedly fail the intensity guard. No
+    solver truth enters either update.
     """
     if not np.isfinite(target_energy_J) or target_energy_J <= 0:
         raise ValueError("positive calibrated reference energy required")
@@ -509,7 +523,8 @@ def run_interferometric_controller(
             measured_energy_J=obs.measured_energy_J, energy_fraction=energy,
             phase_rms_rad=phase_rms, time_s=obs.time_s,
             coefficients_rad=command.copy(), accepted=status != "rejected_restore",
-            improved=status in ("initial", "improved"), update_status=status,
+            improved=status in ("initial", "improved", "camera_shape_recovery"),
+            update_status=status,
             attempted_step_rms_rad=step_rms,
             rejected_trial_camera_loss=rejected_trial_loss,
         )
@@ -517,6 +532,68 @@ def run_interferometric_controller(
         if on_step is not None:
             on_step(row, obs)
         return camera_loss, energy, phase_rms
+
+    def recover_camera_shape(previous):
+        """Use measured plus/minus camera probes when phase descent stalls.
+
+        The finite-difference matrix is local to the current SLM command and
+        is remeasured under the current physical state. This remains a camera
+        controller; simulator fields and the validation oracle are not read.
+        """
+        basis = geometry.modal_basis_rad
+        if basis is None:
+            return None
+        columns = []
+        for raw_mode in basis[:config.mode_count]:
+            mode = np.where(pupil, raw_mode, 0.0)
+            plus = acquire(previous + config.perturbation_rad * mode)
+            minus = acquire(previous - config.perturbation_rad * mode)
+            plus_vector, _, plus_energy = _score(
+                plus, reference, target_energy_J, config, black_level_adu,
+            )
+            minus_vector, _, minus_energy = _score(
+                minus, reference, target_energy_J, config, black_level_adu,
+            )
+            plus_response = np.r_[plus_vector, config.energy_weight * max(0, 1 - plus_energy)]
+            minus_response = np.r_[minus_vector, config.energy_weight * max(0, 1 - minus_energy)]
+            columns.append((plus_response - minus_response) / (2 * config.perturbation_rad))
+        # A fresh baseline is necessary after sequential probes in an in-situ
+        # episode. It also keeps detector noise out of the stale baseline.
+        baseline = acquire(previous)
+        baseline_vector, baseline_loss, baseline_energy = _score(
+            baseline, reference, target_energy_J, config, black_level_adu,
+        )
+        response = np.column_stack(columns)
+        residual = np.r_[
+            baseline_vector - reference.vector,
+            config.energy_weight * max(0, 1 - baseline_energy),
+        ]
+        delta = -np.linalg.solve(
+            response.T @ response + config.regularization * np.eye(len(columns)),
+            response.T @ residual,
+        )
+        delta = np.clip(delta, -config.max_update_rad, config.max_update_rad)
+        if not np.all(np.isfinite(delta)):
+            raise InvalidObservationError("nonfinite measured camera response")
+        phase_step = np.tensordot(delta, basis[:len(delta)], axes=(0, 0))
+        for factor in (1.0, 0.5, 0.25):
+            candidate = np.where(
+                pupil,
+                np.clip(previous + factor * phase_step,
+                        -config.coefficient_limit_rad, config.coefficient_limit_rad),
+                0.0,
+            )
+            trial = acquire(candidate)
+            verify = acquire(candidate)
+            trial_loss, trial_energy, _ = metrics(trial)
+            verify_loss, verify_energy, _ = metrics(verify)
+            average_loss = 0.5 * (trial_loss + verify_loss)
+            uncertainty = config.noise_acceptance_sigma * abs(trial_loss - verify_loss) / 2
+            if (min(trial_energy, verify_energy) >= config.minimum_energy_fraction
+                    and average_loss + uncertainty < baseline_loss - config.improvement_tolerance):
+                step_rms = float(np.sqrt(np.sum(weight * (candidate - previous)**2)))
+                return candidate, verify, step_rms
+        return None
 
     current = acquire(command)
     camera_loss, energy, phase_rms = append(0, current, "initial", 0.0)
@@ -593,7 +670,28 @@ def run_interferometric_controller(
                 confirmations = 0
                 consecutive_rejections += 1
                 if consecutive_rejections >= 3:
-                    status = "no_measured_improvement"
+                    if camera_shape_fallback:
+                        recovery = recover_camera_shape(command)
+                        if recovery is not None:
+                            command, current, recovery_rms = recovery
+                            camera_loss, energy, phase_rms = append(
+                                iteration, current, "camera_shape_recovery", recovery_rms,
+                            )
+                            best_camera_loss = min(best_camera_loss, camera_loss)
+                            recovery_score = camera_loss + phase_rms / np.pi
+                            if recovery_score < best_score:
+                                best_score = recovery_score
+                                best_command = command.copy()
+                            consecutive_rejections = 0
+                            gain = config.phase_gain_rad
+                            continue
+                        current = acquire(command)
+                        camera_loss, energy, phase_rms = append(
+                            iteration, current, "shape_recovery_failed", 0.0,
+                        )
+                        status = "shape_and_phase_stalled"
+                    else:
+                        status = "no_measured_improvement"
                     break
                 continue
             consecutive_rejections = 0
