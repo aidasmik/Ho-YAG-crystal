@@ -28,15 +28,30 @@ def sample_camera_setup(settings: CameraSettings, ranges, seed, *, enabled=True,
 
 
 def capture(fluence_J_m2, x_m, y_m, wavelength_m, settings, setup, seed,
-            *, enabled=True, sensor_temperature_C=20.):
+            *, enabled=True, sensor_temperature_C=20., pulse_variation=None):
     """Resample physical object-plane fluence, then count photoelectrons."""
     rng = np.random.default_rng(seed)
     h, w = settings.height, settings.width
+    pulse_gain_sum=float(settings.pulses_per_exposure)
+    pulse_shift=(0.,0.)
+    extra_blur=0.
+    if pulse_variation is not None:
+        energy_rms=float(pulse_variation.get("energy_jitter_rms_fraction",0))
+        pointing_rms=float(pulse_variation.get("pointing_jitter_rms_pixels",0))
+        if (not np.isfinite(energy_rms) or energy_rms < 0 or
+                not np.isfinite(pointing_rms) or pointing_rms < 0):
+            raise ValueError("invalid pulse-to-pulse camera variation")
+        pulse_count=int(settings.pulses_per_exposure)
+        gains=np.maximum(0,rng.normal(1,energy_rms,pulse_count))
+        shifts=rng.normal(0,pointing_rms,(pulse_count,2))
+        pulse_gain_sum=float(np.sum(gains))
+        pulse_shift=tuple(np.average(shifts,axis=0,weights=gains))
+        extra_blur=float(np.sqrt(np.mean(np.sum((shifts-pulse_shift)**2,axis=1))/2))
     pixel_m = settings.object_fov_width_mm*1e-3/w
     xx = np.arange(w)+.5-w/2
     yy = np.arange(h)+.5-h/2
     yy, xx = np.meshgrid(yy, xx, indexing="ij")
-    shift_y, shift_x = setup["shift_pixels"]
+    shift_y, shift_x = np.asarray(setup["shift_pixels"])+np.asarray(pulse_shift)
     theta = setup["rotation_rad"]
     scale = setup["scale"]
     object_x = ((xx-shift_x)*np.cos(theta)+(yy-shift_y)*np.sin(theta))*pixel_m/scale
@@ -50,8 +65,9 @@ def capture(fluence_J_m2, x_m, y_m, wavelength_m, settings, setup, seed,
     yi = np.interp(object_y, y, np.arange(len(y)))
     clean = map_coordinates(np.asarray(fluence_J_m2, float), [yi, xi],
                             order=1, mode="nearest")
-    clean = np.maximum(0, gaussian_filter(clean, settings.psf_sigma_pixels))
-    expected = (clean*pixel_m**2*settings.pulses_per_exposure*
+    clean = np.maximum(0, gaussian_filter(clean, np.hypot(settings.psf_sigma_pixels,
+                                                           extra_blur)))
+    expected = (clean*pixel_m**2*pulse_gain_sum*
                 settings.optical_throughput*settings.qe_at_signal*wavelength_m/(H*C))
     expected *= setup["prnu"]
     dark = settings.dark_current_e_s*settings.exposure_s*2**(
@@ -70,4 +86,7 @@ def capture(fluence_J_m2, x_m, y_m, wavelength_m, settings, setup, seed,
     adu = np.rint(settings.black_level_adu+clipped/settings.full_well_e*
                   (max_adu-settings.black_level_adu)).clip(0,max_adu).astype(np.uint16)
     return adu, clean.astype(np.float32), dict(saturated_fraction=saturated,
-         expected_electron_peak=float(expected.max()), sensor_temperature_C=sensor_temperature_C)
+         expected_electron_peak=float(expected.max()), sensor_temperature_C=sensor_temperature_C,
+         pulse_energy_sum=pulse_gain_sum, pulse_mean_shift_pixels=pulse_shift,
+         pulse_pointing_blur_sigma_pixels=extra_blur,
+         pulse_variation_scope="Gaussian effective blur from the sampled pulse shifts; individual fields are not propagated")

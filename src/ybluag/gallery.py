@@ -1387,6 +1387,8 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
         "selected_beam": selected_beam,
         "input_fluence_J_m2": input_fluence,
         "disk_input_fluence_J_m2": disk_input_fluence,
+        "input_complex_field_sqrt_J_m": source*np.exp(1j*phase)*math.sqrt(seed_energy_J),
+        "disk_input_complex_field_sqrt_J_m": seed*math.sqrt(seed_energy_J),
         "output_fluence_J_m2": observed_fluence,
         "output_complex_field_sqrt_J_m": field_out*math.sqrt(seed_energy_J),
         # The same pumped optical solution before the lumped thermal screen.

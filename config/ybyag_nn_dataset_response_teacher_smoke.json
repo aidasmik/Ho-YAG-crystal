@@ -1,10 +1,19 @@
 {
   "schema": "ybyag_nn_dataset_v1",
-  "seed": 314159,
+  "seed": 271828,
   "nominal": {
     "yb_at_percent": 10.0,
-    "yb_at_percent_candidates": [5.0, 10.0, 15.0],
-    "target_candidates": ["Gaussian TEM00", "Flattop super-Gaussian", "Helical LG(0,+1)", "Needle Bessel-Gaussian"],
+    "yb_at_percent_candidates": [
+      5.0,
+      10.0,
+      15.0
+    ],
+    "target_candidates": [
+      "Gaussian TEM00",
+      "Flattop super-Gaussian",
+      "Helical LG(0,+1)",
+      "Needle Bessel-Gaussian"
+    ],
     "pump_W": 0.1,
     "radius_mm": 1.0,
     "seed_energy_nj": 10.0,
@@ -36,23 +45,26 @@
     "thermal_nz": 4
   },
   "ranges": {
-    "pump_power_fraction": 0.10,
-    "seed_energy_fraction": 0.10,
-    "pump_radius_fraction": 0.10,
-    "seed_waist_fraction": 0.10,
-    "pump_offset_radius_fraction": 0.10,
+    "pump_power_fraction": 0.1,
+    "seed_energy_fraction": 0.1,
+    "pump_radius_fraction": 0.1,
+    "seed_waist_fraction": 0.1,
+    "pump_offset_radius_fraction": 0.1,
     "pump_pointing_jitter_radius_fraction": 0.01,
-    "seed_offset_radius_fraction": 0.10,
+    "seed_offset_radius_fraction": 0.1,
     "seed_angle_urad": 50.0,
     "seed_ellipticity_fraction": 0.08,
-    "seed_aperture_radius_waists": [1.8, 2.5],
+    "seed_aperture_radius_waists": [
+      1.8,
+      2.5
+    ],
     "seed_aperture_decenter_waist_fraction": 0.1,
-    "thermal_contact_fraction": 0.20,
+    "thermal_contact_fraction": 0.2,
     "coolant_temperature_K": 0.4,
     "yb_concentration_rms_fraction": 0.03,
     "thickness_rms_fraction": 0.01,
     "background_absorption_mean_m1": 0.1,
-    "background_absorption_rms_fraction": 0.20,
+    "background_absorption_rms_fraction": 0.2,
     "surface_figure_rms_nm": 2.0,
     "external_aberration_rms_waves": 0.25,
     "external_residual_rms_waves": 0.02,
@@ -64,10 +76,16 @@
     "camera_shift_pixels": 2.0,
     "camera_rotation_deg": 0.2,
     "camera_scale_fraction": 0.002,
-    "probe_noise_K": [0.1, 0.5],
+    "probe_noise_K": [
+      0.1,
+      0.5
+    ],
     "probe_bias_K": 0.25,
     "probe_drift_K_per_sqrt_s": 0.001,
-    "probe_response_time_s": [0.03, 0.3],
+    "probe_response_time_s": [
+      0.03,
+      0.3
+    ],
     "probe_position_uncertainty_mm": 0.1,
     "probe_dropout_probability": 0.01,
     "frame_pointing_jitter_urad": 5.0,
@@ -89,8 +107,8 @@
     "background_e": 2.0,
     "prnu_rms": 0.01,
     "dsnu_rms_e": 0.5,
-    "hot_pixel_fraction": 0.00001,
-    "dead_pixel_fraction": 0.00001,
+    "hot_pixel_fraction": 1e-05,
+    "dead_pixel_fraction": 1e-05,
     "psf_sigma_pixels": 1.0,
     "adc_bits": 12,
     "black_level_adu": 32,
@@ -99,26 +117,48 @@
     "sensor_temperature_correlation": 0.9,
     "dark_current_doubling_C": 6.0
   },
-  "camera_calibration": {"status": "illustrative", "source": null,
-    "specification_examples": ["https://www.hamamatsu.com/us/en/product/cameras/cmos-cameras/C13440-20CU.html", "https://www.hamamatsu.com/eu/en/product/cameras/ingaas-cameras/C12741-03-02.html"],
-    "unmeasured_at_1030_nm": ["quantum efficiency", "point-spread function", "optical throughput", "fixed-pattern noise", "SLM phase transfer"]},
-  "pulse_exposure_variation": {"energy_jitter_rms_fraction": 0.005, "pointing_jitter_rms_pixels": 0.2},
+  "camera_calibration": {
+    "status": "illustrative",
+    "source": null,
+    "specification_examples": [
+      "https://www.hamamatsu.com/us/en/product/cameras/cmos-cameras/C13440-20CU.html",
+      "https://www.hamamatsu.com/eu/en/product/cameras/ingaas-cameras/C12741-03-02.html"
+    ],
+    "unmeasured_at_1030_nm": [
+      "quantum efficiency",
+      "point-spread function",
+      "optical throughput",
+      "fixed-pattern noise",
+      "SLM phase transfer"
+    ]
+  },
+  "pulse_exposure_variation": {
+    "energy_jitter_rms_fraction": 0.005,
+    "pointing_jitter_rms_pixels": 0.2
+  },
   "trial_step_rad": 0.25,
-  "trial_improvement_tolerance": 0.00001,
-  "label_min_phase_improvement_rad": 0.01,
+  "trial_improvement_tolerance": 1e-05,
+  "label_min_phase_improvement_rad": 0.02,
   "label_min_shape_overlap": 0.95,
   "label_max_shape_drop": 0.012,
-  "label_candidate_gains": [0.05, 0.1, 0.2, 0.3, 0.4],
-  "label_max_solver_evaluations": 3,
-  "label_teacher": "modal",
-  "modal_radial_order": 4,
-  "modal_residual_grid": 3,
-  "modal_max_fast_iterations": 60,
-  "modal_target_fidelity": 0.9,
-  "modal_min_coherent_gain": 0.01,
-  "modal_min_energy_fraction": 0.8,
-  "planes_m": [0.0, 1.0],
-  "split_counts": {"train": 12, "validation": 12, "test": 12, "stress": 0},
+  "label_candidate_gains": [
+    0.05,
+    0.1,
+    0.2,
+    0.3,
+    0.4
+  ],
+  "label_max_solver_evaluations": 8,
+  "planes_m": [
+    0.0,
+    1.0
+  ],
+  "split_counts": {
+    "train": 12,
+    "validation": 12,
+    "test": 12,
+    "stress": 0
+  },
   "stress_range_multiplier": 1.5,
   "stress_camera_throughput_multiplier": 3.0,
   "slm_update_delay_points": 0,
@@ -130,5 +170,11 @@
     "slm": true,
     "camera": true,
     "sensors": true
-  }
+  },
+  "label_teacher": "response_matrix",
+  "response_teacher_modes": 2,
+  "response_probe_rad": 0.06,
+  "response_max_step_rad": 0.45,
+  "response_ridge_fraction": 0.03,
+  "response_amplitude_weight": 0.15
 }

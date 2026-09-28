@@ -558,7 +558,7 @@ class DesktopSimulation(tk.Tk):
             notebook, "Ho:YAG", HO_FIELDS, self.calculate_ho)
         ttk.Separator(self, orient="horizontal").pack(fill="x")
         bar = ttk.Frame(self, padding=(12, 6))
-        self.progress = ttk.Progressbar(bar, mode="indeterminate", length=95)
+        self.progress = ttk.Progressbar(bar, mode="indeterminate", length=190)
         self.progress.pack(side="left", padx=(0, 10))
         bar.pack(fill="x")
         ttk.Label(bar, textvariable=self.status, style="Info.TLabel").pack(
@@ -726,7 +726,9 @@ class DesktopSimulation(tk.Tk):
     def _enable_controls(self):
         self.running = False
         self.control_progress_path = None
+        self.dataset_progress_path = None
         self.progress.stop()
+        self.progress.configure(mode="indeterminate", value=0)
         self.cancel_button.configure(state="disabled")
         self.ho_button.configure(state="normal")
         for page in self.yb_pages.values():
@@ -881,43 +883,86 @@ class DesktopSimulation(tk.Tk):
         defaults=(
             ("config","Configuration JSON",str(ROOT/"config"/"ybyag_nn_dataset.json")),
             ("output","Output directory",str(ROOT/"results"/"ybyag_nn_dataset"/run_id)),
-            ("points","Operating points per setup","1"),
+            ("points","Measured SLM trials per setup","3"),
+            ("repetitions","Independent setups per doping/target","1"),
+            ("workers","Parallel setup workers (6 recommended)","6"),
         )
         vars_={}
         for row,(key,label,default) in enumerate(defaults,1):
             ttk.Label(body,text=label).grid(row=row,column=0,sticky="w",padx=(0,12),pady=3)
             vars_[key]=tk.StringVar(value=default)
             ttk.Entry(body,textvariable=vars_[key],width=62).grid(row=row,column=1,sticky="ew",pady=3)
-        ttk.Label(body,text="Edit the JSON ranges and nominal Yb:YAG point before generating. "
+        ttk.Label(body,text="The default plan has 36 independent setups and 108 measured trials. "
+                  "Instrument values are illustrative; use the CLI --plan or --smoke first. "
                   "Only solver-valid near-room-temperature states are exported.",
-                  wraplength=600).grid(row=4,column=0,columnspan=2,sticky="w",pady=(10,3))
+                  wraplength=600).grid(row=6,column=0,columnspan=2,sticky="w",pady=(10,3))
 
         def submit():
             try:
                 config=Path(vars_["config"].get())
                 output=Path(vars_["output"].get())
                 points=int(vars_["points"].get())
-                if not config.is_file() or not 1<=points<=2:
-                    raise ValueError("Choose an existing config and 1–2 operating points")
-                json.loads(config.read_text(encoding="utf-8"))
-            except (OSError,ValueError) as exc:
+                repetitions=int(vars_["repetitions"].get())
+                workers=int(vars_["workers"].get())
+                if not config.is_file() or points<3 or repetitions<1 or workers<1:
+                    raise ValueError("Choose a config, at least three trials, and positive setups and workers")
+                dataset_config=json.loads(config.read_text(encoding="utf-8"))
+                total=points*(36*repetitions+dataset_config["split_counts"]["stress"])
+                if total<=0:
+                    raise ValueError("Dataset plan has no trials")
+            except (OSError,ValueError,KeyError,TypeError) as exc:
                 messagebox.showerror("Dataset configuration",str(exc),parent=dialog)
                 return
             dialog.destroy()
-            self.start(lambda:("dataset",self.run_dataset(config,output,points)))
+            self.start(lambda:("dataset",self.run_dataset(config,output,points,repetitions,workers)))
+            self.progress.stop()
+            self.progress.configure(mode="determinate",maximum=total,value=0)
+            self.dataset_progress_path=output/"manifest.json"
+            self.dataset_progress_total=total
+            self._poll_dataset_progress()
 
         ttk.Button(body,text="Generate bounded dataset",style="Accent.TButton",
-                   command=submit).grid(row=5,column=1,sticky="e",pady=(12,0))
+                   command=submit).grid(row=7,column=1,sticky="e",pady=(12,0))
 
     @staticmethod
-    def run_dataset(config, output, points):
+    def run_dataset(config, output, points, repetitions, workers=6):
         command=[sys.executable,str(ROOT/"examples"/"ybyag_nn_dataset.py"),
                  "--config",str(config),"--output",str(output),
-                 "--points-per-setup",str(points)]
-        run=subprocess.run(command,cwd=ROOT,text=True,capture_output=True,timeout=960)
+                 "--points-per-setup",str(points),
+                 "--setups-per-combination",str(repetitions),
+                 "--workers",str(workers)]
+        if (output/"manifest.json").is_file():
+            command.append("--resume")
+        run=subprocess.run(command,cwd=ROOT,text=True,capture_output=True,timeout=10860)
         if run.returncode:
-            raise RuntimeError((run.stderr or run.stdout)[-3000:])
+            summary=output/"execution.json"
+            if summary.is_file():
+                record=json.loads(summary.read_text(encoding="utf-8"))
+                if record.get("status")=="timed_out":
+                    raise RuntimeError(f"Dataset reached its {record['effective_limit_s']:.0f} s run limit. "
+                                       f"Saved trials are in {output}. Select the same output directory "
+                                       "to resume. See execution.json for details.")
+            raise RuntimeError((run.stderr or run.stdout)[-1500:])
         return output/"manifest.json"
+
+    def _poll_dataset_progress(self):
+        path=getattr(self,"dataset_progress_path",None)
+        if not self.running or path is None:
+            return
+        try:
+            if path.is_file():
+                manifest=json.loads(path.read_text(encoding="utf-8"))
+                saved=sum(len(files) for files in manifest["splits"].values())
+                total=self.dataset_progress_total
+                self.progress.configure(value=min(saved,total))
+                if saved>=total:
+                    self.status.set(f"Yb:YAG NN dataset: {saved}/{total} trials saved; validating files · {path.parent}")
+                else:
+                    self.status.set(f"Yb:YAG NN dataset: {saved}/{total} measured trials saved "
+                                    f"({100*saved/total:.1f}%) · {path.parent}")
+        except (OSError,ValueError,KeyError,TypeError):
+            pass
+        self.after(500,self._poll_dataset_progress)
 
     def cancel_control(self):
         if self.running and hasattr(self, "cancel_event"):

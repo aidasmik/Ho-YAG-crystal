@@ -27,9 +27,22 @@ def apply_slm(requested_phase_rad, setup, *, drift_fraction=0., previous_command
                else requested)
     bits = setup["bits"]
     if bits:
-        command = np.rint(command/(2*np.pi)*(2**bits-1))/(2**bits-1)*(2*np.pi)
+        levels = 2**bits
+        address = np.rint(command/(2*np.pi)*(levels-1)).astype(np.int32)
+        command = address/(levels-1)*(2*np.pi)
+        if "phase_lut_rad" in setup:
+            lut = np.asarray(setup["phase_lut_rad"],float)
+            if lut.shape != (levels,) or not np.all(np.isfinite(lut)):
+                raise ValueError("phase_lut_rad must contain one finite phase per SLM code")
+            drive_phase = lut[address]
+        else:
+            drive_phase = command
+    else:
+        if "phase_lut_rad" in setup:
+            raise ValueError("phase_lut_rad requires finite-bit SLM addressing")
+        drive_phase = command
     actual = ((setup["global_gain"]+drift_fraction)*setup["spatial_gain"]*
-              setup["pixel_gain"]*command+setup["phase_offset"])
+              setup["pixel_gain"]*drive_phase+setup["phase_offset"])
     # Smooth the physical complex response after per-pixel calibration. This
     # respects the 0/2pi wrap and weak inter-pixel optical crosstalk.
     sigma = setup["crosstalk_sigma_pixels"]
