@@ -332,8 +332,12 @@ def modal_correction_teacher(baseline, desired, current_command, model,
         best_fast.append((fidelity, fit.x.copy()))
     ranked = sorted(best_fast, key=lambda row: row[0], reverse=True)
     proposals = []
+    # The shape guard can cut between coarse fractional steps. Evaluate the
+    # quantized SLM response on a fine one-dimensional line before spending
+    # reference solves; the first admissible step may be near the boundary.
+    gains = (*np.linspace(1., 0.25, 151), 0.2, 0.15, 0.1)
     for _, coefficients in ranked:
-        for gain in (1., 0.75, 0.5, 0.25):
+        for gain in gains:
             step = np.einsum("i,ijk->jk", gain * coefficients, basis, optimize=True)
             command = np.mod(current_command + step, 2 * np.pi)
             if any(np.sqrt(np.mean(np.angle(np.exp(1j * (command - old))) ** 2))

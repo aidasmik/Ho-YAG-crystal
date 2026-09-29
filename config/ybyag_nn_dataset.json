@@ -50,7 +50,7 @@
     "thermal_contact_fraction": 0.20,
     "coolant_temperature_K": 0.4,
     "yb_concentration_rms_fraction": 0.03,
-    "thickness_rms_fraction": 0.01,
+    "thickness_rms_fraction": 0.0003,
     "background_absorption_mean_m1": 0.1,
     "background_absorption_rms_fraction": 0.20,
     "surface_figure_rms_nm": 2.0,

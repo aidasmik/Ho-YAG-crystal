@@ -15,7 +15,7 @@ from ybluag.camera_dataset import CameraSettings
 from ybyag_dataset.distortions.camera import capture, sample_camera_setup
 from ybyag_dataset.generator import (REQUIRED_CONCENTRATIONS, REQUIRED_TARGETS,
                                      camera_shape_loss, collocated_external_oracle,
-                                     setup_plan, trial_command)
+                                     setup_plan, shard_setup_plan, trial_command)
 from ybyag_dataset import generator as dataset_generator
 from examples.check_ybyag_nn_dataset import check_trial_sequence
 
@@ -65,6 +65,28 @@ def test_each_split_has_all_required_setup_combinations():
     assert len(ids)==len(set(ids))
     with pytest.raises(ValueError,match="at least 12"):
         setup_plan(config,{"train":11,"validation":12,"test":12,"stress":0})
+
+
+def test_machine_shards_keep_complete_setups_and_split_coverage():
+    config=json.loads((ROOT/"config/ybyag_nn_dataset.json").read_text())
+    counts={"train":36,"validation":36,"test":36,"stress":0}
+    full=setup_plan(config,counts)
+    local=shard_setup_plan(full,1,2)
+    remote=shard_setup_plan(full,0,2)
+    required={(d,t) for d in REQUIRED_CONCENTRATIONS for t in REQUIRED_TARGETS}
+    for split in ("train","validation","test"):
+        local_ids={row["setup_id"] for row in local[split]}
+        remote_ids={row["setup_id"] for row in remote[split]}
+        assert len(local_ids)==12 and len(remote_ids)==24
+        assert not local_ids & remote_ids
+        assert local_ids | remote_ids == {row["setup_id"] for row in full[split]}
+        for shard in (local,remote):
+            assert {(row["yb_at_percent"],row["target"])
+                    for row in shard[split]} == required
+    with pytest.raises(ValueError,match="full doping/target coverage"):
+        shard_setup_plan(setup_plan(config),1,2)
+
+
 
 
 def test_camera_feedback_loss_and_trial_command_are_measurement_driven():

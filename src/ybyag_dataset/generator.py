@@ -9,8 +9,10 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import asdict
 import hashlib
 import json
+from importlib.metadata import version as package_version
 from multiprocessing import get_context
 from pathlib import Path
+import sys
 import time
 
 import numpy as np
@@ -153,6 +155,27 @@ def setup_plan(config, split_counts=None):
                                 "seed_index": number})
             number += 1
     return plan
+
+
+def shard_setup_plan(plan, shard_index=0, shard_count=1):
+    """Partition whole setups by coverage cycle; keep stable IDs and seeds."""
+    if (type(shard_count) is not int or shard_count < 1 or
+            type(shard_index) is not int or not 0 <= shard_index < shard_count):
+        raise ValueError("invalid setup shard")
+    if shard_count == 1:
+        return plan
+    width = len(REQUIRED_CONCENTRATIONS) * len(REQUIRED_TARGETS)
+    sharded = {split: [row for index, row in enumerate(rows)
+                       if (index // width) % shard_count == shard_index]
+               for split, rows in plan.items()}
+    required = {(doping, target) for doping in REQUIRED_CONCENTRATIONS
+                for target in REQUIRED_TARGETS}
+    for split in ("train", "validation", "test"):
+        covered = {(row["yb_at_percent"], row["target"])
+                   for row in sharded[split]}
+        if covered != required:
+            raise ValueError("each shard needs a full doping/target coverage cycle")
+    return sharded
 
 
 def camera_shape_loss(measured_adu, ideal_clean, black_level_adu):
@@ -317,7 +340,7 @@ def _run_parallel_setups(config_path, output, counts, plan, points_per_setup,
 
 def generate(config_path, output_dir, *, split_counts=None, points_per_setup=3,
              smoke=False, resume=False, smoke_setup_index=0, workers=1,
-             selected_setup=None):
+             shard_index=0, shard_count=1, selected_setup=None):
     """Create disjoint setup-level splits; call only inside a bounded worker."""
     config_path = Path(config_path)
     output = Path(output_dir)
@@ -331,7 +354,7 @@ def generate(config_path, output_dir, *, split_counts=None, points_per_setup=3,
         raise ValueError("closed-loop sequences need at least three measured trials per setup")
     if type(workers) is not int or workers < 1:
         raise ValueError("workers must be a positive integer")
-    plan = setup_plan(config, counts)
+    plan = shard_setup_plan(setup_plan(config, counts), shard_index, shard_count)
     if smoke:
         if not 0<=smoke_setup_index<len(plan["train"]):
             raise ValueError("smoke setup index outside planned train setups")
@@ -354,9 +377,15 @@ def generate(config_path, output_dir, *, split_counts=None, points_per_setup=3,
     manifest = {"schema":"ybyag_nn_closed_loop_v3", "dataset_ready":False,
         "smoke_unqualified":bool(smoke),
         "smoke_setup_index":smoke_setup_index if smoke else None,
+        "shard_index":shard_index, "shard_count":shard_count,
         "source_config_sha256":_sha(config_path),
         "source_generator_sha256":current_generator_sha,
         "numerical_source_sha256":current_numerical_sha,
+        "runtime_versions":{"python":sys.version.split()[0],
+                            "numpy":np.__version__,
+                            "scipy":package_version("scipy"),
+                            "matplotlib":matplotlib.__version__,
+                            "psutil":package_version("psutil")},
         "created_unix_s":time.time(), "splits":{k:[] for k in counts},
         "setup_plan":plan,"camera_calibration":calibration,
         "coverage":{split:{"setups":len(rows),"concentrations_at_percent":sorted(set(r["yb_at_percent"] for r in rows)),
@@ -385,7 +414,7 @@ def generate(config_path, output_dir, *, split_counts=None, points_per_setup=3,
             raise ValueError("resume requires an existing manifest.json")
         prior=json.loads(manifest_path.read_text(encoding="utf-8"))
         for key in ("schema","source_config_sha256","setup_plan","smoke_unqualified",
-                    "smoke_setup_index"):
+                    "smoke_setup_index","shard_index","shard_count"):
             if prior.get(key)!=manifest[key]:
                 raise ValueError(f"resume refused: {key} differs from the saved run")
         for split,files in prior["splits"].items():

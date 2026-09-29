@@ -116,6 +116,44 @@ def test_multwrap_smooth_aberration_gets_verified_full_correction():
                for row in result.checks)
 
 
+def test_shape_guard_finds_strength_between_coarse_steps():
+    grid = Grid2D.square(96, .006)
+    x, y = grid.mesh
+    waist = .00065
+    source = np.exp(-(x*x+y*y)/waist**2).astype(complex)
+    desired = angular_spectrum_propagate(source, grid, 1.03e-6, .2)
+    screen = 2*(x*x+y*y)/waist**2
+    baseline = desired*np.exp(1j*screen)
+    command = np.zeros(grid.shape)
+    slm = {"global_gain":1., "spatial_gain":np.ones(grid.shape),
+           "pixel_gain":np.ones(grid.shape), "phase_offset":command,
+           "bits":8, "crosstalk_sigma_pixels":.35}
+    model = FrozenOpticalModel(
+        grid=grid, wavelength_m=1.03e-6, slm_to_disk_m=.2,
+        output_distance_m=0., input_field=source, current_command=command,
+        actual_slm_phase=command, external_phase=command,
+        screen_phase=screen, baseline_field=baseline, slm_setup=slm)
+    _, basis, _ = modal_basis(x, y, source, waist)
+    result = modal_correction_teacher(
+        baseline, desired, command, model,
+        lambda trial: (model.forward_command(trial), True), basis,
+        max_reference_evaluations=1, target_fidelity=.82,
+        min_shape_overlap=.973, max_shape_drop=.1)
+    assert result.status == "task_success"
+    selected_gain = float(result.selected_candidate.removeprefix("modal_"))
+    assert .5 < selected_gain < .75
+    assert result.metrics.coherent_fidelity >= .82
+    assert result.metrics.shape_overlap >= .973
+    # The previous 0.75 and 0.5 gain grid cannot pass both criteria.
+    full_coefficients = result.selected_coefficients_rad / selected_gain
+    support = phase_support(baseline, desired)
+    for gain in (.75, .5):
+        trial = np.einsum("i,ijk->jk", gain*full_coefficients, basis)
+        metrics = field_metrics(model.forward_command(np.mod(trial, 2*np.pi)),
+                                desired, abs(baseline)**2, support)
+        assert metrics.coherent_fidelity < .82 or metrics.shape_overlap < .973
+
+
 def test_fixed_amplitude_bound_flags_unreachable_full_field():
     grid, x, y, waist, source, command, slm = _fixture(48)
     target = np.exp(-((x-.001)**2+y*y)/waist**2)

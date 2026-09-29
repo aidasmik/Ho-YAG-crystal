@@ -12,7 +12,7 @@ sys.path.insert(0,str(ROOT/"src"))
 
 from hoyag.local_supervisor import BudgetLedger, Limits, run_bounded
 from ybyag.material_data import ApproximationWarning
-from ybyag_dataset.generator import generate, setup_plan
+from ybyag_dataset.generator import generate, setup_plan, shard_setup_plan
 from check_ybyag_nn_dataset import check
 
 
@@ -23,6 +23,10 @@ def main():
     parser.add_argument("--points-per-setup",type=int,default=3)
     parser.add_argument("--workers",type=int,default=6,
                         help="independent setup processes; trials within a setup stay sequential")
+    parser.add_argument("--shard-index",type=int,default=0,
+                        help="zero-based machine shard; whole setups stay together")
+    parser.add_argument("--shard-count",type=int,default=1,
+                        help="number of machine shards")
     parser.add_argument("--setups-per-combination",type=int,default=None,
                         help="independent setups per Yb concentration and beam target in each normal split")
     parser.add_argument("--time-limit-s",type=float,default=10800)
@@ -42,9 +46,11 @@ def main():
             {**config["split_counts"],
              **{split:12*args.setups_per_combination
                 for split in ("train","validation","test")}})
-    plan=setup_plan(config,counts)
+    plan=shard_setup_plan(setup_plan(config,counts),args.shard_index,args.shard_count)
     if args.plan:
-        print(json.dumps({"setups":{k:len(v) for k,v in plan.items()},
+        print(json.dumps({"shard_index":args.shard_index,
+                          "shard_count":args.shard_count,
+                          "setups":{k:len(v) for k,v in plan.items()},
                           "trials_per_setup":args.points_per_setup,
                           "total_measured_trials":sum(map(len,plan.values()))*args.points_per_setup,
                           "coverage":{k:sorted({(row["yb_at_percent"],row["target"])
@@ -58,6 +64,7 @@ def main():
         path=generate(args.config,args.output,points_per_setup=args.points_per_setup,
                       smoke=args.smoke,resume=args.resume,split_counts=counts,
                       workers=args.workers,
+                      shard_index=args.shard_index,shard_count=args.shard_count,
                       smoke_setup_index=args.smoke_setup_index)
         validation=check(args.output)
         (args.output/"validation.json").write_text(
@@ -67,7 +74,9 @@ def main():
     args.output.mkdir(parents=True,exist_ok=True)
     command=[sys.executable,str(Path(__file__).resolve()),"--config",str(args.config.resolve()),
              "--output",str(args.output.resolve()),"--points-per-setup",
-             str(args.points_per_setup),"--workers",str(args.workers),"--worker"]
+             str(args.points_per_setup),"--workers",str(args.workers),
+             "--shard-index",str(args.shard_index),
+             "--shard-count",str(args.shard_count),"--worker"]
     if args.smoke:
         command.extend(("--smoke","--smoke-setup-index",str(args.smoke_setup_index)))
     if args.resume:
