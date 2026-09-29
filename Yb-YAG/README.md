@@ -10,9 +10,10 @@ laser and Yb:LuAG's material spectra are separate models.
 
 **Status:** this is a development and sensitivity model. Neither the material
 table nor the simulated output is a calibrated prediction for a particular
-crystal, coating, mount or laser. The example figures below were regenerated at
-repository revision `2cdf3cb` on 29 September 2026. Their settings and numerical
-outputs are in [simulation_summary.json](readme_figures/simulation_summary.json).
+crystal, coating, mount or laser. The example figures below were regenerated on
+29 September 2026 using solver revision `aab887d` and the figure script in this
+repository. Their settings and numerical outputs are in
+[simulation_summary.json](readme_figures/simulation_summary.json).
 
 ![Illustrated path from shaped seed and pump through one Yb:YAG disk to the output and cooler](readme_figures/light_path_schematic.png)
 
@@ -78,7 +79,7 @@ runtime converts to m².
 
 The 969 nm pump and 1030 nm signal are *sample points on these same curves*.
 The lower panel shows the local small-signal transparency threshold
-`beta_tr = sigma_a/(sigma_a + sigma_e)`; it is not a measured excited-state
+$\beta_{\mathrm{tr}}=\sigma_a/(\sigma_a+\sigma_e)$; it is not a measured excited-state
 population. Narrow-band pump performance depends strongly on actual diode
 linewidth and temperature-dependent zero-phonon-line shape, neither of which
 the current amplifier integrates.
@@ -102,7 +103,7 @@ room-temperature table in the amplifier examples.
 ![Tang ceramic absorption readouts compared with the default cross-section model scaled by Yb density](readme_figures/rt_concentration_comparison.png)
 
 This comparison is a useful scale and shape check. The dashed curves are
-`N_Yb sigma_a` from the default table, while the solid curves include the
+$N_{\mathrm{Yb}}\sigma_a$ from the default table, while the solid curves include the
 particular Tang ceramics and figure-reading uncertainty. Their differences
 should not be fitted away by silently adding another loss term.
 
@@ -118,7 +119,7 @@ not swap in measured cross sections for each local concentration.
    `src/hoyag/structured_beam_gallery.py`. It sums positive and negative
    Gaussian-rich/poor clusters of different transverse and axial widths,
    standardizes their variation over the disk, computes a positive multiplier
-   `exp(clip(contrast × standardized,-0.55,+0.55))`, and normalizes it so the
+   $\exp[\operatorname{clip}(c\,u,-0.55,+0.55)]$, and normalizes it so the
    arithmetic mean density over active disk voxels equals the chosen nominal
    density. The seed, cluster count, contrast and width range are settings.
    The `YbGallerySettings` defaults include a 0.27 contrast. This is a
@@ -128,8 +129,8 @@ not swap in measured cross sections for each local concentration.
    virtual crystal using `sample_material`. A seeded normal random image is
    Gaussian-filtered with `reflect` edges, mean-subtracted, and divided by its
    own RMS. For a grid with shape `(ny,nx)`, the Gaussian width is
-   `max(2,min(ny,nx)/7)` pixels. With the default configuration, the scale is
-   `s_Yb(x,y) = max[0.1, 1 + 0.03 u(x,y)]`, where `u` has zero mean and unit
+   $\max(2,\min(n_y,n_x)/7)$ pixels. With the default configuration, the scale is
+   $s_{\mathrm{Yb}}(x,y)=\max\{0.1,1+0.03u(x,y)\}$, where $u$ has zero mean and unit
    RMS over the sampled grid. One seed generates four independent fields:
    Yb concentration, thickness, background absorption and rear-surface
    figure. The crystal, contact, SLM calibration and camera pixel maps stay
@@ -137,13 +138,18 @@ not swap in measured cross sections for each local concentration.
 
 For the dataset path, the optical-slice density becomes
 
-```text
-N_local(x,y,z) = N_nominal × s_cluster(x,y,z) × s_Yb(x,y)
-s_optical(x,y,z) = [N_local / N_nominal] × s_thickness(x,y).
-```
+$$
+\begin{aligned}
+N_{\mathrm{local}}(x,y,z)
+  &=N_{\mathrm{nominal}}s_{\mathrm{cluster}}(x,y,z)s_{\mathrm{Yb}}(x,y),\\
+s_{\mathrm{optical}}(x,y,z)
+  &=\frac{N_{\mathrm{local}}(x,y,z)}{N_{\mathrm{nominal}}}
+    s_{\mathrm{thickness}}(x,y).
+\end{aligned}
+$$
 
-`s_cluster=1` when cluster contrast is zero. The pulse and pump kernels use
-`s_optical` to scale each slice's optical depth, so the sampled thickness map
+$s_{\mathrm{cluster}}=1$ when cluster contrast is zero. The pulse and pump kernels use
+$s_{\mathrm{optical}}$ to scale each slice's optical depth, so the sampled thickness map
 affects both resonant absorption and gain. The nominal 100 µm mechanical mesh
 is **not physically reshaped** by this thickness map; the code adds a separate
 first-order cold phase from the thickness error. Likewise, a 2D local Yb map
@@ -156,7 +162,7 @@ is not an independently resolved 3D impurity measurement.
 disk**. With a frozen unexcited population, the local 969 nm one-pass
 transmission through 100 µm is about **0.911–0.922**. This is generated from
 the same `sample_material` routine, but the figure's local Beer–Lambert
-calculation deliberately holds `beta=0`; the operating solver changes `beta`.
+calculation deliberately holds $\beta=0$; the operating solver changes $\beta$.
 
 The other fixed maps have distinct jobs. The default 0.03% RMS thickness scale
 is about 30 nm RMS at 100 µm. Background absorption has a 0.1 m⁻¹ nominal
@@ -171,38 +177,44 @@ manufacturing tolerances. A user can disable each disturbance family.
 ## How light crosses varying concentration
 
 The local ion concentration acts on pump and seed at **each transverse pixel
-and longitudinal slice**. At a frozen population `beta`, the code asks the
-Yb:YAG material object for `sigma_a` and `sigma_e` at the chosen wavelength.
-For an axial cell of nominal thickness `Delta z = L/n_z`, the dataset-scaled
+and longitudinal slice**. At a frozen population $\beta$, the code asks the
+Yb:YAG material object for $\sigma_a$ and $\sigma_e$ at the chosen wavelength.
+For an axial cell of nominal thickness $\Delta z=L/n_z$, the dataset-scaled
 optical step is
 
-```text
-alpha_p,cell = N_nominal[(1-beta)sigma_a,p - beta sigma_e,p] × s_optical
-g_s,cell     = N_nominal[beta sigma_e,s - (1-beta)sigma_a,s] × s_optical
-I_p,out      = I_p,in exp(-alpha_p,cell Delta z)
-I_s,out      = I_s,in exp(+g_s,cell Delta z).
-```
+$$
+\begin{aligned}
+\alpha_{p,\mathrm{cell}}
+  &=N_{\mathrm{nominal}}s_{\mathrm{optical}}
+       \big[(1-\beta)\sigma_{a,p}-\beta\sigma_{e,p}\big],\\
+g_{s,\mathrm{cell}}
+  &=N_{\mathrm{nominal}}s_{\mathrm{optical}}
+       \big[\beta\sigma_{e,s}-(1-\beta)\sigma_{a,s}\big],\\
+I_{p,\mathrm{out}}&=I_{p,\mathrm{in}}e^{-\alpha_{p,\mathrm{cell}}\Delta z},\\
+I_{s,\mathrm{out}}&=I_{s,\mathrm{in}}e^{g_{s,\mathrm{cell}}\Delta z}.
+\end{aligned}
+$$
 
 The actual code uses the **exact exponential cell-average pump intensity**
 when it calculates excitation rates, rather than the arithmetic mean of the
 two face intensities. Pump visits alternate axial direction. After each
 complete pass, its remaining intensity can be reduced by a configured relay
-factor. As `beta` rises, stimulated emission at the pump wavelength can bleach
+factor. As $\beta$ rises, stimulated emission at the pump wavelength can bleach
 the pump absorption. The local signal can be gained or reabsorbed. The signal
 field amplitude is multiplied by the square root of the calculated fluence
 ratio, preserving its phase for the next ideal relay. These operations share
 one physical population field and converge over many seed periods.
 
 An *unpumped, frozen* analytic illustration would give
-`T_p=exp(-N sigma_a,p L)` for one pass and
-`T_p,10=exp(-10 N sigma_a,p L)` for ten identical lossless passes. It is useful
+$T_p=e^{-N\sigma_{a,p}L}$ for one pass and
+$T_{p,10}=e^{-10N\sigma_{a,p}L}$ for ten identical lossless passes. It is useful
 for seeing the effect of concentration, but it is **not** the periodically
 pumped result: the solver lets the local population, pump bleaching, seed
 extraction, losses and transverse overlap change the answer.
 
 ![Frozen Beer–Lambert transmission beside the full periodic cold solver across Yb concentrations](readme_figures/concentration_transport.png)
 
-*Figure 3 — the distinction in numbers.* The left curves hold `beta=0` and
+*Figure 3 — the distinction in numbers.* The left curves hold $\beta=0$ and
 ignore changing intensity overlap. The right curves are fresh 40 W cold
 periodic solves at 5, 10, 15 and 20 at.% with the same optical settings.
 
@@ -226,7 +238,7 @@ resistivity interpolation. At or below 15 at.% the nominal assembly uses its
 CT/15-at.% source choices; near 15 at.% the varying-map path uses a relative
 HT concentration slope around the selected nominal value. Above 15 at.% it
 uses the HT fit at 300 K. This is a near-room-temperature engineering proxy,
-not a measured `k(T,c,x,y)` field of the particular disk.
+not a measured $k(T,c,x,y)$ field of the particular disk.
 
 ## Physical model, from source beam to output
 
@@ -243,31 +255,52 @@ scalar optical path screen.
 The Yb concentration is atomic percent on the **Y sites**. The runtime uses a
 fixed host-volume conversion
 
-```text
-N_Yb = (3 rho_YAG / M_YAG) N_A (Yb_at_percent / 100).
-```
+$$
+N_{\mathrm{Yb}}=\frac{3\rho_{\mathrm{YAG}}}{M_{\mathrm{YAG}}}
+N_{\mathrm{A}}\frac{c_{\mathrm{Yb}}}{100},
+$$
+
+where $c_{\mathrm{Yb}}$ is Y-site at.%.
 
 This is a density scaling, not a concentration-dependent spectral model. For
-ground and upper-manifold fractions `1-beta` and `beta`, respectively, the
+ground and upper-manifold fractions $1-\beta$ and $\beta$, respectively, the
 local intensity coefficients are
 
-```text
-alpha_p = N [(1-beta) sigma_a(lambda_p) - beta sigma_e(lambda_p)]
-g_s     = N [beta sigma_e(lambda_s) - (1-beta) sigma_a(lambda_s)].
-```
+$$
+\begin{aligned}
+\alpha_p &=N_{\mathrm{Yb}}\big[(1-\beta)\sigma_a(\lambda_p)
+                              -\beta\sigma_e(\lambda_p)\big],\\
+g_s &=N_{\mathrm{Yb}}\big[\beta\sigma_e(\lambda_s)
+                         -(1-\beta)\sigma_a(\lambda_s)\big].
+\end{aligned}
+$$
 
-Thus `dI_p/dz = -alpha_p I_p` and `dI_s/dz = g_s I_s` in a frozen cell.
+Thus $dI_p/dz=-\alpha_p I_p$ and $dI_s/dz=g_s I_s$ in a frozen cell.
 Each pump pass is propagated through the longitudinal cells, with alternating
 direction and explicit relay retention. The cell-average intensity is the
 exact Beer–Lambert spatial mean for its frozen coefficient, which makes
 absorbed photons consistent with the cell-face flux difference. A spatially
 resolved continuous-wave pump drives an effective two-manifold rate equation:
 
-```text
-d beta/dt = (1-beta) W_up - beta W_down - beta/tau,
-W_up   = sigma_a,p I_p/(h nu_p) + sigma_a,s I_s/(h nu_s),
-W_down = sigma_e,p I_p/(h nu_p) + sigma_e,s I_s/(h nu_s).
-```
+$$
+\begin{aligned}
+\frac{d\beta}{dt} &=(1-\beta)W_{\uparrow}
+                    -\beta W_{\downarrow}-\frac{\beta}{\tau},\\
+W_{\uparrow} &=\frac{\sigma_{a,p}I_p}{h\nu_p}
+               +\frac{\sigma_{a,s}I_s}{h\nu_s},\\
+W_{\downarrow} &=\frac{\sigma_{e,p}I_p}{h\nu_p}
+                 +\frac{\sigma_{e,s}I_s}{h\nu_s}.
+\end{aligned}
+$$
+
+With rates fixed over a short time step, the population update is
+
+$$
+R=W_{\uparrow}+W_{\downarrow}+\tau^{-1},\qquad
+\beta_{\mathrm{eq}}=\frac{W_{\uparrow}}{R},\qquad
+\beta(t+\Delta t)=\beta_{\mathrm{eq}}
+  +[\beta(t)-\beta_{\mathrm{eq}}]e^{-R\Delta t}.
+$$
 
 The source calls the signal part zero during inter-pulse recovery. Recovery
 recomputes pump bleaching over eight substeps and iterates successive seed
@@ -289,20 +322,36 @@ regenerative path diffracts over cavity round trips. The heat solver couples
 neighboring locations through conduction on a different mesh. Thus the model
 does not treat the entire calculation as independent pixels.
 
+![Pump intensity and seed fluence at axial cell faces, plus their integrated power and energy](readme_figures/beam_penetration.png)
+
+*Figure 4 — first-pass beam penetration, from the pump and pulsed transport
+kernels.* An eight-slice, 100 µm, 20 at.% cold disk uses a 40 W Gaussian pump.
+The first pump pass is evaluated with its converged pump-only excited fraction
+frozen: 40.00 W enters and 35.39 W leaves. A 10 nJ seed then crosses the same
+eight cells once, with local population depletion, and leaves at 11.12 nJ.
+The top panels show the centerline profiles at cell faces; the lower panels
+integrate each face over $x,y$. There is no transverse diffraction inside this
+pulsed disk step. The graph is **one pump pass and one seed pass**, not the
+final periodic ten-pass output shown below. The disk is still one shared
+physical crystal.
+
 The **regenerative** option follows a different optical map. Each round trip
 visits the same disk twice, propagates a complex field to a curved mirror and
 back with an angular-spectrum FFT, and applies the finite aperture, HR,
 hold, injection and extraction losses. Its short-pulse cell extraction uses
 the two-manifold Frantz–Nodvik relation
 
-```text
-F_s   = h nu_s/(sigma_a,s + sigma_e,s)
-g_0   = N [beta sigma_e,s - (1-beta) sigma_a,s] Delta z
-F_out = F_s ln{1 + exp(g_0)[exp(F_in/F_s) - 1]}.
-```
+$$
+\begin{aligned}
+F_s&=\frac{h\nu_s}{\sigma_{a,s}+\sigma_{e,s}},\\
+g_0&=g_{s,\mathrm{cell}}\Delta z,\\
+F_{\mathrm{out}}&=F_s\ln\!\left[1+e^{g_0}
+                    \left(e^{F_{\mathrm{in}}/F_s}-1\right)\right].
+\end{aligned}
+$$
 
 The implementation evaluates this stably at large fluence, then changes
-`beta` from the photon transfer. This branch resolves fluence and round trips;
+$\beta$ from the photon transfer. This branch resolves fluence and round trips;
 it does **not** return a computed output pulse temporal shape. The ideal
 multipass branch does return a time-sampled intensity trace. A shaped SLM
 field changes intensity only after propagation or filtering when the mask is
@@ -332,10 +381,11 @@ The code forms a **cycle-average lattice heat ledger** from the pump photons
 absorbed in the disk, energy transferred to or absorbed from the signal,
 escaping fluorescence and change in stored excitation:
 
-```text
-P_heat = P_pump,absorbed - P_signal,gain
-         - P_fluorescence,escaped - dU_excitation/dt.
-```
+$$
+P_{\mathrm{heat}}=P_{\mathrm{pump,absorbed}}
+ -P_{\mathrm{signal,gain}}-P_{\mathrm{fluorescence,escaped}}
+ -\frac{dU_{\mathrm{excitation}}}{dt}.
+$$
 
 `fluorescence_escape_yield` is an effective assumption; the README examples
 use zero. At the cold 20 at.%, 40 W operating point the code reports about
@@ -345,19 +395,20 @@ ledger item, not proof that the generic mount can remove that power.
 
 For the thermal calculation, the finite disk and copper plate solve a heat
 diffusion/conduction problem of the form
-`rho C_p dT/dt = div(k grad T) + Q`, with finite disk/contact and
-plate/coolant conductances. The mechanical model solves linear thermoelastic
-equilibrium `div(sigma)=0` with thermal eigenstrain. The scalar round-trip
+$\rho C_p\,\partial T/\partial t=\nabla\!\cdot(k\nabla T)+Q$,
+with finite disk/contact and plate/coolant conductances. The mechanical model
+solves linear thermoelastic equilibrium $\nabla\!\cdot\boldsymbol\sigma=0$
+with thermal eigenstrain. The scalar round-trip
 optical path combines temperature-dependent index and front/rear surface
 movement. In `lumped_phase` mode that phase is applied **after** optical
 amplification; gain still uses 293.15 K spectra. The code does not apply the
 available cubic photoelastic tensor in this scalar Yb:YAG amplifier.
 
-For a dataset thickness perturbation `Delta L = L(s_thickness-1)`, the
-**one-traversal** cold geometric phase is
-`phi_L = (2π/lambda_s)(n_YAG-1)Delta L`. A modeled rear-HR height `h` adds
-`(2π/lambda_s)h` per encounter in the symmetric thin-disk convention: a
-reflected `2h` path is shared by two traversals. The thermal model supplies a
+For a dataset thickness perturbation $\Delta L=L(s_{\mathrm{thickness}}-1)$,
+the **one-traversal** cold geometric phase is
+$\phi_L=(2\pi/\lambda_s)(n_{\mathrm{YAG}}-1)\Delta L$. A modeled rear-HR
+height $h$ adds $(2\pi/\lambda_s)h$ per encounter in the symmetric thin-disk
+convention: a reflected $2h$ path is shared by two traversals. The thermal model supplies a
 round-trip OPD from thermo-refractive change and surface displacement. Its
 post-amplifier phase uses the configured number of encounters and half the
 round-trip OPD per encounter. These approximations do not solve oriented
@@ -385,14 +436,16 @@ patterns**: no target is promised to be an exact pure textbook mode.
 
 The ideal phase-only operation is
 
-```text
-E_after_SLM(x,y) = E_Gaussian(x,y) exp[i phi_applied(x,y)].
-```
+$$
+E_{\mathrm{after\ SLM}}(x,y)=E_{\mathrm{Gaussian}}(x,y)
+e^{i\phi_{\mathrm{applied}}(x,y)}.
+$$
 
 Its intensity at that plane is unchanged. A scalar angular-spectrum FFT then
 propagates it over the configured SLM-to-disk distance; the intensity pattern
 can change there. The disk receives a separately normalized Gaussian pump,
-`I_p(x,y) ∝ exp[-2((x-x_p)^2+(y-y_p)^2)/w_p^2]`, with its integral set to
+$I_p(x,y)\propto\exp\!\left[-2\big((x-x_p)^2+(y-y_p)^2\big)/w_p^2\right]$,
+with its integral set to
 incident pump watts. The selected seed pulse has a Gaussian **intensity**
 envelope sampled at 41 retarded-time points from `-3` to `+3` pulse FWHM;
 its discrete integral is normalized to the requested seed joules.
@@ -409,7 +462,7 @@ diagnostic; it is not gain reshaping by a hot, continuously deformed cavity.
 
 The `structured CW` route differs from the pulsed route: it transports a
 coherent field through axial slices with half-step diffraction and a local
-field factor `exp(g Delta z/2)`. Its `weak_probe` option holds the pump-only
+field factor $e^{g\Delta z/2}$. Its `weak_probe` option holds the pump-only
 population; `saturated_cw` includes signal intensity in that population;
 `modal_cw` has a separate modal background. A CW map in watts is not a pulse
 fluence map in joules per square metre. The figure above showing a temporal
@@ -422,8 +475,8 @@ pulse comes from the *ideal pulsed* path, not the CW or regenerative path.
 | Pulse power trace | Spatial integral of retarded-time intensity | W |
 | Pulse energy | Integral of fluence over transverse area | J |
 | Average optical power | Pulse energy × repetition rate | W |
-| Local population `beta` | Upper-manifold ions / all active Yb ions | dimensionless |
-| Pump attenuation `alpha` / signal gain `g` | Intensity exponential coefficient | m⁻¹ |
+| Local population $\beta$ | Upper-manifold ions / all active Yb ions | dimensionless |
+| Pump attenuation $\alpha$ / signal gain $g$ | Intensity exponential coefficient | m⁻¹ |
 | Optical path difference | Phase-equivalent path through/reflected from the disk | m or nm |
 
 The 10 ps trace is a **pulse** coordinate. A 10 kHz seed arrives every 100 µs;
@@ -467,10 +520,11 @@ object-plane pixels, allows shift/rotation/scale errors, and applies a Gaussian
 point-spread function. The expected photoelectrons in a pixel are proportional
 to
 
-```text
-mu_signal = F_pixel × A_pixel × pulses_per_exposure
-            × optical_throughput × QE × lambda_s/(h c) × PRNU_pixel.
-```
+$$
+\mu_{e,\mathrm{signal}}=F_{\mathrm{pixel}}A_{\mathrm{pixel}}
+N_{\mathrm{pulses}}\,\eta_{\mathrm{opt}}\,\mathrm{QE}
+\frac{\lambda_s}{hc}\,\mathrm{PRNU}_{\mathrm{pixel}}.
+$$
 
 It adds dark current, background electrons and then samples a Poisson count;
 DSNU and Gaussian read noise are added afterward. Dead and hot pixels are
@@ -483,7 +537,7 @@ imperfections are illustrative, not a calibration of a named 1080p camera.
 
 ![The same solved output as an ideal camera response, one noisy exposure and their difference](readme_figures/camera_noise_example.png)
 
-*Figure 4 — one 384×216 illustrative observation of the 20 at.% cold output.*
+*Figure 5 — one 384×216 illustrative observation of the 20 at.% cold output.*
 The ideal and noisy panels use the same ADU scale and the same fixed camera
 map. The difference panel highlights a fresh exposure noise realization;
 its colour range is chosen for normal variation, so rare defect pixels can
@@ -634,13 +688,19 @@ Temperatures in the API are kelvin. Wavelengths are nm. Spectral source files us
 
 Yb at.% means substitution on the **Y sublattice**, not the fraction of all atoms. The number-density baseline is
 
-```
-N_Yb = (3 * rho_YAG / M_YAG) * N_A * Yb_at_percent / 100
-```
+$$
+N_{\mathrm{Yb}}=\frac{3\rho_{\mathrm{YAG}}}{M_{\mathrm{YAG}}}
+N_{\mathrm{A}}\frac{c_{\mathrm{Yb}}}{100}.
+$$
 
 It uses the host volume at 300 K. This is not a measured concentration-dependent lattice/density relation. RT doped densities and heat capacities at 0/2/4/15 at.% are supplied separately by `doped_RT_density_heat_capacity()`.
 
-Net small-signal gain is `N * [beta*sigma_e - (1-beta)*sigma_a]`. The effective two-manifold saturation fluence is `h*nu/(sigma_a+sigma_e)`, not the emission-only expression. Saturation intensity additionally depends on the chosen lifetime. These quantities do not by themselves specify extraction efficiency, ASE losses, or total heat load.
+Net small-signal gain is
+$g=N[\beta\sigma_e-(1-\beta)\sigma_a]$. The effective two-manifold
+saturation fluence is $F_s=h\nu/(\sigma_a+\sigma_e)$, not the emission-only
+expression. Saturation intensity additionally depends on the chosen lifetime.
+These quantities do not by themselves specify extraction efficiency, ASE
+losses, or total heat load.
 
 ## Thermal and stress-optic cautions
 
@@ -650,10 +710,13 @@ Sato2025 explicitly notes that its apparent dn/dT may include mounting-stress ph
 
 For a stress-free thermo-optic index, apply photoelasticity to **mechanical elastic strain = total strain - thermal eigenstrain**, not to total strain. Otherwise free thermal dilation is counted twice. `photoelastic_delta_B()` accepts mechanical strain in [100]/[010]/[001] axes and uses
 
-```
-Delta B_ii = p11*e_ii + p12*(trace(e)-e_ii)
-Delta B_ij = 2*p44*e_ij, i != j
-```
+$$
+\begin{aligned}
+\Delta B_{ii}&=p_{11}\epsilon_{ii}
+  +p_{12}(\operatorname{tr}\boldsymbol\epsilon-\epsilon_{ii}),\\
+\Delta B_{ij}&=2p_{44}\epsilon_{ij},\qquad i\ne j.
+\end{aligned}
+$$
 
 `B` is the inverse relative dielectric tensor. The tensor choice and coordinate rotation must remain explicit. The alternative Johnson/Olson set has no verified p44 here and is rejected as incomplete.
 

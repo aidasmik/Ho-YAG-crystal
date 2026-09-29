@@ -1,5 +1,5 @@
 {
-  "source_revision": "2cdf3cb67d803f5051c93ad5630c290ab8d499ba",
+  "source_revision": "aab887d7c6d7cdc1b1ebae59a9150341d5d06aa9",
   "runtime_spectrum_sha256": "e75f08c35a381437102422c5872ba9ae61321bf4282413ccc00c839e137ec3c5",
   "scope": "Coarse 64x64, one optical axial slice examples; no spatial/temporal convergence claim.",
   "doping_map_example": {
@@ -15,6 +15,19 @@
       0.9114070041392373,
       0.9221766374014668
     ]
+  },
+  "beam_penetration_example": {
+    "yb_at_percent": 20,
+    "pump_incident_W": 40,
+    "seed_incident_J": 9.999999999999995e-09,
+    "axial_slices": 8,
+    "pump_first_pass_exit_W": 35.392651420647,
+    "signal_first_pass_exit_J": 1.1120122562346309e-08,
+    "pump_only_excited_fraction_min_max": [
+      4.0922663355015985e-28,
+      0.23924267860749304
+    ],
+    "scope": "Frozen pump-only periodic population for first pump pass; first time-resolved seed traversal from that population."
   },
   "camera_example": {
     "seed": 314159,

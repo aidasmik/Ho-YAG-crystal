@@ -32,14 +32,26 @@ they are not silently substituted for the default table.
 ![Default Yb:YAG absorption and emission spectra with the calculated transparency threshold](Yb-YAG/readme_figures/runtime_spectra.png)
 
 Nominal doping is atomic percent of Y sites. The code converts it to ion density
-as `N = (3 rho_YAG / M_YAG) N_A (at.% / 100)`. For local upper-manifold fraction
-`beta`, each optical cell uses
+as
 
-```text
-pump absorption: alpha_p = N[(1-beta) sigma_a,p - beta sigma_e,p]
-signal gain:     g_s     = N[beta sigma_e,s - (1-beta) sigma_a,s]
-I_p,out = I_p,in exp(-alpha_p Delta z);  I_s,out = I_s,in exp(g_s Delta z).
-```
+$$
+N_{\mathrm{Yb}}=\frac{3\rho_{\mathrm{YAG}}}{M_{\mathrm{YAG}}}
+N_{\mathrm{A}}\frac{c_{\mathrm{Yb}}}{100},
+$$
+
+where $c_{\mathrm{Yb}}$ is Y-site at.%. For local upper-manifold fraction
+$\beta$, each optical cell uses
+
+$$
+\begin{aligned}
+\alpha_p &= N_{\mathrm{Yb}}\big[(1-\beta)\sigma_{a,p}
+                 -\beta\sigma_{e,p}\big], &
+I_{p,\mathrm{out}} &= I_{p,\mathrm{in}}e^{-\alpha_p\Delta z},\\
+g_s &= N_{\mathrm{Yb}}\big[\beta\sigma_{e,s}
+                 -(1-\beta)\sigma_{a,s}\big], &
+I_{s,\mathrm{out}} &= I_{s,\mathrm{in}}e^{g_s\Delta z}.
+\end{aligned}
+$$
 
 The pump alternates direction across axial passes, with relay loss; its
 cell-average intensity sets excitation rates. The population bleaches pump
@@ -50,34 +62,43 @@ stages.
 
 ### How the amplification calculation runs
 
-The state variable is `beta[z, y, x]`, the fraction of Yb ions in the excited
-manifold in each axial slice and transverse optical-grid pixel. If `h nu_p`
-and `h nu_s` are pump and signal photon energies, the **per-ion** rates used by
+The state variable $\beta_{j,y,x}$, stored as `beta[z, y, x]`, is the excited
+fraction in each axial slice and transverse optical-grid pixel. If $h\nu_p$
+and $h\nu_s$ are pump and signal photon energies, the **per-ion** rates used by
 the code are
 
-```text
-W_up   = sigma_a,p I_p/(h nu_p) + sigma_a,s I_s/(h nu_s)
-W_down = sigma_e,p I_p/(h nu_p) + sigma_e,s I_s/(h nu_s)
-d beta/dt = (1-beta) W_up - beta W_down - beta/tau.
-```
+$$
+\begin{aligned}
+W_{\uparrow} &= \frac{\sigma_{a,p}I_p}{h\nu_p}
+                +\frac{\sigma_{a,s}I_s}{h\nu_s},\\
+W_{\downarrow} &= \frac{\sigma_{e,p}I_p}{h\nu_p}
+                  +\frac{\sigma_{e,s}I_s}{h\nu_s},\\
+\frac{d\beta}{dt} &= (1-\beta)W_{\uparrow}
+                    -\beta W_{\downarrow}-\frac{\beta}{\tau}.
+\end{aligned}
+$$
 
-Here `tau` is the upper-manifold lifetime. Signal absorption can **increase**
-`beta`; stimulated emission from pump or signal can **decrease** it. For one
+Here $\tau$ is the upper-manifold lifetime. Signal absorption can **increase**
+$\beta$; stimulated emission from pump or signal can **decrease** it. For one
 short time step the code holds the computed rates constant and uses the bounded
 exponential update
 
-```text
-R = W_up + W_down + 1/tau;    beta_eq = W_up/R
-beta(t+Delta t) = beta_eq + [beta(t)-beta_eq] exp(-R Delta t).
-```
+$$
+\begin{aligned}
+R &= W_{\uparrow}+W_{\downarrow}+\tau^{-1},
+&\beta_{\mathrm{eq}} &= \frac{W_{\uparrow}}{R},\\
+\beta(t+\Delta t) &= \beta_{\mathrm{eq}}+
+\big[\beta(t)-\beta_{\mathrm{eq}}\big]e^{-R\Delta t}.
+\end{aligned}
+$$
 
 At each cell, the current `beta` sets the absorption/gain coefficients above.
 The code transports intensity through the axial slices using their exponential
 transmission, and uses the **exact Beer–Lambert cell-average intensity** for
 the local rates. It repeats this for every sample of the 10 ps seed pulse and
 every traversal. During those short signal windows the pulse kernel sets pump
-intensity to zero;
-between injected pulses it sets signal intensity to zero, recomputes the
+intensity to zero. Between injected pulses it sets signal intensity to zero,
+recomputes the
 bleached multipass CW pump over eight recovery substeps, and repeats whole
 pulse periods until the pre-pulse `beta[z,y,x]` converges.
 
@@ -92,21 +113,33 @@ also diffracts between slices, and the regenerative cavity diffracts between
 round trips. Lateral heat flow couples thermal cells on a separate mesh.
 
 After each ideal signal traversal the output fluence
-`F_out(x,y) = integral I_s,out(t,x,y) dt` scales the complex field amplitude by
-`sqrt(F_out/F_in)`. The code keeps its optical phase, applies the configured
+$F_{\mathrm{out}}(x,y)=\int I_{s,\mathrm{out}}(t,x,y)\,dt$ scales the complex field amplitude by
+$\sqrt{F_{\mathrm{out}}/F_{\mathrm{in}}}$. The code keeps its optical phase, applies the configured
 disk phase and relay, then starts the next traversal using the **updated same
 population**. Pulse energy is the area sum
-`E_out = sum_(x,y) F_out(x,y) Delta x Delta y`.
+$E_{\mathrm{out}}=\sum_{x,y}F_{\mathrm{out}}(x,y)\,\Delta x\Delta y$.
 The figure examples use only **64×64 pixels, one axial slice and 41 pulse-time
 samples**; those grids are illustrative, not a convergence claim. The
 [full pulse and pump derivation](Yb-YAG/README.md#physical-model-from-source-beam-to-output)
 also describes the distinct regenerative and CW algorithms.
 
+![Pump and seed beams through eight modeled axial cells of one Yb:YAG disk](Yb-YAG/readme_figures/beam_penetration.png)
+
+*First-pass transport illustration.* The top panels are centerline beam maps
+as depth increases; the lower panels integrate over the beam area. With the
+periodic **pump-only** population frozen for the first pump visit, 40.00 W
+enters and 35.39 W leaves the 100 µm disk. A separate first seed traversal,
+starting from that population and allowing local depletion, grows from
+10.00 to 11.12 nJ. These are **not** the final ten-pass output or a hot-gain
+prediction. The pulsed kernel has no intra-disk transverse diffraction, so
+the plot shows local absorption/gain rather than beam broadening.
+
 Synthetic doping has two paths: the gallery can draw seeded **3D rich/poor
 clusters**; the camera dataset and controller instead draw a fixed smooth **2D
 map** for each virtual crystal and set the 3D cluster contrast to zero. The
 default 2D map is a Gaussian-filtered, zero-mean, unit-RMS random field with
-`s_Yb = max(0.1, 1 + 0.03 u)`. Local density is `N_local = N_nominal s_Yb`
+$s_{\mathrm{Yb}}=\max\{0.1,1+0.03u\}$. Local density is
+$N_{\mathrm{local}}=N_{\mathrm{nominal}}s_{\mathrm{Yb}}$
 (times the optional 3D multiplier), and a separate thickness scale multiplies
 each cell's optical depth. The same Yb map also changes the approximate local
 thermal conductivity. These are generated imperfections, not measured maps.

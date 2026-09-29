@@ -15,12 +15,15 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.patches import FancyArrowPatch, FancyBboxPatch
 import numpy as np
+from scipy.integrate import trapezoid
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 from ybyag.model import YbYAGMaterial
 from ybyag import material_data as md
 from ybluag.gallery import YbGallerySettings, simulate_pulsed_seed
+from ybluag.multipass_pump import steady_multipass_pump
+from ybluag.pulsed import propagate_pulse
 from ybluag.camera_dataset import CameraSettings
 from ybyag_dataset.distortions.material import sample_material
 from ybyag_dataset.distortions.camera import capture, sample_camera_setup
@@ -202,6 +205,81 @@ def concentration_transport(cases):
     save(fig, "concentration_transport.png")
 
 
+def beam_penetration(result):
+    """Visualize axial cell-face transport using the actual pump/pulse kernels."""
+    material = YbYAGMaterial(yb_at_percent=20)
+    grid = result["grid"]
+    x, y = np.meshgrid(grid.x, grid.y)
+    pump = np.exp(-2 * (x*x + y*y) / (1e-3)**2)
+    pump *= 40 / (pump.sum() * grid.dx * grid.dy)
+    thickness = 100e-6
+    slices = 8
+    scale = np.ones((slices, *grid.shape))
+    pump_state = steady_multipass_pump(material, pump, scale, thickness, 10)
+    beta = pump_state.excited_fraction_by_slice
+
+    # The first of ten alternating pump visits, frozen at the converged
+    # pump-only population. Each face is a direct Beer–Lambert kernel step.
+    pump_faces = [pump]
+    for iz in range(slices):
+        alpha, _ = material.coefficients_m1(beta[iz])
+        pump_faces.append(pump_faces[-1] * np.exp(-alpha * thickness / slices))
+    pump_faces = np.stack(pump_faces)
+
+    # One signal traversal, resolving population depletion in every axial
+    # cell. Chaining one-cell calls must equal the same full pulse kernel.
+    time = np.linspace(-30e-12, 30e-12, 41)
+    pulse_shape = np.exp(-4 * np.log(2) * (time / 10e-12)**2)
+    pulse_shape /= trapezoid(pulse_shape, time)
+    incident = pulse_shape[:, None, None] * result["disk_input_fluence_J_m2"][None]
+    signal = incident
+    signal_faces = [trapezoid(signal, time, axis=0)]
+    for iz in range(slices):
+        step = propagate_pulse(material, time, np.zeros_like(signal), signal,
+                               thickness / slices, 1,
+                               initial_excited_fraction=beta[iz])
+        signal = step.signal_out_W_m2
+        signal_faces.append(trapezoid(signal, time, axis=0))
+    full = propagate_pulse(material, time, np.zeros_like(incident), incident,
+                           thickness, slices, initial_excited_fraction=beta)
+    np.testing.assert_allclose(signal, full.signal_out_W_m2, rtol=1e-12, atol=1e-7)
+    signal_faces = np.stack(signal_faces)
+
+    center = grid.shape[0] // 2
+    transverse = np.abs(grid.x) <= 2e-3
+    z_um = np.linspace(0, 100, slices + 1)
+    pump_power = pump_faces.sum(axis=(1, 2)) * grid.dx * grid.dy
+    signal_energy = signal_faces.sum(axis=(1, 2)) * grid.dx * grid.dy
+    fig, axes = plt.subplots(2, 2, figsize=(11.8, 7.1), layout="constrained")
+    for ax, image, title, unit, cmap in (
+        (axes[0, 0], pump_faces[:, center, transverse] / 1e6,
+         "969 nm pump: first disk traversal", r"intensity [MW m$^{-2}$]", "magma"),
+        (axes[0, 1], signal_faces[:, center, transverse],
+         "1030 nm seed: first disk traversal", r"fluence [J m$^{-2}$]", "inferno"),
+    ):
+        im = ax.imshow(image, origin="lower", aspect="auto",
+                       extent=(-2, 2, 0, 100), cmap=cmap)
+        ax.set(xlabel="transverse x [mm] at y ≈ 0", ylabel="depth into disk [µm]",
+               title=title)
+        fig.colorbar(im, ax=ax, label=unit)
+    axes[1, 0].plot(z_um, pump_power, "o-", color="#b64d3d")
+    axes[1, 0].set(xlabel="depth into disk [µm]", ylabel="pump power [W]",
+                   title="First pump pass: bleaching reduces absorption")
+    axes[1, 1].plot(z_um, signal_energy * 1e9, "o-", color="#176e94")
+    axes[1, 1].set(xlabel="depth into disk [µm]", ylabel="seed energy [nJ]",
+                   title="First seed pass: local gain and depletion")
+    for ax in axes[1]:
+        ax.grid(alpha=.25)
+    fig.suptitle("20 at.% Yb:YAG, 100 µm disk, eight axial cells; no intra-disk transverse diffraction")
+    save(fig, "beam_penetration.png")
+    return {"yb_at_percent": 20, "pump_incident_W": 40,
+            "seed_incident_J": float(signal_energy[0]), "axial_slices": slices,
+            "pump_first_pass_exit_W": float(pump_power[-1]),
+            "signal_first_pass_exit_J": float(signal_energy[-1]),
+            "pump_only_excited_fraction_min_max": [float(beta.min()), float(beta.max())],
+            "scope": "Frozen pump-only periodic population for first pump pass; first time-resolved seed traversal from that population."}
+
+
 def camera_noise_example(result):
     ranges = json.loads((ROOT / "config/ybyag_nn_dataset.json").read_text(encoding="utf-8"))["ranges"]
     settings = CameraSettings(width=384, height=216, object_fov_width_mm=6,
@@ -288,6 +366,7 @@ def main():
             cases[key]["thermal_balance_error_W"] = result["thermal"]["balance_error_W"]
     r = outputs["20at_40W"]
     concentration_transport(cases)
+    penetration_summary = beam_penetration(r)
     camera_summary = camera_noise_example(r)
     f, ax = plt.subplots(2, 2, figsize=(10, 8), layout="constrained")
     extent = [-4, 4, -4, 4]
@@ -335,10 +414,11 @@ def main():
             f.colorbar(im, ax=a, label=label)
         f.suptitle("20 at.% Yb:YAG, 0.1 W: steady generic cooler and scalar distortion")
         save(f, "near_rt_thermal_example.png")
-    payload = {"source_revision": "2cdf3cb67d803f5051c93ad5630c290ab8d499ba",
+    payload = {"source_revision": "aab887d7c6d7cdc1b1ebae59a9150341d5d06aa9",
                "runtime_spectrum_sha256": sha,
                "scope": "Coarse 64x64, one optical axial slice examples; no spatial/temporal convergence claim.",
                "doping_map_example": doping_summary,
+               "beam_penetration_example": penetration_summary,
                "camera_example": camera_summary,
                "cases": cases}
     (OUT / "simulation_summary.json").write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
