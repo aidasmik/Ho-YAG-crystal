@@ -1,8 +1,8 @@
 # Ho:YAG thin-disk laser — model, results and validation
 
-**Yb:YAG:** Start with the [complete Yb:YAG data and simulator README](Yb-YAG/README.md)
-for source spectra, physical equations, reproduction commands, solver-generated
-figures, example results and current limitations.
+**Yb:YAG:** The [complete Yb:YAG data and simulator guide](Yb-YAG/README.md)
+contains source spectra, equations, reproduction commands, generated figures and
+limitations. A shorter explanation follows below.
 
 This repository reconstructs and extends a Ho:YAG laser model into a **10 mm diameter × 1 mm thin-disk resonator** with picosecond pumping, four-manifold gain dynamics, a finite cooling plate, thermoelastic deformation, photoelasticity and a self-consistent vector hot-cavity calculation.
 
@@ -14,6 +14,108 @@ engineering approximations and missing experimental inputs. Its 96² optical
 grid is a preview, not a convergence-tested device prediction. Hot-cavity
 thermal feedback, calibrated coating losses, photoelasticity and
 concentration-dependent refractive index remain unavailable.
+
+## Yb:YAG thin-disk amplifier in brief
+
+The Yb:YAG model sends a shaped **1030 nm, 10 ps seed** through one 100 µm disk
+up to ten times while a separate **969 nm continuous-wave pump** excites the
+same Yb population. A phase-only SLM shapes the seed before it diffracts to the
+disk. Pump absorption and signal extraction also provide heat input to a finite
+disk, contact and copper-cooler calculation. The relay in this diagram is an
+ideal optical boundary condition, not a constructed multipass layout.
+
+![Schematic of the shaped seed, pump, shared Yb:YAG disk, cooler and camera path](Yb-YAG/readme_figures/light_path_schematic.png)
+
+### Spectra, concentration and light transport
+
+The default calculation uses a **293.15 K**, 191-point absorption/emission
+cross-section table. The pump and signal wavelengths are sampled from those
+curves. Optional literature-derived temperature and ceramic concentration
+spectra are shown separately in the [full guide](Yb-YAG/README.md#what-data-are-used-now);
+they are not silently substituted for the default table.
+
+![Default Yb:YAG absorption and emission spectra with the calculated transparency threshold](Yb-YAG/readme_figures/runtime_spectra.png)
+
+Nominal doping is atomic percent of Y sites. The code converts it to ion density
+as `N = (3 rho_YAG / M_YAG) N_A (at.% / 100)`. For local upper-manifold fraction
+`beta`, each optical cell uses
+
+```text
+pump absorption: alpha_p = N[(1-beta) sigma_a,p - beta sigma_e,p]
+signal gain:     g_s     = N[beta sigma_e,s - (1-beta) sigma_a,s]
+I_p,out = I_p,in exp(-alpha_p Delta z);  I_s,out = I_s,in exp(g_s Delta z).
+```
+
+The pump alternates direction across axial passes, with relay loss; its
+cell-average intensity sets excitation rates. The population bleaches pump
+absorption, is depleted by seed extraction, and recovers between pulses. The
+solver repeats seed periods until the pre-pulse population becomes periodic.
+All signal traversals use **one shared crystal**, not ten independent gain
+stages.
+
+Synthetic doping has two paths: the gallery can draw seeded **3D rich/poor
+clusters**; the camera dataset and controller instead draw a fixed smooth **2D
+map** for each virtual crystal and set the 3D cluster contrast to zero. The
+default 2D map is a Gaussian-filtered, zero-mean, unit-RMS random field with
+`s_Yb = max(0.1, 1 + 0.03 u)`. Local density is `N_local = N_nominal s_Yb`
+(times the optional 3D multiplier), and a separate thickness scale multiplies
+each cell's optical depth. The same Yb map also changes the approximate local
+thermal conductivity. These are generated imperfections, not measured maps.
+
+![Generated doping map, local pump absorption and one-pass transmission](Yb-YAG/readme_figures/doping_map_transport.png)
+
+For the illustrated 10 at.% map, active-disk concentrations span about
+**9.21–10.55 at.%** and the *unpumped, frozen-population* 969 nm one-pass
+transmission is **0.911–0.922**. The working amplifier is different: its
+population, pump bleaching and signal gain change during repeated encounters.
+The full guide plots the [frozen transmission beside periodic solver results](Yb-YAG/README.md#how-light-crosses-varying-concentration).
+
+### Example outputs and observations
+
+In the coarse **cold optical** example, a 40 W pump and 10 nJ seed yield these
+calculated pulse energies after ten signal traversals. Per-ion cross sections
+are held fixed while nominal doping changes.
+
+| Yb on Y sites | Pump absorbed | Output energy |
+|---:|---:|---:|
+| 5 at.% | 9.46 W | 14.01 nJ |
+| 10 at.% | 17.10 W | 18.88 nJ |
+| 15 at.% | 23.17 W | 24.36 nJ |
+| 20 at.% | 27.87 W | 30.04 nJ |
+
+![Calculated output beam, pulse trace and energy over repeated traversals](Yb-YAG/readme_figures/cold_amplifier_example.png)
+
+Heat is computed from absorbed pump energy minus signal transfer,
+fluorescence escape and stored-population change, then passed to a disk/plate
+thermal and mechanical model. Its scalar phase screen can be applied to the
+output in a near-room-temperature mode; **hot temperature feedback into gain
+is unavailable**. A separate 0.1 W thermal example and its phase map are in
+the [full guide](Yb-YAG/README.md#heat-cooler-and-phase).
+
+The dataset can add fixed Yb, thickness, surface, contact, SLM and detector
+imperfections; varying pump/seed conditions; and per-exposure jitter, Poisson
+photoelectron counts, read noise and ADC clipping. Two camera planes,
+four-step interferometry, temperature probes and a photodiode provide simulated
+observations for control. The controller receives those measurements, while
+the NN dataset explicitly includes the known relative Yb map in its inputs.
+The [camera example](Yb-YAG/README.md#noise-cameras-and-control) shows one
+noisy exposure of the calculated output.
+
+**Scope:** these are sensitivity calculations, not calibrated predictions for
+a particular crystal or laser. The default spectra lack sample-specific
+uncertainty and hot pump-band data; the examples use coarse spatial/axial
+grids, ideal relay optics and synthetic defect/noise maps. Hot gain, ASE,
+nonlinear pulse effects and a validated device cooler are unresolved. Read the
+[limitations](Yb-YAG/README.md#what-the-current-model-cannot-establish) before
+using the figures for design or training targets.
+
+To verify the source files and regenerate the figures from the repository root:
+
+```bash
+python -m pip install -e '.[plots,dev]'
+python Yb-YAG/tools/verify_manifest.py
+python examples/run_ybyag_readme_supervised.py
+```
 
 ## Desktop calculator
 
