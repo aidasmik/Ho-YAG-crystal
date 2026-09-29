@@ -15,7 +15,7 @@ def api(path,binary=False):
 
 def main():
     ap=argparse.ArgumentParser()
-    ap.add_argument('--repo',default='aidasmik/Ho-YAG-crystal')
+    ap.add_argument('--repo',default='aidasmik/Yb-YAG-crystal')
     ap.add_argument('--run-id',type=int,default=35854247190)
     ap.add_argument('--output',type=Path,default=Path('results/stage7w'))
     args=ap.parse_args();args.output.mkdir(parents=True,exist_ok=True)

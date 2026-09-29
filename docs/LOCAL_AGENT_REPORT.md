@@ -1,7 +1,7 @@
 # Ho:YAG local-agent implementation report
 ## Targeted numerical improvements, bounded validation, and solver-driven visualization
 
-**Repository:** `https://github.com/aidasmik/Ho-YAG-crystal`
+**Repository:** `https://github.com/aidasmik/Yb-YAG-crystal`
 
 **Verified baseline for this handoff:** `0b18a9f1201a79c6c0efcfeeb50139f1e3e293eb`
 
@@ -168,8 +168,8 @@ Do not discard local work, force-reset, force-push, or merge automatically.
 New checkout:
 
 ```bash
-git clone https://github.com/aidasmik/Ho-YAG-crystal.git
-cd Ho-YAG-crystal
+git clone https://github.com/aidasmik/Yb-YAG-crystal.git
+cd Yb-YAG-crystal
 git switch -c local/bounded-validation-viewer
 ```
 

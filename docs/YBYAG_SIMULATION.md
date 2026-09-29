@@ -13,7 +13,7 @@ are restored only to their matching material. No HTTP server is started.
 ## Repository data
 
 The data were fetched from
-[`Yb-YAG/` at revision 7aa99048aa79f0f00a9a7f4efd21de50c19a6e00](https://github.com/aidasmik/Ho-YAG-crystal/tree/7aa99048aa79f0f00a9a7f4efd21de50c19a6e00/Yb-YAG).
+[`Yb-YAG/` at revision 7aa99048aa79f0f00a9a7f4efd21de50c19a6e00](https://github.com/aidasmik/Yb-YAG-crystal/tree/7aa99048aa79f0f00a9a7f4efd21de50c19a6e00/Yb-YAG).
 All 28 source checksums in its manifest were verified. The required runtime
 data in `src/ybyag/data` are byte-identical copies; a regression checks this.
 The original data notices and GPL license remain with both copies.

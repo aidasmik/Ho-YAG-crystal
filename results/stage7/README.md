@@ -4,9 +4,9 @@ Source revision: `6e4bc1aa3dc22b6bccbfe5608608f8add70a1614`.
 
 The full project regression suite passed **162 tests in 81.42 s**, including 24 new Stage 7 tests. The separate demonstration job executes the actual repository solvers and uses `--require-converged`; a successful job requires numerical convergence, not merely successful file generation.
 
-- Full regression run: https://github.com/aidasmik/Ho-YAG-crystal/actions/runs/35770443672
-- Coupled demonstration run: https://github.com/aidasmik/Ho-YAG-crystal/actions/runs/35770443574
-- Full arrays and PNG/SVG plots: https://github.com/aidasmik/Ho-YAG-crystal/actions/runs/35770443574/artifacts/10713782218
+- Full regression run: https://github.com/aidasmik/Yb-YAG-crystal/actions/runs/35770443672
+- Coupled demonstration run: https://github.com/aidasmik/Yb-YAG-crystal/actions/runs/35770443574
+- Full arrays and PNG/SVG plots: https://github.com/aidasmik/Yb-YAG-crystal/actions/runs/35770443574/artifacts/10713782218
 - Artifact SHA-256: `53d1cae3c5a7f2ba3d2f05c9f1f2929d3ec757571cfb366eac9c68da472daec3`.
 
 The committed CSV and JSON values are transcribed from completed job 106890502348. The full artifact includes the fields used/predicted, mean populations, raw and relaxed heat, disk/plate temperatures, interface heat flux, Jones matrices, optical history/waveform and plots. No missing field arrays have been reconstructed from scalars.

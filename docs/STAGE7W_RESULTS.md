@@ -87,11 +87,11 @@ report does not assert that such an unexecuted six-mode case passes.
 ## Evidence
 
 Full regression run:
-https://github.com/aidasmik/Ho-YAG-crystal/actions/runs/35854247011
+https://github.com/aidasmik/Yb-YAG-crystal/actions/runs/35854247011
 Job: `107158855750`.
 
 Representative numerical workflow:
-https://github.com/aidasmik/Ho-YAG-crystal/actions/runs/35854247190
+https://github.com/aidasmik/Yb-YAG-crystal/actions/runs/35854247190
 
 Compact, hash-verified evidence:
 `results/stage7w/evidence_summary.json` and `results/stage7w/cases/*.json`.
