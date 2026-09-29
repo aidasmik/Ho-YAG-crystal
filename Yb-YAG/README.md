@@ -11,8 +11,26 @@ laser and Yb:LuAG's material spectra are separate models.
 **Status:** this is a development and sensitivity model. Neither the material
 table nor the simulated output is a calibrated prediction for a particular
 crystal, coating, mount or laser. The example figures below were regenerated at
-repository revision `6c384fb` on 29 September 2026. Their settings and numerical
+repository revision `2cdf3cb` on 29 September 2026. Their settings and numerical
 outputs are in [simulation_summary.json](readme_figures/simulation_summary.json).
+
+![Illustrated path from shaped seed and pump through one Yb:YAG disk to the output and cooler](readme_figures/light_path_schematic.png)
+
+*Figure 1 — the actual software path in the ideal multipass calculation.* The
+1030 nm seed receives an SLM phase, diffracts to the disk, and repeatedly
+passes through **one** crystal. A separate 969 nm continuous-wave pump revisits
+the disk. The model updates one shared excitation field between signal passes
+and between pulses. Pump absorption and signal extraction create heat for the
+disk, contact and copper calculation; the outgoing optical field can then be
+formed into camera observations. The drawn relay is a schematic boundary
+condition, not the geometry of a built device.
+
+This guide follows that path: [data](#what-data-are-used-now),
+[doping map](#how-the-doping-map-is-made),
+[transmission](#how-light-crosses-varying-concentration),
+[pulses and heat](#physical-model-from-source-beam-to-output),
+[noise and observations](#noise-cameras-and-control), and
+[limitations](#what-the-current-model-cannot-establish).
 
 ## Reproduce the data and figures
 
@@ -23,7 +41,7 @@ python -m pip install -e '.[plots,dev]'
 python Yb-YAG/tools/verify_manifest.py
 python Yb-YAG/tools/export_dataset.py --output Yb-YAG/readme_figures/exported_data
 python examples/run_ybyag_readme_supervised.py
-python -m pytest Yb-YAG/tests tests/test_ybyag_simulation.py -q
+python -m pytest Yb-YAG/tests tests/test_ybyag_simulation.py tests/test_ybyag_dataset_distortions.py tests/test_ybyag_dataset_sequence.py tests/test_ybyag_control.py -q
 ```
 
 The source files are already in `Yb-YAG/` and byte-identical runtime copies
@@ -32,8 +50,9 @@ command checks all **28** source-file hashes. The exporter makes SI-unit CSV/NPZ
 files, without acquiring new measurements. The figure runner uses
 `hoyag.local_supervisor`, the shared persistent budget ledger, a 180 s run
 limit and a memory cap. It writes figures, a JSON summary, and execution
-records to `Yb-YAG/readme_figures/`. The saved run completed in **5.26 s**
-with **211 MB** peak process RSS. These numbers are machine-specific.
+records to `Yb-YAG/readme_figures/`. The expanded five-case local run takes
+about **8 s** and **225 MB** peak process RSS on this machine; these are
+machine-specific, not physical time scales.
 
 For the native calculator, run `python examples/ybyag_desktop.py` from the
 repository root with a Python installation that includes Tkinter. The Yb:YAG
@@ -86,6 +105,128 @@ This comparison is a useful scale and shape check. The dashed curves are
 `N_Yb sigma_a` from the default table, while the solid curves include the
 particular Tang ceramics and figure-reading uncertainty. Their differences
 should not be fitted away by silently adding another loss term.
+
+## How the doping map is made
+
+There are **two spatial-map paths**, depending on how the simulation is
+launched. In both cases, a nominal `yb_at_percent` defines the mean ion density
+through the Y-site formula below. A map changes that density *locally*; it does
+not swap in measured cross sections for each local concentration.
+
+1. The native structured/CW and pulsed gallery can make a seeded **three
+   dimensional cluster field** through `nonuniform_density` in
+   `src/hoyag/structured_beam_gallery.py`. It sums positive and negative
+   Gaussian-rich/poor clusters of different transverse and axial widths,
+   standardizes their variation over the disk, computes a positive multiplier
+   `exp(clip(contrast × standardized,-0.55,+0.55))`, and normalizes it so the
+   arithmetic mean density over active disk voxels equals the chosen nominal
+   density. The seed, cluster count, contrast and width range are settings.
+   The `YbGallerySettings` defaults include a 0.27 contrast. This is a
+   **synthetic heterogeneity model**, not a microscopy reconstruction.
+2. The NN dataset and closed-loop controller instead set that cluster contrast
+   to **zero** and draw one fixed smooth **two dimensional Yb scale map** per
+   virtual crystal using `sample_material`. A seeded normal random image is
+   Gaussian-filtered with `reflect` edges, mean-subtracted, and divided by its
+   own RMS. For a grid with shape `(ny,nx)`, the Gaussian width is
+   `max(2,min(ny,nx)/7)` pixels. With the default configuration, the scale is
+   `s_Yb(x,y) = max[0.1, 1 + 0.03 u(x,y)]`, where `u` has zero mean and unit
+   RMS over the sampled grid. One seed generates four independent fields:
+   Yb concentration, thickness, background absorption and rear-surface
+   figure. The crystal, contact, SLM calibration and camera pixel maps stay
+   fixed across that setup's measured trials. A new setup gets new seeds.
+
+For the dataset path, the optical-slice density becomes
+
+```text
+N_local(x,y,z) = N_nominal × s_cluster(x,y,z) × s_Yb(x,y)
+s_optical(x,y,z) = [N_local / N_nominal] × s_thickness(x,y).
+```
+
+`s_cluster=1` when cluster contrast is zero. The pulse and pump kernels use
+`s_optical` to scale each slice's optical depth, so the sampled thickness map
+affects both resonant absorption and gain. The nominal 100 µm mechanical mesh
+is **not physically reshaped** by this thickness map; the code adds a separate
+first-order cold phase from the thickness error. Likewise, a 2D local Yb map
+is not an independently resolved 3D impurity measurement.
+
+![Synthetic Yb concentration map and its calculated local absorption and one-pass transmission](readme_figures/doping_map_transport.png)
+
+*Figure 2 — one seeded map, used as an explanation.* At a nominal 10 at.% the
+3% RMS scale makes values from about **9.21 to 10.55 at.% inside this plotted
+disk**. With a frozen unexcited population, the local 969 nm one-pass
+transmission through 100 µm is about **0.911–0.922**. This is generated from
+the same `sample_material` routine, but the figure's local Beer–Lambert
+calculation deliberately holds `beta=0`; the operating solver changes `beta`.
+
+The other fixed maps have distinct jobs. The default 0.03% RMS thickness scale
+is about 30 nm RMS at 100 µm. Background absorption has a 0.1 m⁻¹ nominal
+coefficient and 20% RMS variation; it removes pump power before resonant pump
+transport and deposits heat. A 2 nm RMS rear-surface figure contributes static
+optical phase. The contact map is sampled on the **thermal polar mesh** with a
+20% scale variation and multiplies the disk/plate interface conductance.
+These numbers are example generator settings in
+[`config/ybyag_nn_dataset.json`](../config/ybyag_nn_dataset.json), not measured
+manufacturing tolerances. A user can disable each disturbance family.
+
+## How light crosses varying concentration
+
+The local ion concentration acts on pump and seed at **each transverse pixel
+and longitudinal slice**. At a frozen population `beta`, the code asks the
+Yb:YAG material object for `sigma_a` and `sigma_e` at the chosen wavelength.
+For an axial cell of nominal thickness `Delta z = L/n_z`, the dataset-scaled
+optical step is
+
+```text
+alpha_p,cell = N_nominal[(1-beta)sigma_a,p - beta sigma_e,p] × s_optical
+g_s,cell     = N_nominal[beta sigma_e,s - (1-beta)sigma_a,s] × s_optical
+I_p,out      = I_p,in exp(-alpha_p,cell Delta z)
+I_s,out      = I_s,in exp(+g_s,cell Delta z).
+```
+
+The actual code uses the **exact exponential cell-average pump intensity**
+when it calculates excitation rates, rather than the arithmetic mean of the
+two face intensities. Pump visits alternate axial direction. After each
+complete pass, its remaining intensity can be reduced by a configured relay
+factor. As `beta` rises, stimulated emission at the pump wavelength can bleach
+the pump absorption. The local signal can be gained or reabsorbed. The signal
+field amplitude is multiplied by the square root of the calculated fluence
+ratio, preserving its phase for the next ideal relay. These operations share
+one physical population field and converge over many seed periods.
+
+An *unpumped, frozen* analytic illustration would give
+`T_p=exp(-N sigma_a,p L)` for one pass and
+`T_p,10=exp(-10 N sigma_a,p L)` for ten identical lossless passes. It is useful
+for seeing the effect of concentration, but it is **not** the periodically
+pumped result: the solver lets the local population, pump bleaching, seed
+extraction, losses and transverse overlap change the answer.
+
+![Frozen Beer–Lambert transmission beside the full periodic cold solver across Yb concentrations](readme_figures/concentration_transport.png)
+
+*Figure 3 — the distinction in numbers.* The left curves hold `beta=0` and
+ignore changing intensity overlap. The right curves are fresh 40 W cold
+periodic solves at 5, 10, 15 and 20 at.% with the same optical settings.
+
+| Yb on Y sites | 40 W pump absorbed | 10 nJ seed output | Output/seed |
+|---:|---:|---:|---:|
+| 5 at.% | 9.46 W | 14.01 nJ | 1.40× |
+| 10 at.% | 17.10 W | 18.88 nJ | 1.89× |
+| 15 at.% | 23.17 W | 24.36 nJ | 2.44× |
+| 20 at.% | 27.87 W | 30.04 nJ | 3.00× |
+
+The examples are **cold optical screens at 293.15 K**. The very large
+cycle-average pump heat at 40 W is not carried back into their gain spectrum.
+The model keeps the same per-ion RT cross sections across these dopings, so
+the table is a controlled software sensitivity calculation, not a claim that
+a higher concentration will improve a real hot amplifier.
+
+The dataset's spatial map also modifies **local thermal conductivity**. The
+optical Yb scale is interpolated onto the disk's polar thermal cells; its local
+at.% is passed through the selected Cini conductivity family with explicit
+resistivity interpolation. At or below 15 at.% the nominal assembly uses its
+CT/15-at.% source choices; near 15 at.% the varying-map path uses a relative
+HT concentration slope around the selected nominal value. Above 15 at.% it
+uses the HT fit at 300 K. This is a near-room-temperature engineering proxy,
+not a measured `k(T,c,x,y)` field of the particular disk.
 
 ## Physical model, from source beam to output
 
@@ -201,6 +342,16 @@ movement. In `lumped_phase` mode that phase is applied **after** optical
 amplification; gain still uses 293.15 K spectra. The code does not apply the
 available cubic photoelastic tensor in this scalar Yb:YAG amplifier.
 
+For a dataset thickness perturbation `Delta L = L(s_thickness-1)`, the
+**one-traversal** cold geometric phase is
+`phi_L = (2π/lambda_s)(n_YAG-1)Delta L`. A modeled rear-HR height `h` adds
+`(2π/lambda_s)h` per encounter in the symmetric thin-disk convention: a
+reflected `2h` path is shared by two traversals. The thermal model supplies a
+round-trip OPD from thermo-refractive change and surface displacement. Its
+post-amplifier phase uses the configured number of encounters and half the
+round-trip OPD per encounter. These approximations do not solve oriented
+photoelastic birefringence or a measured surface profile.
+
 ![Steady thermal and scalar-distortion output for the 0.1 W example](readme_figures/near_rt_thermal_example.png)
 
 This separate **0.1 W**, 20 at.% case gives about **0.0827 W** absorbed pump,
@@ -210,6 +361,147 @@ the seed is partly reabsorbed. This demonstrates that a gain coefficient can
 be negative below transparency. The thermal example uses the generic 20 °C
 coolant boundary and near-room-temperature property proxies; it is not the
 steady temperature of the 40 W case.
+
+## What happens to the optical field
+
+The source is a complex Gaussian envelope normalized so its squared magnitude
+integrates to the requested pulse energy. At the SLM plane, an intentional
+phase target and any correction are added to that field. For example, the
+vortex target uses azimuthal phase `atan2(y,x)`, the needle target uses a
+converging radial axicon phase, and the flat-top target is made by 48
+alternating-projection steps. Those names describe **requested disk-plane
+patterns**: no target is promised to be an exact pure textbook mode.
+
+The ideal phase-only operation is
+
+```text
+E_after_SLM(x,y) = E_Gaussian(x,y) exp[i phi_applied(x,y)].
+```
+
+Its intensity at that plane is unchanged. A scalar angular-spectrum FFT then
+propagates it over the configured SLM-to-disk distance; the intensity pattern
+can change there. The disk receives a separately normalized Gaussian pump,
+`I_p(x,y) ∝ exp[-2((x-x_p)^2+(y-y_p)^2)/w_p^2]`, with its integral set to
+incident pump watts. The selected seed pulse has a Gaussian **intensity**
+envelope sampled at 41 retarded-time points from `-3` to `+3` pulse FWHM;
+its discrete integral is normalized to the requested seed joules.
+
+The ideal multipass pulse kernel transports *intensity* in each axial cell,
+updates its local Yb population and recovers that population during the dark
+part of the repetition period. It uses a coherent transverse field for phase
+and output diffraction but does not solve the full space-time complex field
+inside every pulse pass. A fixed cold disk phase is applied per encounter.
+In the near-room-temperature `lumped_phase` path, the calculated thermal
+round-trip OPD is applied as a single output screen before any requested
+post-disk propagation. Consequently its output phase is an approximate
+diagnostic; it is not gain reshaping by a hot, continuously deformed cavity.
+
+The `structured CW` route differs from the pulsed route: it transports a
+coherent field through axial slices with half-step diffraction and a local
+field factor `exp(g Delta z/2)`. Its `weak_probe` option holds the pump-only
+population; `saturated_cw` includes signal intensity in that population;
+`modal_cw` has a separate modal background. A CW map in watts is not a pulse
+fluence map in joules per square metre. The figure above showing a temporal
+pulse comes from the *ideal pulsed* path, not the CW or regenerative path.
+
+| Displayed quantity | Mathematical meaning | Normal unit |
+|---|---|---|
+| Pump intensity | Incident or cell-face power per area | W m⁻² |
+| Seed/output fluence | Time-integrated pulse intensity | J m⁻² |
+| Pulse power trace | Spatial integral of retarded-time intensity | W |
+| Pulse energy | Integral of fluence over transverse area | J |
+| Average optical power | Pulse energy × repetition rate | W |
+| Local population `beta` | Upper-manifold ions / all active Yb ions | dimensionless |
+| Pump attenuation `alpha` / signal gain `g` | Intensity exponential coefficient | m⁻¹ |
+| Optical path difference | Phase-equivalent path through/reflected from the disk | m or nm |
+
+The 10 ps trace is a **pulse** coordinate. A 10 kHz seed arrives every 100 µs;
+the pump and population recover in that interval. Thermal startup can take
+milliseconds or seconds, with optical-cycle heat averaged before the cooler
+solve. Outer iterations used to converge a periodic population are numerical
+steps, **not** physical elapsed time. By contrast, measured controller trials
+carry simulated timestamps; their wall-clock computation time is not the
+modeled control period.
+
+## Noise, cameras and control
+
+Noise is **optional** and belongs to different stages. The basic amplifier
+examples in this README use a deterministic Gaussian beam and uniform
+concentration, then an additional figure passes one solved output through the
+camera model. A dataset or closed-loop run enables a larger collection of
+fixed material imperfections, changing operating conditions and random
+observations. These categories must not be confused:
+
+| Category | Drawn or updated when | Effect in the simulator |
+|---|---|---|
+| Crystal Yb, thickness, background loss, rear figure | Once per virtual crystal | Local column density, pump heat and cold phase. |
+| Contact, external aberration, SLM response, camera PRNU/DSNU and defect pixels | Once per setup/session | Cooling boundary, upstream phase, actual SLM phase and fixed detector response. |
+| Pump power/radius/pointing, seed energy/waist/pointing, coolant | Per operating point or chronological update | New physical pump, gain, heat, temperature and output field; ranges come from the selected config. |
+| Camera shot/read noise, pulse energy/pointing jitter | Per exposure | New ADU sample of the current solved field. |
+| Probe read noise/dropout and photodiode noise | Per observation | Imperfect temperature and output-energy readings, not changes to the true field. |
+| Calibration and environmental drift | With simulated elapsed time | Persistent camera gain, SLM or probe changes and, in `in_situ`, carried disk/plate temperatures. |
+
+The default dataset configuration samples 5/10/15 at.% × Gaussian, flat-top,
+vortex and needle targets with a 384² optical field and 1920×1080 camera
+frames. The latter **resample** an optical field; their pixel count does not
+create 1080p physical wavefront detail. Train, validation and test contain
+independent complete crystal setups, not neighboring frames from the same
+crystal. Stress setups form a separate split. The smaller controller fixture
+has its own settings (normally a 48² optical grid and 320×176 cameras), so
+its noise and results should not be identified with the 1080p dataset by
+name alone.
+
+The image-formation code maps the calculated output **fluence** to camera
+object-plane pixels, allows shift/rotation/scale errors, and applies a Gaussian
+point-spread function. The expected photoelectrons in a pixel are proportional
+to
+
+```text
+mu_signal = F_pixel × A_pixel × pulses_per_exposure
+            × optical_throughput × QE × lambda_s/(h c) × PRNU_pixel.
+```
+
+It adds dark current, background electrons and then samples a Poisson count;
+DSNU and Gaussian read noise are added afterward. Dead and hot pixels are
+applied, charge is clipped at the full-well limit and mapped to a finite-bit
+ADU with a black level. The pulse-jitter option draws energy and pointing
+variation over the exposure, represented by an effective gain, shift and
+Gaussian blur; it **does not propagate every pulse separately**. The quoted
+5% quantum efficiency at 1030 nm, throughput, point-spread function and pixel
+imperfections are illustrative, not a calibration of a named 1080p camera.
+
+![The same solved output as an ideal camera response, one noisy exposure and their difference](readme_figures/camera_noise_example.png)
+
+*Figure 4 — one 384×216 illustrative observation of the 20 at.% cold output.*
+The ideal and noisy panels use the same ADU scale and the same fixed camera
+map. The difference panel highlights a fresh exposure noise realization;
+its colour range is chosen for normal variation, so rare defect pixels can
+clip visually. The code reported zero full-well-saturated pixels in this
+example. Neither image is an experimental camera frame.
+
+Two diagnostic arms can be captured at different propagation/astigmatic
+conditions. A **single intensity frame cannot reveal optical phase**. The
+interferometric control mode adds a calibrated reference arm and takes four
+phase-shifted images at `0`, `π/2`, `π`, `3π/2`. Opposite differences recover
+the real and imaginary interference terms, with shot/read noise, blur,
+quantization and clipping still present. Temperature probes read the solved
+disk/plate at five positions through a first-order response, fixed bias,
+independent read noise, random-walk calibration drift and possible dropout.
+A photodiode energy reading can have separate multiplicative noise.
+
+The live controller receives **only its simulated camera, probe and
+photodiode measurements**, not the hidden Yb map, true optical phase or ideal
+SLM correction. It may try
+interferometric phase updates, a measured local response matrix, SPGD or a
+hybrid sequence; rejected measured trials remain in the chronology. The NN
+dataset has a different input contract: it includes the **known relative Yb
+map**, incoming beam and command metadata alongside its cameras and probes.
+It keeps other hidden physical maps and a fresh full-solver-verified candidate
+correction as *labels*, separately from measured inputs.
+An offline modal error is not a demonstrated improvement of the propagated
+output beam. See the [control workflow](../docs/YBYAG_CLOSED_LOOP.md) and
+[dataset workflow](../docs/YBYAG_NN_DATASET.md) for the exact candidate
+acceptance checks and replay limitations.
 
 ## What the current model cannot establish
 
@@ -241,6 +533,12 @@ steady temperature of the 40 W case.
    truth. The newer controller reports offline modal errors; see its
    [explicit qualification limits](../docs/YBYAG_MODAL_MODEL.md) and
    [V2 status](../docs/YBYAG_CONTROLLER_V2.md).
+6. **Maps and observations:** the illustrated 3% Yb map, thickness/contact
+   variations and detector noise are seeded synthetic draws. They are not
+   measured maps of the proposed crystal or calibrated camera transfer
+   functions. The optical thickness map does not remesh the mechanics; sensor
+   pixels resample a coarser field. Dataset file checks and controller scores
+   therefore do not establish experimental training validity.
 
 The most direct next measurements are wavelength-resolved pump and emission
 spectra versus temperature **and concentration**, lifetime for the selected
@@ -255,6 +553,9 @@ the [missing-data inventory](../docs/YBYAG_MISSING_DATA_SEARCH.md).
 | `Yb-YAG/spectra/`, `thermal/`, `mechanical/` | Attributed material inputs. |
 | `src/ybyag/material_data.py`, `src/ybyag/model.py`, `src/ybyag/assembly.py` | YAG-specific lookups, runtime material class and near-RT assembly properties. |
 | `src/ybluag/multipass_pump.py`, `pulsed.py`, `regenerative.py`, `gallery.py` | Shared generic Yb pump, population, pulse, cavity and orchestration kernels. Several source docstrings retain LuAG wording; material dispatch selects YAG values. |
+| `src/hoyag/structured_beam_gallery.py` | Seeded 3D cluster density reused by Yb gallery paths. |
+| `src/ybyag_dataset/distortions/`, `generator.py` | Smooth crystal/contact/optical maps, operating-point variation, SLM/camera/probe observations and grouped dataset trials. |
+| `src/ybyag_control/` | Measured controller plant, four-step interferometry and correction methods. |
 | `examples/ybyag_readme_figures.py` | Exact settings and plot-generation script used above. |
 | `examples/run_ybyag_readme_supervised.py` | Bounded runner and persistent run record. |
 | `Yb-YAG/readme_figures/` | Generated figures, SI exports, JSON values and execution log. |

@@ -1,7 +1,31 @@
 {
-  "source_revision": "6c384fbf7d18947db03f4902139e67bf698c6aac",
+  "source_revision": "2cdf3cb67d803f5051c93ad5630c290ab8d499ba",
   "runtime_spectrum_sha256": "e75f08c35a381437102422c5872ba9ae61321bf4282413ccc00c839e137ec3c5",
   "scope": "Coarse 64x64, one optical axial slice examples; no spatial/temporal convergence claim.",
+  "doping_map_example": {
+    "seed": 314159,
+    "nominal_yb_at_percent": 10,
+    "yb_scale_mean": 1.0,
+    "yb_scale_rms_about_one": 0.03,
+    "local_at_percent_min_max": [
+      9.213162342223994,
+      10.549018637308942
+    ],
+    "single_pass_transmission_min_max": [
+      0.9114070041392373,
+      0.9221766374014668
+    ]
+  },
+  "camera_example": {
+    "seed": 314159,
+    "camera_pixels": [
+      384,
+      216
+    ],
+    "camera_peak_expected_electrons": 4207.192370680837,
+    "saturated_fraction": 0.0,
+    "mean_absolute_adu_difference": 0.5400270061728395
+  },
   "cases": {
     "5at_40W": {
       "yb_at_percent": 5,
@@ -23,6 +47,50 @@
       "mean_pre_pulse_beta": 0.00988445865932985,
       "periodic_cycles": 1,
       "population_photon_balance_relative_L1": 9.071341802801675e-12,
+      "thermal_status": "not_run"
+    },
+    "10at_40W": {
+      "yb_at_percent": 10,
+      "pump_incident_W": 40,
+      "seed_energy_J": 1e-08,
+      "repetition_rate_Hz": 10000.0,
+      "pulse_fwhm_s": 1e-11,
+      "pump_wavelength_nm": 969,
+      "signal_wavelength_nm": 1030,
+      "pump_passes": 10,
+      "signal_traversals": 10,
+      "grid_n": 64,
+      "z_steps": 1,
+      "output_energy_J": 1.887794058466074e-08,
+      "pump_absorbed_W": 17.10292876340264,
+      "signal_gain_W": 8.877940584660728e-05,
+      "heat_W": 17.10299949006907,
+      "fluorescence_escape_W": 0.0,
+      "mean_pre_pulse_beta": 0.008939168498318321,
+      "periodic_cycles": 1,
+      "population_photon_balance_relative_L1": 4.764199627909795e-12,
+      "thermal_status": "not_run"
+    },
+    "15at_40W": {
+      "yb_at_percent": 15,
+      "pump_incident_W": 40,
+      "seed_energy_J": 1e-08,
+      "repetition_rate_Hz": 10000.0,
+      "pulse_fwhm_s": 1e-11,
+      "pump_wavelength_nm": 969,
+      "signal_wavelength_nm": 1030,
+      "pump_passes": 10,
+      "signal_traversals": 10,
+      "grid_n": 64,
+      "z_steps": 1,
+      "output_energy_J": 2.4362281915378858e-08,
+      "pump_absorbed_W": 23.16515380524709,
+      "signal_gain_W": 0.00014362281915378857,
+      "heat_W": 23.165249485122438,
+      "fluorescence_escape_W": 0.0,
+      "mean_pre_pulse_beta": 0.008071802983432703,
+      "periodic_cycles": 1,
+      "population_photon_balance_relative_L1": 1.474581945514398e-12,
       "thermal_status": "not_run"
     },
     "20at_40W": {
