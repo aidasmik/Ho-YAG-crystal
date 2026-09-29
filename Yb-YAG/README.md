@@ -278,6 +278,17 @@ disk traversal. In the **ideal multipass** architecture, a 1:1 phase-preserving
 relay returns the field for up to ten signal traversals. `pump_passes` and
 `signal_traversals` count different paths; their values need not match.
 
+**Spatial resolution:** the ideal pulsed kernel stores `beta[z,y,x]` and
+calculates local rates and gain at every optical-grid pixel and axial slice.
+Axial cells in each `(x,y)` column are linked by the pump and seed intensity
+passed from cell to cell. The pulsed gain step has no transverse diffraction or
+population diffusion between neighboring columns. An angular-spectrum FFT
+mixes the field transversely on the SLM-to-disk and optional output paths;
+the separate structured-CW solver diffracts between axial slices, while the
+regenerative path diffracts over cavity round trips. The heat solver couples
+neighboring locations through conduction on a different mesh. Thus the model
+does not treat the entire calculation as independent pixels.
+
 The **regenerative** option follows a different optical map. Each round trip
 visits the same disk twice, propagates a complex field to a curved mirror and
 back with an angular-spectrum FFT, and applies the finite aperture, HR,

@@ -48,6 +48,60 @@ solver repeats seed periods until the pre-pulse population becomes periodic.
 All signal traversals use **one shared crystal**, not ten independent gain
 stages.
 
+### How the amplification calculation runs
+
+The state variable is `beta[z, y, x]`, the fraction of Yb ions in the excited
+manifold in each axial slice and transverse optical-grid pixel. If `h nu_p`
+and `h nu_s` are pump and signal photon energies, the **per-ion** rates used by
+the code are
+
+```text
+W_up   = sigma_a,p I_p/(h nu_p) + sigma_a,s I_s/(h nu_s)
+W_down = sigma_e,p I_p/(h nu_p) + sigma_e,s I_s/(h nu_s)
+d beta/dt = (1-beta) W_up - beta W_down - beta/tau.
+```
+
+Here `tau` is the upper-manifold lifetime. Signal absorption can **increase**
+`beta`; stimulated emission from pump or signal can **decrease** it. For one
+short time step the code holds the computed rates constant and uses the bounded
+exponential update
+
+```text
+R = W_up + W_down + 1/tau;    beta_eq = W_up/R
+beta(t+Delta t) = beta_eq + [beta(t)-beta_eq] exp(-R Delta t).
+```
+
+At each cell, the current `beta` sets the absorption/gain coefficients above.
+The code transports intensity through the axial slices using their exponential
+transmission, and uses the **exact Beer–Lambert cell-average intensity** for
+the local rates. It repeats this for every sample of the 10 ps seed pulse and
+every traversal. During those short signal windows the pulse kernel sets pump
+intensity to zero;
+between injected pulses it sets signal intensity to zero, recomputes the
+bleached multipass CW pump over eight recovery substeps, and repeats whole
+pulse periods until the pre-pulse `beta[z,y,x]` converges.
+
+**Are pixels calculated separately?** For the *ideal pulsed multipass* gain
+step, yes: each `(y,x)` column has its own pump intensity, concentration,
+population and signal intensity. Cells in that column are linked because the
+light leaving one axial slice enters the next. Neighboring columns do not
+exchange population or diffract into one another *inside that thin-disk pulse
+step*. The SLM-to-disk and optional output propagation use a transverse
+angular-spectrum FFT, so pixels mix **before/after** the disk; the CW solver
+also diffracts between slices, and the regenerative cavity diffracts between
+round trips. Lateral heat flow couples thermal cells on a separate mesh.
+
+After each ideal signal traversal the output fluence
+`F_out(x,y) = integral I_s,out(t,x,y) dt` scales the complex field amplitude by
+`sqrt(F_out/F_in)`. The code keeps its optical phase, applies the configured
+disk phase and relay, then starts the next traversal using the **updated same
+population**. Pulse energy is the area sum
+`E_out = sum_(x,y) F_out(x,y) Delta x Delta y`.
+The figure examples use only **64×64 pixels, one axial slice and 41 pulse-time
+samples**; those grids are illustrative, not a convergence claim. The
+[full pulse and pump derivation](Yb-YAG/README.md#physical-model-from-source-beam-to-output)
+also describes the distinct regenerative and CW algorithms.
+
 Synthetic doping has two paths: the gallery can draw seeded **3D rich/poor
 clusters**; the camera dataset and controller instead draw a fixed smooth **2D
 map** for each virtual crystal and set the 3D cluster contrast to zero. The
