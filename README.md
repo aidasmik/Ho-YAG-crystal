@@ -1,19 +1,14 @@
-# Ho:YAG thin-disk laser — model, results and validation
+# Yb:YAG thin-disk amplifier simulator
 
-**Yb:YAG:** The [complete Yb:YAG data and simulator guide](Yb-YAG/README.md)
-contains source spectra, equations, reproduction commands, generated figures and
-limitations. A shorter explanation follows below.
+This repository's primary simulation is the **Yb:YAG thin-disk amplifier**.
+It follows a shaped seed, a continuous-wave pump, one shared Yb:YAG crystal,
+cooling and simulated observations. The [complete Yb:YAG guide](Yb-YAG/README.md)
+contains source attribution, all implemented equations, reproduction commands,
+figures and limitations.
 
-This repository reconstructs and extends a Ho:YAG laser model into a **10 mm diameter × 1 mm thin-disk resonator** with picosecond pumping, four-manifold gain dynamics, a finite cooling plate, thermoelastic deformation, photoelasticity and a self-consistent vector hot-cavity calculation.
-
-For the separate Yb:LuAG active-medium implementation, see [Yb:LuAG replacement](docs/YBLUAG_REPLACEMENT.md). It provides two-manifold CW pump/signal propagation with the Yb:LuAG spectral data; the Ho:YAG coupled-resonator results below remain Ho:YAG results.
-
-The Yb:LuAG [audit implementation and validation status](docs/YBLUAG_AUDIT_FIXES.md)
-separates numerically checked propagation and population behavior from
-engineering approximations and missing experimental inputs. Its 96² optical
-grid is a preview, not a convergence-tested device prediction. Hot-cavity
-thermal feedback, calibrated coating losses, photoelasticity and
-concentration-dependent refractive index remain unavailable.
+The repository also retains distinct [Ho:YAG](docs/HOYAG_LEGACY_REFERENCE.md) and
+[Yb:LuAG](Yb-LuAG/README.md) models. Their spectra, equations and historical
+results are not Yb:YAG validation data.
 
 ## Yb:YAG thin-disk amplifier in brief
 
@@ -117,508 +112,61 @@ python Yb-YAG/tools/verify_manifest.py
 python examples/run_ybyag_readme_supervised.py
 ```
 
-## Desktop calculator
+## Run the Yb:YAG simulator
 
-For the new Yb:YAG material, launch `examples/ybyag_desktop.py`. It uses the
-repository's `Yb-YAG/` dataset and defaults to 20 at.% Yb. See
-[Yb:YAG implementation and physical limits](docs/YBYAG_SIMULATION.md).
-Fully coupled hot YAG gain remains unavailable because temperature-dependent
-pump spectra are missing; the native app offers cold and near-RT lumped-phase modes.
-
-The Tkinter calculator has separate **Yb:YAG**, **Yb:LuAG** and **Ho:YAG** tabs. It runs the
-existing solvers locally and displays maps and profiles inside the window.
-The Yb tab offers the proposal pulse amplifier (including regenerative cavity),
-structured CW passes, and a CW material/coating screen. The Ho tab offers weak
-probe, modal thermal, and periodic seeded amplifier calculations. Calculations
-use the shared `.local_runtime/budget.json` run ledger; the window shows the
-per-run time and memory limits. There is no cumulative attempt cap. It does
-not start a web server.
-
-On Linux, install Tk for your system Python, then run:
+Install from the repository root with Python 3.10+ and Tkinter for the desktop
+window:
 
 ```bash
-.venv/bin/python -m pip install -e '.[desktop]'
-.venv/bin/python examples/ybluag_desktop.py
+python -m pip install -e '.[desktop,dev]'
+python examples/ybyag_desktop.py
 ```
 
-The Yb launcher opens its native calculator with the latest saved Yb run. It
-shows source, disk-input and output beams with adjacent horizontal and vertical
-profiles; SLM phase and synthetic Yb maps; gain and pulse traces; and cooler
-timelines and thermal surfaces where the solver provides them. Its five-point
-pump curve recalculates the periodic optical state for the displayed pulse run
-without rerunning the cooler. Use `examples/desktop_simulation.py` to open the
-combined Yb and Ho desktop calculator with Ho selected first.
-
-After a pulsed Yb result, **Export camera data (1080p)…** generates bounded,
-reproducible monochrome frames with sensor noise and separate optical truth.
-The **Camera preview** shows the clean fluence, noisy CCD image, beam profiles,
-and the added phase residual against the saved field at the same camera plane.
-The Yb:YAG **Correction loop** shows diagnostic-camera profiles and the output
-phase residual against a uniform, cold-phase target during fitting and replay.
-Its interferometric mode reconstructs a measured phase from four phase-shifted
-camera exposures; the separate truth phase and ideal-compensation maps come
-from the simulator and are never passed to the controller. SPGD remains a
-separate chronological mode that records noisy updates and regressions.
-See [the correction physics and code map](docs/YBYAG_CLOSED_LOOP.md).
-See [camera data options and limitations](docs/YB_CAMERA_DATASET.md).
-The Yb:YAG tab also offers a [grouped physical-disturbance NN dataset generator](docs/YBYAG_NN_DATASET.md)
-with fresh solver runs, two camera planes and separate train/validation/test setups.
-
-On Windows, launch the Yb window from the repository directory with:
-
-```powershell
-& 'C:\Users\Aidas\AppData\Local\Programs\Python\Python311\python.exe' .\examples\ybluag_desktop.py
-```
-
-The Yb input controls start with the ideal multipass architecture and a 25 °C
-cooler target. A saved result can appear on opening, but it does not replace
-the current input defaults. The Tkinter window runs bounded local workers and
-does not require or start the browser server.
-
-The pulsed pump default is 969 nm. Controls are grouped by seed/phase, Yb
-crystal, pump/cooling, optics and numerical settings. See the
-[25 September physics and desktop audit](docs/YBLUAG_PHYSICS_DESKTOP_AUDIT_20260925.md)
-for conservation checks, the ten-traversal gain bound, and remaining physical limits.
-
-On Windows, use a Python installation with Tk and replace `.venv/bin/python`
-with its interpreter path. Results and execution logs are saved under
-`results/desktop_runs/` for Yb and `results/structured_beams/runs/` for Ho.
-The Yb spectra, lifetimes, cooling contact, coating and cavity parameters are
-engineering assumptions described in `docs/YBLUAG_REPLACEMENT.md` and
-`docs/YBLUAG_REGENERATIVE_MODEL.md`; the GUI does not make them measured data.
-
-The numerical core has passed the Stage 0–7 software/physics audit and API-0.8 corrections. The current reference solution is suitable for numerical research and sensitivity studies, but it is **not yet an experimentally calibrated digital twin** and is **not yet qualified as ground truth for NN/SLM training**. Full mesh/mode-count refinement and calibration of the real crystal–bond–cooler assembly remain required.
-
----
-
-## 1. Reference laser and cooling assembly
-
-| Quantity | Reference value |
-|---|---:|
-| Active medium | Ho:YAG |
-| Crystal | **10 mm diameter × 1 mm thickness** |
-| Ho density | **1.52 × 10²⁶ m⁻³**, uniform in the current coupled reference |
-| Pump | **1907.7 nm, 10 ps FWHM, 1 mJ, 10 kHz** |
-| Incident average pump power | **10 W** |
-| Pump 1/e² radius | **0.5 mm** |
-| Laser wavelength | **2090.3 nm** |
-| Disk rear signal reflectivity | **99.95%** |
-| Disk rear pump reflectivity | **99.5%** |
-| Air gap | **250 mm** |
-| Output coupler | **500 mm ROC, 2% transmission** |
-| Other signal loss | **0.5% per round trip** |
-| Cooling plate | **20 mm diameter × 3 mm copper**, illustrative |
-| Coolant reference | **293.15 K** |
-| Crystal–plate thermal conductance | **1 × 10⁵ W m⁻² K⁻¹**, assumed |
-| Plate–coolant conductance | **1 × 10⁴ W m⁻² K⁻¹**, assumed |
-
-![Reference resonator](docs/results_readme/figures/01_resonator.png)
-
-The plane rear coating of the disk is one resonator mirror. The signal crosses the crystal twice per round trip. The cooling plate is represented as a finite thermal and mechanical body rather than a fixed-temperature boundary.
-
----
-
-## 2. Coupled physics
-
-The separate Yb:LuAG amplifier's coupled ideal-multipass implementation and
-remaining calibration limits are documented in
-[Yb:LuAG remaining-model implementation](docs/YBLUAG_REMAINING_IMPLEMENTATION.md).
-
-The current Stage 7 closure is
-
-\[
-\mathbf E(x,y)
-\rightarrow N_i(r,\phi,z,t)
-\rightarrow Q(r,\phi,z)
-\rightarrow T_\mathrm{crystal},T_\mathrm{plate}
-\rightarrow \boldsymbol{\sigma},\mathbf u
-\rightarrow \mathbf J_\mathrm{hot}(x,y)
-\rightarrow \mathbf E'(x,y).
-\]
-
-Implemented layers include passive diffraction/GVD, four Ho manifolds, repetitive picosecond pumping, structured-light gain/depletion, the HR-backed resonator, energy-consistent lattice heating, finite crystal/plate heat diffusion, compliant crystal–plate mechanics, surface deformation, photoelastic Jones matrices and iterative vector eigenfields.
-
-Stage 7 is an **adiabatic cycle-averaged spatial-mode closure**: the spatial field is held fixed during one fast pump-cycle rate solve and updated on the slower outer loop. It is not carrier-resolved Maxwell–Bloch/FDTD.
-
----
-
-## 3. Ho distribution and excitation
-
-The current coupled reference uses a uniform total Ho density inside the physical disk:
-
-![Ho distribution](docs/results_readme/figures/02_ho_distribution.png)
-
-The optical solver then predicts where those Ho ions occupy the upper laser manifold:
-
-![Upper manifold](docs/results_readme/figures/07_upper_manifold.png)
-
-These panels are different quantities: the first is the **material concentration** \(N_\mathrm{Ho}\), while the second is the cycle-averaged **excited population fraction** \(N_7/N_\mathrm{Ho}\).
-
----
-
-## 4. Incoming pump and outgoing laser beam
-
-The reference source is a 1907.7 nm Gaussian pump with 0.5 mm 1/e² radius, 1 mJ pulse energy and 10 kHz repetition rate.
-
-![Pump input](docs/results_readme/figures/03_pump_input.png)
-
-The Stage 7 resonator field is a complex two-polarization eigenfield rather than a Gaussian fit:
-
-![Cavity mode](docs/results_readme/figures/04_cavity_mode.png)
-
-For the audited coarse-grid reference, the useful cycle-averaged laser output is
-
-\[
-\boxed{P_\mathrm{out}=0.7530128\ \mathrm{W}}.
-\]
-
-The README build post-processes the archived converged field through the archived final hot optical state and scales the profile to that archived power. It does not execute a second nonlinear laser solution.
-
-![Laser output](docs/results_readme/figures/05_output_beam.png)
-
-![Laser output phase](docs/results_readme/figures/06_output_phase.png)
-
-Global optical phase is arbitrary; the phase map masks low-intensity pixels.
-
----
-
-## 5. Energy flow and heat generation
-
-The local small-signal coefficient is
-
-\[
-g=\sigma_{e,L}N_7-\sigma_{a,L}N_8.
-\]
-
-The lattice heat ledger is
-
-\[
-Q_\mathrm{lattice}
-=
-P_\mathrm{pump,net}
--
-P_\mathrm{stimulated}
--
-P_\mathrm{fluorescence}
--
-\frac{\partial U_\mathrm{ions}}{\partial t}.
-\]
-
-For the audited 10 W reference:
-
-| Cycle-averaged quantity | Power |
-|---|---:|
-| Incident pump | **10.000000 W** |
-| Pump absorbed in crystal | **2.205720 W** |
-| Pump escaping | **7.750210 W** |
-| Pump mirror/relay loss | **0.044070 W** |
-| Stimulated transfer to signal | **0.958425 W** |
-| Fluorescence leaving ionic subsystem | **0.574883 W** |
-| Deposited lattice heat | **0.671996 W** |
-| Residual ionic-storage change | **0.000346 W** |
-| Useful output-coupler power | **0.753013 W** |
-
-Stimulated transfer and useful output are not independent terms in one pump partition; intracavity loss and photon storage lie between them.
-
-![Heat source](docs/results_readme/figures/08_heat_source.png)
-
----
-
-## 6. Crystal and cooling-plate thermal simulation
-
-The two solids satisfy
-
-\[
-\rho C_p\frac{\partial T}{\partial t}
-=
-\nabla\cdot(k\nabla T)+Q.
-\]
-
-Heat crosses the crystal–plate interface through a finite conductance and crosses the plate–coolant boundary through another finite conductance.
-
-For the archived final relaxed heat source:
-
-- maximum crystal cell temperature: **302.36 K = 29.21 °C**;
-- maximum copper-plate temperature: **293.67 K = 20.52 °C**.
-
-![Disk temperature](docs/results_readme/figures/09_disk_temperature.png)
-
-![Crystal and copper plate](docs/results_readme/figures/10_assembly_temperature.png)
-
-The plate is therefore neither rigid nor isothermal. The contact and coolant conductances are assumptions until calibrated to the real mount.
-
----
-
-## 7. Thermo-mechanical deformation
-
-Both crystal and plate satisfy linear thermoelastic equilibrium,
-
-\[
-\nabla\cdot\boldsymbol{\sigma}=0,
-\qquad
-\boldsymbol{\sigma}
-=
-\mathbf C:
-\left[
-\boldsymbol{\varepsilon}
--
-\alpha(T-T_0)\mathbf I
-\right].
-\]
-
-A compliant bond transfers normal and shear traction. The crystal rear face is not directly fixed.
-
-![Front deformation](docs/results_readme/figures/11_front_deformation.png)
-
-![Rear deformation](docs/results_readme/figures/12_rear_deformation.png)
-
-Positive \(z\) points from the optical front into the cooling plate. The interface is currently a **bilateral compliant bond**; opening, Coulomb friction, delamination, solder plasticity and creep are not solved.
-
----
-
-## 8. Hot-disk optical-path distortion
-
-The reflected optical distortion includes:
-
-1. thermo-refractive index change;
-2. motion of both crystal surfaces;
-3. stress-induced photoelasticity/birefringence.
-
-For the rear-coated disk, the geometric reflected optical path is
-
-\[
-\Delta\mathrm{OPD}_\mathrm{geom}
-=
-2\left[(1-n)u_{\mathrm{front},z}+n\,u_{\mathrm{rear},z}\right].
-\]
-
-Thus twice the front-surface bulge is not sufficient.
-
-The photoelastic response is an ordered two-polarization Jones operator. Current photoelastic coefficients are host-YAG reference values, not a complete measured Ho:YAG 2.09 µm tensor.
-
-![Hot-disk OPD](docs/results_readme/figures/13_hot_disk_opd.png)
-
----
-
-## 9. Coupled hot-cavity convergence
-
-The outer loop recomputes
-
-\[
-\mathbf E
-\rightarrow N_i
-\rightarrow Q
-\rightarrow T
-\rightarrow (\boldsymbol{\sigma},\mathbf u)
-\rightarrow \mathbf E_\mathrm{new}.
-\]
-
-The corrected audited reference converged in **six outer iterations**:
-
-![Coupled convergence](docs/results_readme/figures/14_convergence.png)
-
-| Residual | Final value |
-|---|---:|
-| Phase-aligned vector-field residual | **1.34 × 10⁻⁴** |
-| Unrelaxed heat-source residual | **1.65 × 10⁻³** |
-| Maximum temperature change | **6.68 × 10⁻³ K** |
-| Maximum displacement change | **5.67 × 10⁻¹¹ m** |
-| Output-power relative change | **2.61 × 10⁻⁴** |
-| Full-grid eigenpair residual | **4.39 × 10⁻¹⁴** |
-
-These establish fixed-point convergence on the selected discretization, not complete mesh or mode-count convergence.
-
----
-
-## 10. Temporal output
-
-The pump pulse is 10 ps, but the model contains no mode-locking mechanism. The optical output therefore need not be picosecond.
-
-![Output waveform](docs/results_readme/figures/15_output_waveform.png)
-
-The plotted waveform is the archived cycle from the corrected Stage 7 reference.
-
----
-
-## 11. Seeded spiral-light diagnostic
-
-A seeded vortex amplifier test and spontaneous free-running vortex selection are different questions.
-
-The following uses the final archived hot operator with a seeded \(LG_0^1\) input at the cavity waist:
-
-| Input | Output after one hot round-trip operator |
+The **Yb:YAG** tab opens first. It offers ideal multipass, regenerative and CW
+calculations, source/disk/output maps, pulse and gain traces, pump curves,
+camera exports, a grouped NN dataset generator and a measured correction loop.
+Runs use the shared local supervisor and budget ledger; the GUI reports time
+and memory limits. The [Yb:YAG simulation guide](docs/YBYAG_SIMULATION.md),
+[dataset workflow](docs/YBYAG_NN_DATASET.md) and
+[closed-loop workflow](docs/YBYAG_CLOSED_LOOP.md) describe the corresponding
+inputs and controls. A saved display is a replay of a prior run, not a fresh
+calculation.
+
+![Ideal and noisy simulated camera views of one Yb:YAG output](Yb-YAG/readme_figures/camera_noise_example.png)
+
+The camera figure is a synthetic observation of a calculated field. The
+full guide explains photoelectron statistics, detector defects, jitter,
+interferometry and what the controller can actually measure.
+
+## Code and data
+
+| Path | Purpose |
 |---|---|
-| ![LG input](docs/results_readme/figures/16_lg1_input.png) | ![LG output](docs/results_readme/figures/17_lg1_output.png) |
+| [`Yb-YAG/`](Yb-YAG/README.md) | Attributed Yb:YAG material files, manifest and detailed guide. |
+| `src/ybyag/` | YAG material dispatch and assembly properties. |
+| `src/ybyag_dataset/`, `src/ybyag_control/` | Synthetic observations, grouped trials and measured correction. |
+| `src/ybluag/` | Shared two-manifold Yb transport plus the separate LuAG material path. |
+| `src/hoyag/` | Ho:YAG model and shared numerical utilities used by the Yb solvers. The Ho-specific physics remains named for Ho:YAG. |
+| `examples/ybyag_desktop.py` | Primary desktop launcher. |
+| `examples/ybyag_readme_figures.py` | Settings and code for the figures above. |
 
-This is a weak seeded diagnostic. It is **not evidence that the free-running resonator selects stable LG₀¹ lasing**. Multiple retained eigenbranches are supported, but complete multimode stability and mode-count refinement remain outstanding.
+The distribution is named `ybyag-sim`; import the Yb:YAG material package as
+`ybyag`. The separate `hoyag` and `ybluag` modules keep their material names
+because they still implement those models. They are dependencies or optional
+comparison paths, not alternate names for the Yb:YAG crystal.
 
----
+## Validation status
 
-## 12. Audit and software status
+The source manifest checks provenance hashes, and tests check software and
+selected physical invariants. The example outputs use coarse grids and
+engineering assumptions. No temperature-dependent pump spectrum for the
+selected Yb:YAG concentration is available here, so **fully coupled hot gain
+is disabled**. Spectroscopy, lifetime, cooler/contact, coating, noise and
+spatial defects need measurements of a real assembly before the plots can
+support quantitative design or NN ground-truth claims. See the
+[full limitations and missing-data list](Yb-YAG/README.md#what-the-current-model-cannot-establish).
 
-A deep Stage 0–7 audit found real software/interface defects, including population-axis mismatch, phase loss in a weak-reference diagnostic, pump-duration/spectrum decoupling, FFT detuning-sign inconsistency, insufficient parameter validation, unsafe evanescent evaluation and density-statistics violations.
-
-Those defects were corrected in API 0.8.
-
-The correction campaign recorded:
-
-- **219 tests passed**;
-- **19 independent audit probes passed**;
-- the corrected 10 W Stage 7 reference again converged in six outer iterations.
-
-Relevant documents:
-
-- docs/AUDIT_STAGE0_7_20260922.md — original failure report;
-- docs/AUDIT_FIXES_STAGE0_7.md — corrections and migration;
-- docs/STAGE7.md — coupled hot-cavity definition;
-- docs/STAGE6.md — crystal/cooling-plate mechanics;
-- docs/STAGE5.md — heat and thermo-optic model.
-
----
-
-## 13. Remaining limitations
-
-This model is not yet a hardware-calibrated digital twin.
-
-Key unresolved items:
-
-- full optical/material/mechanical mesh refinement;
-- retained-mode completeness and nonlinear multimode stability;
-- coherent mode beating and round-trip-by-round-trip transverse mode evolution;
-- measured crystal–plate thermal contact, bond stiffness, preload and coolant coupling;
-- unilateral contact/opening/friction/delamination/plasticity;
-- complete temperature-dependent Ho:YAG spectroscopy;
-- radiation trapping and fluorescence reabsorption;
-- coating absorption/heating and coating-layer stress;
-- a fully validated Ho:YAG photoelastic tensor at 2.09 µm;
-- fully spectrally resolved saturated broadband pump propagation.
-
-For these reasons, the project still marks the current hot-cavity state as **not yet qualified for NN training-label generation**.
-
----
-
-## 14. Figure provenance
-
-The figures in this README are regenerated in GitHub Actions from the exact audited Stage 7 verification artifact produced by the API-0.8 correction workflow.
-
-The documentation build:
-
-1. downloads that immutable Actions artifact;
-2. copies the compact Stage 7 summary/history/audit record into docs/results_readme/data;
-3. uses its archived converged field, populations and heat;
-4. recomputes the finite crystal/plate thermo-mechanical state required for visualization using the current Stage 6 implementation;
-5. post-processes the archived field through the final hot optical operator;
-6. records SHA-256 provenance;
-7. does **not** solve a new nonlinear oscillator fixed point.
-
-Raw multi-megabyte NPZ arrays remain in the Actions artifact rather than being duplicated in the repository.
-
-See docs/results_readme/figures/manifest.json and docs/results_readme/data/derived_metrics.json.
-
----
-
-## 15. Reproduce
-
-Clone the repository and install:
-
-    git clone https://github.com/aidasmik/Ho-YAG-crystal.git
-    cd Ho-YAG-crystal
-    python -m pip install -e '.[dev,plots]'
-
-Run the full tests and independent audit:
-
-    python -m pytest -q
-    python audit/deep_check.py
-
-Run the coarse coupled reference:
-
-    python examples/stage7_hot_cavity.py --quick --require-converged --output results/stage7/demo
-
-The README figures can be rebuilt from the unpacked audited Actions artifact:
-
-    python docs/results_readme/generate.py \
-      --artifact-root /path/to/unpacked/audited/artifact \
-      --output docs/results_readme
-
----
-
-## 16. Core reference
-
-M. Rupp, M. Eichhorn, C. Kieleck, *Iterative 3D modeling of thermal effects in end-pumped continuous-wave Ho³⁺:YAG lasers*, **Applied Physics B 129, 4 (2023)**, DOI 10.1007/s00340-022-07939-z.
-
-That paper validated a different CW rod geometry. It does **not** directly validate the reconstructed picosecond-pumped thin-disk system documented here.
-
----
-
-## 17. Bounded local work and scientific replay
-
-The local development path now has a persistent run supervisor,
-finite-bank polarization-family diagnostic, and immutable solver snapshots.
-Use [the local execution guide](docs/LOCAL_EXECUTION.md) for named bounded
-cases, [profiling evidence](docs/PROFILING.md) for measured replay changes,
-and [Stage 7W](docs/STAGE7W.md) for the coupled polarization guard.
-
-The replay viewer reads hash-verified scientific arrays using optional
-PyVista/VTK dependencies. Its cavity state is an incoherent modal mixture:
-it displays per-mode phase and power plus total intensity, not a unique total
-phase. Outer iterations carry `time_kind=outer_iteration`; they are not thermal
-or optical physical seconds. A separate externally seeded amplifier API in
-`hoyag.seeded_amplifier` updates one shared crystal population state across
-declared disk encounters. Hardware topology and seed parameters are still
-incomplete, so that API does not claim a calibrated multipass design.
-
-Historical Stage 7W results above remain tied to their saved revisions.
-Local software, bounded numerical, viewer, full-campaign, experimental, and
-dataset statuses are reported separately in `docs/STAGE7W_RESULTS.md`.
-
-An additional weak seeded-probe gallery plots absolute input/output irradiance
-and masked relative phase for Gaussian, LG(0,+1), LG(0,+2), HG(1,1), a
-Bessel-Gaussian needle, and an order-8 super-Gaussian flattop. It uses the
-saved Stage 7W population fractions and an explicit
-seeded random Ho concentration with rich and poor clusters of mixed sizes.
-The output plane is one 1-mm disk traversal plus 0.25 m free space. It does
-not re-solve the pump, heat, or mechanics after changing the dopant map.
-Run `.venv/bin/python examples/structured_beam_gallery.py` to regenerate
-`results/structured_beams/input_output_beams.png`, `beam_side_profiles.png`,
-`beam_on_ho_density.png`, and `ho_density.png`. The overlay uses the generated
-entrance-slice Ho concentration as the background and calculated input
-irradiance contours as the beam footprint.
-`--phase-mask` selects `none`, `vortex+1`, `vortex-1`, `vortex+2`,
-`defocus`, `astigmatic`, or `axicon`; the ideal applied phase and unchanged
-immediate SLM irradiance are saved in `phase_mask.png`. Centerline input/output
-horizontal and vertical irradiance cuts for all six modes are saved beside the
-corresponding input and output maps in `input_output_beams.png` and collected in
-`beam_side_profiles.png`.
-The precomputed choices can also be browsed in
-`results/structured_beams/index.html`; regenerate an arbitrary random seed
-with the CLI.
-
-To use the interactive calculator, start the local app:
-
-```bash
-.venv/bin/python examples/structured_beam_app.py
-```
-
-Then open <http://127.0.0.1:8780/results/structured_beams/index.html>. Choose
-the phase mask, mask strength, seeded random Ho cluster distribution, and
-output distance, then press **Calculate**. Each run writes plots and metrics
-under `results/structured_beams/runs/<run-id>/`. The calculator performs a
-bounded weak-probe traversal using archived Stage 7W population fractions; it
-does not claim a new self-consistent pump, thermal, or mechanical solution.
-Select **Modal thermal estimate** in the calculator (historical CLI identifier
-`--solver-mode full_seeded_modal`) to compute a saturated fixed-mode oscillator
-background, then its heat, cooling plate, thermoelastic displacement, and
-photoelastic Jones screens for the selected Ho map. Each displayed 1 W beam
-is a separate undepleted one-pass probe of that background. The probe power
-does not affect populations or heat, and hot optics do not feed back into the
-oscillator. This is an estimate rather than a complete seeded amplifier or
-self-consistent cavity solution. It is bounded by the local supervisor and
-can take substantially longer. The supervisor records each run and enforces
-its own time and memory limits without a cumulative attempt limit.
-
-# Yb:YAG closed-loop correction
-
-The native Yb:YAG tab includes a bounded measurement-only structured-light
-correction episode with physical forward solves and correction playback. See
-[Yb:YAG closed-loop instructions](docs/YBYAG_CLOSED_LOOP.md) for controls,
-run commands, validation metrics and model limits.
+Historical Ho:YAG coupled-resonator stages remain available in the
+[archived Ho:YAG reference](docs/HOYAG_LEGACY_REFERENCE.md) and the
+[`src/hoyag/`](src/hoyag/) implementation. Their 2.09 µm results describe a
+**different laser**, not the Yb:YAG amplifier shown in this README.

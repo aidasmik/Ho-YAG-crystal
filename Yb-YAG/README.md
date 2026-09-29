@@ -1,7 +1,7 @@
 # Yb:YAG data and thin-disk simulator
 
 This guide covers the **Yb:YAG** material package and the Yb:YAG paths in the
-[Ho-YAG-crystal repository](https://github.com/aidasmik/Ho-YAG-crystal). It
+[Yb-YAG-crystal repository](https://github.com/aidasmik/Yb-YAG-crystal). It
 explains the source spectra, the physics the code actually solves, how to
 reproduce example runs, and what remains unvalidated. The Yb:YAG solver reuses
 generic two-manifold Yb and thin-disk kernels but supplies its own YAG

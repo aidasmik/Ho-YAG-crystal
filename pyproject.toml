@@ -3,9 +3,9 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "hoyag-sim"
+name = "ybyag-sim"
 version = "0.8.0"
-description = "Ho:YAG thin-disk structured-light and modal resonator simulation"
+description = "Yb:YAG thin-disk amplifier, structured-light, camera and control simulation"
 requires-python = ">=3.10"
 dependencies = ["numpy>=1.24", "scipy>=1.10", "psutil>=5.9"]
 

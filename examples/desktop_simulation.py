@@ -1,4 +1,4 @@
-"""Tkinter desktop interface for the Ho:YAG and Yb:LuAG simulations.
+"""Tkinter desktop interface for the Yb:YAG simulator and comparison models.
 
 Start from the repository root with ``.venv/bin/python examples/desktop_simulation.py``.
 All calculations run in an owned worker process through the persistent local
@@ -498,15 +498,15 @@ class ResultPanel(ttk.Frame):
 
 
 class DesktopSimulation(tk.Tk):
-    def __init__(self, initial_material="Ho:YAG"):
+    def __init__(self, initial_material="Yb:YAG"):
         super().__init__()
-        self.title(f"Thin-disk laser simulator | {initial_material}")
+        self.title(f"Yb:YAG thin-disk simulator | {initial_material}")
         self.configure(background=PAPER)
         apply_scientific_style(self)
         self.geometry(f"{min(1550, self.winfo_screenwidth()-60)}x{min(960, self.winfo_screenheight()-100)}")
         header = tk.Frame(self, background=PAPER, padx=16, pady=10)
         header.pack(fill="x")
-        tk.Label(header, text="THIN-DISK LASER  /  OPTICAL SIMULATION",
+        tk.Label(header, text="YB:YAG THIN-DISK  /  OPTICAL SIMULATION",
                  background=PAPER, foreground=NAVY,
                  font=("Segoe UI", 13, "bold")).pack(side="left")
         tk.Label(header, text="SOURCE  →  SLM  →  DISK  →  DETECTOR",
@@ -522,7 +522,7 @@ class DesktopSimulation(tk.Tk):
         self.status = tk.StringVar(value="Ready. Calculations have per-run time and memory limits.")
         notebook = ttk.Notebook(self)
         notebook.pack(fill="both", expand=True)
-        for material, fields in (("Yb:LuAG", YB_FIELDS), ("Yb:YAG", YAG_FIELDS)):
+        for material, fields in (("Yb:YAG", YAG_FIELDS), ("Yb:LuAG", YB_FIELDS)):
             inputs, result, button = self.make_tab(
                 notebook, material, fields,
                 lambda name=material: self.calculate_yb(name), YbResultPanel)
@@ -574,7 +574,7 @@ class DesktopSimulation(tk.Tk):
         self.restore_yb_result("Yb:LuAG")
         self.restore_yb_result("Yb:YAG")
         self.material_tabs = notebook
-        notebook.select({"Yb:LuAG": 0, "Yb:YAG": 1, "Ho:YAG": 2}[initial_material])
+        notebook.select({"Yb:YAG": 0, "Yb:LuAG": 1, "Ho:YAG": 2}[initial_material])
 
     def make_tab(self, notebook, title, fields, command, result_class=ResultPanel):
         page = ttk.Panedwindow(notebook, orient="horizontal")
