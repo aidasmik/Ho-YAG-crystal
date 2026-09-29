@@ -1,5 +1,9 @@
 # Ho:YAG thin-disk laser — model, results and validation
 
+**Yb:YAG:** Start with the [complete Yb:YAG data and simulator README](Yb-YAG/README.md)
+for source spectra, physical equations, reproduction commands, solver-generated
+figures, example results and current limitations.
+
 This repository reconstructs and extends a Ho:YAG laser model into a **10 mm diameter × 1 mm thin-disk resonator** with picosecond pumping, four-manifold gain dynamics, a finite cooling plate, thermoelastic deformation, photoelasticity and a self-consistent vector hot-cavity calculation.
 
 For the separate Yb:LuAG active-medium implementation, see [Yb:LuAG replacement](docs/YBLUAG_REPLACEMENT.md). It provides two-manifold CW pump/signal propagation with the Yb:LuAG spectral data; the Ho:YAG coupled-resonator results below remain Ho:YAG results.

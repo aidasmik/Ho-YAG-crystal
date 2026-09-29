@@ -1,3 +1,4 @@
 # Preserve the imported dataset manifest and byte-identical runtime copies.
 Yb-YAG/** text eol=lf
+Yb-YAG/readme_figures/*.png binary
 src/ybyag/data/** text eol=lf
