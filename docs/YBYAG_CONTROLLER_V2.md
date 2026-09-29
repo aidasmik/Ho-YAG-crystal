@@ -114,3 +114,27 @@ No latency, optical performance improvement, or experimental validity is claimed
 until this architecture is trained and tested with independent full-solver replays.
 The existing test split has been inspected during model development; use fresh
 unseen setups for final qualification.
+
+## Local training and exploratory solver replay (29 September 2026)
+
+The first full local V2 run crashed in TensorFlow's oneDNN CPU path after packing
+1,296 trials. Training was restarted from that cache with oneDNN disabled. The
+bounded run completed 18 epochs with early stopping; epoch 13 had the best
+validation loss, 0.0290866. The selected proposal and outcome-estimator weights
+are saved locally under
+`/media/aidas/Windows-SSD/FTMC/YbYAG-datasets/big_20260928/training/controller_v2_20260929_094436/model_cpu_20260929_102316`.
+
+An offline proposal-only trial used a fresh seeded full-solver baseline and
+candidate replay for one active point-2 setup in each of the 12 target/doping
+combinations. All baselines reproduced the saved complex fields within relative
+L2 error 2.5e-6. Fidelity improved in 10/12 cases and worsened in 2/12; mean
+gain was 0.0680. The prior ensemble's mean gain on those exact cases was 0.0599.
+Nine V2 cases passed the shape and energy guard, and six met every task criterion.
+The vortex and needle losses were -0.0212 and -0.0158 fidelity, respectively.
+
+The per-case report is at
+`/media/aidas/Windows-SSD/FTMC/YbYAG-datasets/big_20260928/training/controller_v2_20260929_094436/model_cpu_20260929_102316/solver_tryout_12/summary.json`.
+These setups had already been inspected during model development. This replay
+is exploratory and does not calibrate the application gate. Validation-set
+replays of this model's own commands remain necessary before automatic action;
+the deployed policy currently holds.
