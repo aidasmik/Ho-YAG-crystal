@@ -152,7 +152,10 @@ def light_path():
 
 def doping_map_and_transmission():
     ranges = json.loads((ROOT / "config/ybyag_nn_dataset.json").read_text(encoding="utf-8"))["ranges"]
-    crystal = sample_material((128, 128), ranges, seed=314159, enabled=True)
+    # The dataset default is the measured PL map of the 10 at.% sample.
+    from hoyag.propagation import Grid2D
+    crystal = sample_material((128, 128), ranges, seed=314159, enabled=True,
+                              grid=Grid2D.square(128, 12e-3), yb_at_percent=10.)
     local_at = 10 * crystal["yb_concentration_scale"]
     sigma_p, _ = md.cross_sections_m2(969.)
     alpha = md.yb_number_density_m3(10) * crystal["yb_concentration_scale"] * sigma_p

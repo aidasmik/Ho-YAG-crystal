@@ -44,7 +44,8 @@ def main():
         parser.error("setups per combination must be positive")
     counts=(None if args.setups_per_combination is None else
             {**config["split_counts"],
-             **{split:12*args.setups_per_combination
+             **{split:len(set(config["nominal"]["yb_at_percent_candidates"]))*
+                      len(config["nominal"]["target_candidates"])*args.setups_per_combination
                 for split in ("train","validation","test")}})
     plan=shard_setup_plan(setup_plan(config,counts),args.shard_index,args.shard_count)
     if args.plan:

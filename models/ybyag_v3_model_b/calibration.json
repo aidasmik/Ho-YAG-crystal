@@ -1,0 +1,160 @@
+{
+  "schema": "ybyag_controller_v3_oneshot_1",
+  "limits": {
+    "min_gain": 0.01,
+    "min_shape": 0.95,
+    "max_shape_drop": 0.012,
+    "min_pump_ratio": 0.9,
+    "max_relative_residual": 0.35,
+    "max_reduced_chi2": 3.0,
+    "quantile": 0.0,
+    "margin_base": [
+      0.0,
+      0.006863534450531006,
+      0.0,
+      0.0
+    ],
+    "margin_slope": [
+      0.25,
+      0.0,
+      0.25,
+      0.25
+    ],
+    "shape_margin": [
+      0.0015728716850280655,
+      0.007971000671386674,
+      0.004348779201507558,
+      0.013206553459167436
+    ],
+    "planned_margin_base": [
+      0.002156839706003666,
+      0.0,
+      0.0,
+      0.0053371170070022345
+    ],
+    "planned_margin_slope": [
+      0.25,
+      1.0,
+      0.75,
+      0.25
+    ],
+    "planned_shape_margin": [
+      0.0032800083160400284,
+      0.007631445407867421,
+      0.00289269733428954,
+      0.022044789791107133
+    ],
+    "calibrated": true,
+    "samples": 32,
+    "covariance_inflation": 4.0,
+    "hypothesis_chi2": 25.0,
+    "refine_iterations": 60,
+    "plan_iterations": 40,
+    "plan_samples": 8
+  },
+  "families": {
+    "Gaussian TEM00": {
+      "rows": 46,
+      "calibrated": true,
+      "base": 0.0,
+      "slope": 0.25,
+      "shape_margin": 0.0015728716850280655,
+      "coverage": 0.9782608695652174,
+      "shape_coverage": 0.9565217391304348,
+      "released_fraction": 0.391304347826087,
+      "released_harmful": 0,
+      "source": "synthetic_passive",
+      "planned": {
+        "rows": 184,
+        "calibrated": true,
+        "base": 0.002156839706003666,
+        "slope": 0.25,
+        "shape_margin": 0.0032800083160400284,
+        "coverage": 0.9510869565217391,
+        "shape_coverage": 0.9510869565217391,
+        "released_fraction": 0.45652173913043476,
+        "released_harmful": 0
+      }
+    },
+    "Flattop super-Gaussian": {
+      "rows": 38,
+      "calibrated": true,
+      "base": 0.006863534450531006,
+      "slope": 0.0,
+      "shape_margin": 0.007971000671386674,
+      "coverage": 0.9736842105263158,
+      "shape_coverage": 0.9736842105263158,
+      "released_fraction": 0.21052631578947367,
+      "released_harmful": 0,
+      "source": "synthetic_passive",
+      "planned": {
+        "rows": 152,
+        "calibrated": true,
+        "base": 0.0,
+        "slope": 1.0,
+        "shape_margin": 0.007631445407867421,
+        "coverage": 0.993421052631579,
+        "shape_coverage": 0.9539473684210527,
+        "released_fraction": 0.0,
+        "released_harmful": 0
+      }
+    },
+    "Helical LG(0,+1)": {
+      "rows": 40,
+      "calibrated": true,
+      "base": 0.0,
+      "slope": 0.25,
+      "shape_margin": 0.004348779201507558,
+      "coverage": 1.0,
+      "shape_coverage": 0.975,
+      "released_fraction": 0.575,
+      "released_harmful": 0,
+      "source": "synthetic_passive",
+      "planned": {
+        "rows": 160,
+        "calibrated": true,
+        "base": 0.0,
+        "slope": 0.75,
+        "shape_margin": 0.00289269733428954,
+        "coverage": 0.95625,
+        "shape_coverage": 0.95625,
+        "released_fraction": 0.325,
+        "released_harmful": 0
+      }
+    },
+    "Needle Bessel-Gaussian": {
+      "rows": 36,
+      "calibrated": true,
+      "base": 0.0,
+      "slope": 0.25,
+      "shape_margin": 0.013206553459167436,
+      "coverage": 0.9722222222222222,
+      "shape_coverage": 0.9722222222222222,
+      "released_fraction": 0.75,
+      "released_harmful": 0,
+      "source": "synthetic_passive",
+      "planned": {
+        "rows": 144,
+        "calibrated": true,
+        "base": 0.0053371170070022345,
+        "slope": 0.25,
+        "shape_margin": 0.022044789791107133,
+        "coverage": 0.9513888888888888,
+        "shape_coverage": 0.9513888888888888,
+        "released_fraction": 0.4583333333333333,
+        "released_harmful": 0
+      }
+    }
+  },
+  "target_coverage": 0.95,
+  "samples": 160,
+  "seed": 13579,
+  "widen": 1.0,
+  "weights_sha256": {
+    "member_0": "9bdd4df3e21c1e49a2779f117c783e6f1f371b262cac8bd5abac8365b406b772",
+    "member_1": "4c1aeea22eeaec9e514804aa811f5ce8c9d6901abaa5167f36714268e7ff543f",
+    "member_2": "2e6fccaadbe228e677813d1bb9b89afd462544226e64c30d91960ab2670a5ff3"
+  },
+  "precision": "single",
+  "scope": "Coverage is empirical on the listed source. Synthetic calibration does not certify the pulsed amplifier; replace it with full-solver replay rows."
+}

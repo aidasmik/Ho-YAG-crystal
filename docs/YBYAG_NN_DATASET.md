@@ -8,6 +8,175 @@ Open the native Yb:YAG tab and choose **Generate NN dataset…**, or run from th
 
 The command uses the repository's persistent bounded compute ledger. A production run has a three-hour per-run limit by default. If it stops at that limit, rerun the same command with `--resume`; complete setups are skipped and an interrupted setup is replayed from its start. The manifest records source revisions if code changes between segments. The Tkinter dialog also resumes when given an existing output directory. `split_counts.stress` adds a separate out-of-distribution set; the normal splits are never made by shuffling adjacent frames. `--points-per-setup 3` saves a baseline and at least two subsequent measured SLM trials per fixed setup. The JSON controls disturbance ranges, enable switches, illustrative camera parameters and camera planes. A production campaign is **not** launched automatically.
 
+### 10 at.% overnight campaign configuration
+
+`config/ybyag_nn_dataset_10at.json` differs from the default only in:
+- `yb_at_percent_candidates: [10.0]`;
+- `pump_W: 0.2`, about 298 K peak. The solver accepts at most 300 K because
+  hot-gain data are missing; heating is ≈21.6 K/W, so 0.3 W is already
+  rejected. This gives ≈0.6 rad peak-to-valley thermal phase over the beam;
+- `modal_target_fidelity: 0.96`, so the teacher also corrects states that already
+  exceed 0.9;
+- 64/8/8 train/validation/test setups with 3 trials each (240 trials).
+
+The generator now allows a single-concentration plan, and the checker takes the
+required concentrations from the plan. Parallel runs process validation and
+test setups first. A setup that raises (for example, a state outside 293–300 K)
+is recorded under `failed_setups` in the manifest instead of ending the run.
+The periodic population solver extrapolates its fixed point (per-pixel Aitken).
+Convergence is still tested on an evaluated cycle at 1e-6, and
+`YB_PERIODIC_ACCELERATION=0` disables it.
+
+### Measured relative Yb distribution (default)
+
+`ranges.yb_distribution: "measured"` replaces the seeded random Yb map with the
+PL-mapped relative distribution of the matching sample: 5, 10 or 15 at.%
+(`src/ybyag_dataset/data/doping_maps`, 0.1 mm grid, 1580–5533 points per sample). The
+mapped quantity is R = (PL969/laser)/(PL1030/laser), divided by the sample's
+interior median. It is a within-sample spectroscopic **proxy**, not a
+calibrated concentration: surface/coating features and setup variation can
+contribute, and the 5 at.% map shows a broad gradient that still needs an
+independent check. `provenance.json` records the source scans and SHA-256 hashes.
+
+The relative Yb scale is 1 + `yb_map_deviation_scale` × (R − 1), with the
+scale set to **−1.7**. The sign is negative because 969 nm PL overlaps the
+zero-phonon absorption: more Yb reabsorbs more 969 nm light and lowers R. The
+sample medians confirm it (R = 0.312, 0.207 and 0.187 at 5, 10 and 15 at.%).
+The magnitude is 1/(d ln R/d ln C) from the 5→10 at.% pair, −0.59. The 10→15
+pair gives −3.9, but its 15% absolute ratio is not reconciled. Processing:
+
+- the unstable outer 0.3 mm of each map's mask is trimmed (`yb_map_edge_trim_mm`);
+- holes are filled from the nearest point and the map is smoothed by 0.1 mm;
+- outside the measured 4–8 mm region the deviation fades to 0 over 0.5 mm;
+- each setup places the map with a seeded ±0.5 mm offset and a random rotation
+  (`yb_map_offset_mm`, `yb_map_rotation`), so setups still differ.
+
+With scale −1.7 the relative Yb variation within 1.2 mm of the axis is about
+3.1% (5 at.%), 2.7% (10 at.%) and 0.9% (15 at.%) RMS. At 10 at.% that is about
+−0.7…+0.4 at.% under the beam, and within ±1 at.% over the whole trimmed map. The 1.5% relative cap
+(`yb_concentration_max_fraction`) applies only to `yb_distribution: "random"`.
+Concentrations without a measured map raise an error unless
+`yb_map_nearest_sample` is true. The controller plant and the desktop Yb:YAG
+pulsed calculation use the nearest measured sample by default. The desktop
+offers `random_clusters` and a manual map rotation and offset.
+
+### Doping bound and multipass propagation
+
+The Yb doping map is now bounded by `yb_concentration_max_fraction` (1.5%):
+the correlated map is scaled so its **largest** local deviation equals that
+fraction, for every split including stress. Configurations without the key keep
+the older `yb_concentration_rms_fraction` behaviour. With doping this uniform,
+the dominant disturbance is the phase accumulated over the ten disk encounters.
+
+The default multipass is an **image relay with 24 crystal traversals = 12
+disk bounces** (`nominal.multipass.layout: "image_relay"`,
+`signal_traversals: 24`), matching the YbSLAM proposal's structured-light
+requirement. A bounce is two traversals (in, HR back reflection, out) at one
+angle of incidence with no relay in between. The 11 relays connect successive
+bounces. Every return path is a unit-magnification 4f
+relay (for example a parabolic mirror with fold prisms, `relay_focal_m` = 0.5 m).
+It images the disk back onto itself, so the shaped pattern arrives re-imaged
+(point-inverted) at every pass instead of diffracting between passes. What still
+differs per pass is:
+
+- the angle of incidence, linearly spaced over ±`max_incidence_deg` (8°), with
+  the same stretched, Snell-scaled disk phase as below;
+- a lateral image shift 2εf from each fold mirror's fixed pointing error
+  (`mirror_tilt_error_urad` = 5 µrad RMS, about 5 µm);
+- a fixed path-length (focus) error of each relay (`relay_defocus_error_mm`
+  = 0.5 mm RMS).
+
+Both errors are saved per setup in `setup.npz` (`multipass_mirror_tilt_rad`,
+`multipass_relay_defocus_m`) and reused by replays. Relay aberrations and
+apertures are not modelled. A cold small-signal check with 20% Yb:YAG, 200 µm
+thick and a 2 mm pump spot gave 1.6×10⁵ (200 W) to 3.2×10⁵ (300 W) gain in
+24 passes, versus 180–240 in 10 passes. That check omits heating, concentration
+quenching and ASE.
+
+The alternative layout `"mirror_array"` (implemented in
+`src/ybluag/multipass_geometry.py`): the seed fans between the disk and an array
+of curved mirrors, so every reflection takes a slightly different path.
+
+- Encounter k meets the disk from array height y_k (linearly spaced over
+  ±`array_half_height_m` = ±0.08 m, array at `array_distance_m` = 0.5 m). The
+  angle of incidence is 1–9°. The beam sees the disk phase map stretched by
+  1/cos θ along the incidence plane and scaled by 1/cos θ_t for the longer
+  internal path (Snell, n = 1.815).
+- Path k returns through its own mirror: length 2·√(D² + y²), 1.000–1.010 m.
+  The field propagates half the path to the mirror, receives its focusing and
+  its pointing error, then propagates the other half back to the disk.
+  Oblique mirror incidence (`array_mirror_incidence_deg` = 1.5°) makes the
+  focus astigmatic: f·cos a tangential, f/cos a sagittal. With
+  `mirror_focal_m: null` each mirror is mode-matched to a 0.6 mm waist on the
+  disk, f = (L²/4 + z_R²)/L ≈ 1.45 m. The injected seed is not matched to that
+  mode and still breathes.
+- Every array mirror has a fixed pointing error for the whole setup
+  (`mirror_tilt_error_urad` = 5 µrad RMS per axis, 2ε deflection). It is saved
+  in `setup.npz` as `multipass_mirror_tilt_rad`, so replays rebuild the same
+  geometry. The errors walk the beam on the disk: in a 192² check the output
+  centroid moved by about 30–36 µm.
+- After each diffraction the pixel temporal shape is replaced by the
+  energy-weighted mean shape (a space-time separable approximation). The gain
+  is sampled in beam coordinates, so the elongated footprint (below 1.5% at
+  9°) and image inversion by the mirror sequence are not modelled.
+
+The cold thickness/surface phase and, with any non-ideal relay, the thermal OPD
+are applied at every encounter at that encounter's incidence. The solver
+re-solves the optics once with half the round-trip thermal OPD on every
+encounter. Heat and the thermal state come from the first solve: one
+thermal-to-optical update, not a converged hot-cavity iteration. Results record
+`ideal_relay`, `multipass_geometry` (angles, path lengths, focal lengths, mirror
+errors) and `thermal_phase_per_encounter`. Without a `multipass` block, the
+legacy uniform `inter_pass_distance_m`/`inter_pass_focal_m` path or the ideal
+relay is used unchanged.
+
+The modal teacher's passive model follows the same encounters, angles, paths
+and mirror errors. In a 192² solve it reproduced the output field with overlap
+1.000000. Ignoring the mirror errors gave 0.992, uniform 1 m paths at normal
+incidence 0.992, and the old single lumped screen 0.960 (below the teacher's
+0.99 acceptance threshold). The first-order oracle proposals of the legacy and
+response teachers still assume one lumped screen; the full-solver verification
+decides whether those proposals pass. Only `config/ybyag_nn_dataset.json`
+enables these settings. The older configs are unchanged so their existing
+datasets keep resuming.
+
+The same mirror array is the **default everywhere a Yb:YAG ideal multipass is
+solved**. The desktop Yb:YAG pulsed calculation (Amplifier & optics:
+**Multipass layout**, array distance/half height, mirror incidence, mirror
+pointing error and seed) and the closed-loop correction plant
+(`EpisodeConfig.multipass_layout`, `mirror_tilt_error_urad`) both read their
+defaults from this configuration through
+`ybluag.multipass_geometry.dataset_defaults()`. Changing the `multipass` block
+or `mirror_tilt_error_urad` here changes all three. Their reference solves (the
+dashed desktop reference and the controller's ideal camera target) use the same
+array with perfect mirrors. Select `ideal_relay` to recover the earlier unit
+relay. The controller keeps its own traversal count (2 by default), so its
+array has fewer encounters than the dataset's 10.
+
+### Reduced random and thermal fluctuations
+
+`config/ybyag_nn_dataset.json` now uses smaller trial-to-trial fluctuations so
+the accumulated multipass phase dominates:
+
+| Setting | Before | Now |
+|---|---|---|
+| Pump power / radius variation between trials | ±10% / ±10% | ±3% / ±3% |
+| Pump pointing jitter | 1% of radius | 0.3% |
+| Coolant setpoint range / thermal drift | ±0.4 K / 5 mK/s | ±0.1 K / 1 mK/s |
+| Thermal-contact variation | 20% | 10% |
+| Upstream residual (high-order) screen | 0.02 waves | 0.01 waves |
+| SLM pixel gain noise / drift | 0.5% / 1e-4 per s | 0.25% / 5e-5 per s |
+| Frame pointing jitter / alignment drift | 5 µrad / 0.02 µm/s | 2 µrad / 0.01 µm/s |
+| Probe noise / drift | 0.1–0.5 K / 1 mK/√s | 0.05–0.2 K / 0.5 mK/√s |
+| Camera dark / background / PRNU / DSNU | 0.1 e/s / 2 e / 1% / 0.5 e | 0.05 / 1 / 0.5% / 0.25 |
+| Sensor-temperature jitter | 0.1 °C | 0.05 °C |
+| Pulse energy / pointing jitter per exposure | 0.5% / 0.2 px | 0.2% / 0.1 px |
+
+Photon shot noise and the 1.6 e read noise (ORCA-class specification) are
+unchanged. The fixed per-setup errors that the controller must correct are also
+unchanged: upstream Zernike aberration, thickness and surface maps, SLM
+calibration and seed misalignment.
+
 The default thickness-map RMS is 0.03% (about 30 nm for a 100 µm disk). The previous 1% setting produced about 17 rad of accumulated phase in a ten-traversal Gaussian pilot; with 0.25 m of free-space propagation from the phase-only SLM to the disk, the desired full field was unreachable even in the frozen passive model. The smaller illustrative manufacturing range keeps the same optical model and does not relax the label criteria. Unreachable sampled setups still retain their measured trials and reject correction labels.
 
 The default `config/ybyag_nn_dataset.json` now selects `label_teacher: modal`. It uses the saved complex input field and accumulated cold/thermal phase as a fast passive proposal model, then replays selected **quantized SLM commands** through the existing full amplifier and thermal solver. The proposal fits 14 piston-free, pupil-orthogonalized Zernike modes. A 3×3 local residual stage is attempted only when the passive full-field bound permits the requested fidelity and the smooth stage has not succeeded. The two stages share `label_max_solver_evaluations`; fast optical iterations do not consume that full-solver count. The pilot has unit and manufactured-optics tests and one bounded three-trial Gaussian smoke, but no full campaign or mesh-convergence qualification yet.

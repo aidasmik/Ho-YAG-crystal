@@ -22,4 +22,5 @@ testpaths = ["tests"]
 
 [tool.setuptools.package-data]
 ybluag = ["data/*.part*"]
+ybyag_dataset = ["data/doping_maps/*"]
 ybyag = ["data/*.json", "data/*.csv", "data/mechanical/*.json", "data/spectra/*.csv", "data/thermal/*.csv", "data/provenance/*"]

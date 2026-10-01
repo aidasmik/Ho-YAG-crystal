@@ -1,0 +1,58 @@
+{
+  "definition": "relative_ratio = R/median(R) on the selected interior, R = (PL969/laser969)/(PL1030/laser1030)",
+  "status": "Within-sample relative spectroscopic proxy for the Yb distribution. Not a calibrated Yb concentration: surface/coating defects and residual setup variation may contribute. The simulator uses (relative_ratio - 1) x yb_map_deviation_scale as the relative Yb deviation. The default scale -1.7 is negative because 969 nm PL is reabsorbed more at higher Yb; its magnitude comes from the 5 -> 10 at.% sample medians (d ln R/d ln C = -0.59). 10 -> 15 at.% gives -3.9 but the 15% absolute ratio is not reconciled.",
+  "grid_step_mm": 0.1,
+  "source_folder": "YbYag10-5/clean_data (PL mapper, HC13 matched scan pairs)",
+  "selection": {
+    "YbYag10": {
+      "file": "YbYag10_relative_969_1030_clean.csv",
+      "scan_969": "Yb_Yag10_2026-09-22_13-49-32",
+      "scan_1030": "Yb_Yag10_2026-09-22_15-18-40",
+      "matched_points": 2185,
+      "selected_points": 1611,
+      "median_instrument_ratio": 0.20702976277333612,
+      "source_file_969": "YbYag10\\Yb_Yag10_2026-09-22_13-49-32\\map_points.csv",
+      "source_file_1030": "YbYag10\\Yb_Yag10_2026-09-22_15-18-40\\map_points.csv"
+    },
+    "YbYag5": {
+      "file": "YbYag5_relative_969_1030_clean.csv",
+      "scan_969": "Yb_Yag5_2026-09-28_14-57-53",
+      "scan_1030": "Yb_Yag5_2026-09-28_13-03-16",
+      "matched_points": 6197,
+      "selected_points": 5533,
+      "median_instrument_ratio": 0.31247286193486795,
+      "source_file_969": "Yb_Yag5_2026-09-28_14-57-53\\map_points.csv",
+      "source_file_1030": "Yb_Yag5_2026-09-28_13-03-16\\map_points.csv"
+    },
+    "YbYag15": {
+      "file": "YbYag15_relative_969_1030_clean.csv",
+      "scan_969": "YbYag15.opju Book12 (2026-08-27 11:22)",
+      "scan_1030": "YbYag15.opju Book11 (2026-08-27 10:35)",
+      "matched_points": 2361,
+      "selected_points": 1580,
+      "median_instrument_ratio": 0.18650802762636098,
+      "source_file_969": "origin15_exports\\origin15_book12.csv",
+      "source_file_1030": "origin15_exports\\origin15_book11.csv"
+    }
+  },
+  "samples": {
+    "5": {
+      "file": "YbYag5_relative_distribution.csv",
+      "points": 5533,
+      "source_file": "YbYag5_relative_969_1030_clean.csv",
+      "source_sha256": "0801410e28b71796e5cdb147a609996f80b595cac203dc44052de0b5cab5fe9c"
+    },
+    "10": {
+      "file": "YbYag10_relative_distribution.csv",
+      "points": 1611,
+      "source_file": "YbYag10_relative_969_1030_clean.csv",
+      "source_sha256": "9e0c905c42a54c25376683663a099ccc56b8b65c85d92a3b604e19da150cb163"
+    },
+    "15": {
+      "file": "YbYag15_relative_distribution.csv",
+      "points": 1580,
+      "source_file": "YbYag15_relative_969_1030_clean.csv",
+      "source_sha256": "ed7858cb6ca31a9a0179caaa72661f2e5c57ac4120e6feb1a16c1b8785f0a299"
+    }
+  }
+}

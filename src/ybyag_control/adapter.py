@@ -10,6 +10,7 @@ import numpy as np
 
 from hoyag.propagation import Grid2D, angular_spectrum_propagate
 from hoyag.thermal import DiskThermalMesh
+from ybluag.multipass_geometry import from_request as multipass_from_request
 from ybluag.assembly import yb_cooler_solver
 from ybluag.beam_shaping import gaussian_seed_and_target_mask
 from ybluag.camera_dataset import CameraSettings
@@ -87,6 +88,14 @@ class EpisodeConfig:
     probe_noise_scale: float = 1.0
     photodiode_noise_fraction: float = 0.005
     architecture: str = "ideal_multipass"
+    # Same multipass layout as the dataset generator by default (image relay).
+    # The layout and error sizes come from config/ybyag_nn_dataset.json; None
+    # keeps that value. "ideal_relay" restores the unit relay.
+    multipass_layout: str | None = None
+    mirror_tilt_error_urad: float | None = None
+    # Yb distribution: None keeps the dataset default (measured PL map of the
+    # nearest measured sample, 5/10/15 at.%); "random" uses a seeded map.
+    yb_distribution: str | None = None
 
     def __post_init__(self):
         if self.mode not in ("snapshot", "in_situ"):
@@ -95,7 +104,7 @@ class EpisodeConfig:
             raise ValueError("thermal timeline mode must be full or requested_only")
         if (
             not isinstance(self.grid_n, int)
-            or not 32 <= self.grid_n <= 256
+            or not 32 <= self.grid_n <= 512
             or not isinstance(self.camera_width, int)
             or self.camera_width < 16
             or not isinstance(self.camera_height, int)
@@ -154,7 +163,7 @@ class EpisodeConfig:
             not isinstance(self.pump_passes, int)
             or not 1 <= self.pump_passes <= 48
             or not isinstance(self.signal_traversals, int)
-            or not 1 <= self.signal_traversals <= 10
+            or not 1 <= self.signal_traversals <= 48
         ):
             raise ValueError("invalid pump-pass or signal-traversal count")
         if (
@@ -168,6 +177,13 @@ class EpisodeConfig:
             raise ValueError(
                 "controller fixture currently supports ideal_multipass only"
             )
+        if self.multipass_layout not in (None, "image_relay", "mirror_array", "ideal_relay") or (
+            self.mirror_tilt_error_urad is not None
+            and not 0 <= self.mirror_tilt_error_urad <= 1000
+        ):
+            raise ValueError("invalid multipass layout or mirror tilt error")
+        if self.yb_distribution not in (None, "measured", "random"):
+            raise ValueError("yb_distribution must be measured or random")
         if self.enable_thermal_variation and self.mode != "in_situ":
             raise ValueError("changing thermal/pump conditions require in_situ mode")
         operating_values = (
@@ -242,10 +258,19 @@ def diagnostic_fields(
 class SimulationPlant:
     """The controller receives only observe(); validation may inspect truth()."""
 
-    def __init__(self, episode: EpisodeConfig, mode_count=14, *, measurement_mode="intensity"):
-        if measurement_mode not in ("intensity", "interferometric"):
+    def __init__(self, episode: EpisodeConfig, mode_count=14, *, measurement_mode="intensity",
+                 dataset_camera=None):
+        """``measurement_mode="dataset_camera"`` measures like the NN dataset:
+        two phase-diverse planes (``dataset_camera['planes_m']``) on the dataset
+        detector (``camera``, ``ranges``, ``pulse_exposure_variation``). The
+        in-situ NN controller needs exactly the measurements it was trained on.
+        """
+        if measurement_mode not in ("intensity", "interferometric", "dataset_camera"):
             raise ValueError("unknown measurement mode")
+        if measurement_mode == "dataset_camera" and not dataset_camera:
+            raise ValueError("dataset_camera measurements need the dataset camera configuration")
         self.measurement_mode = measurement_mode
+        self.dataset_camera = dataset_camera
         self.episode = episode
         self.ranges = _default_ranges()
         self.material = YbYAGMaterial(
@@ -270,6 +295,19 @@ class SimulationPlant:
             thermal_nz=episode.thermal_nz,
             cluster_contrast=0.0,
         )
+        # Mirror pointing errors are fixed optical disturbances of this setup;
+        # the ideal reference uses the same array with perfect mirrors.
+        multipass = {"multipass_layout": episode.multipass_layout,
+                     "mirror_tilt_error_urad": episode.mirror_tilt_error_urad}
+        self.multipass = multipass_from_request(
+            multipass, episode.signal_traversals, waist_m=self.settings.waist_m,
+            tilt_seed=episode.seed + 9, with_errors=episode.enable_external_optics)
+        self.ideal_settings = replace(
+            self.settings,
+            multipass_geometry=multipass_from_request(
+                multipass, episode.signal_traversals, waist_m=self.settings.waist_m,
+                tilt_seed=episode.seed + 9, with_errors=False))
+        self.settings = replace(self.settings, multipass_geometry=self.multipass)
         self.grid = Grid2D.square(episode.grid_n, episode.field_size_mm * 1e-3)
         x, y = self.grid.mesh
         self.source_field, self.target_phase = gaussian_seed_and_target_mask(
@@ -283,11 +321,16 @@ class SimulationPlant:
         self.basis = correction_basis(
             self.grid.x, self.grid.y, self.settings.waist_m, mode_count
         )
+        material_ranges = {**self.ranges, "yb_map_nearest_sample": True}
+        if episode.yb_distribution is not None:
+            material_ranges["yb_distribution"] = episode.yb_distribution
         self.material_maps = sample_material(
             self.grid.shape,
-            self.ranges,
+            material_ranges,
             episode.seed + 1,
             enabled=episode.enable_material,
+            grid=self.grid,
+            yb_at_percent=episode.yb_at_percent,
         )
         self.contact = sample_contact(
             (episode.thermal_nr, episode.thermal_nphi),
@@ -326,6 +369,14 @@ class SimulationPlant:
             enabled=episode.enable_camera_noise,
         )
         self.camera = base_camera
+        if measurement_mode == "dataset_camera":
+            settings = {k: v for k, v in dataset_camera["camera"].items() if v is not None}
+            settings.setdefault("optical_throughput", 1.0)
+            self.camera = CameraSettings(**settings)
+            self.camera_setup = sample_camera_setup(
+                self.camera, dataset_camera.get("ranges", self.ranges), episode.seed + 5,
+                enabled=episode.enable_camera_noise)
+            self.camera_planes_m = tuple(float(z) for z in dataset_camera["planes_m"])
         self.noise_rng = np.random.default_rng(episode.seed + 7)
         self.operating_rng = np.random.default_rng(episode.seed + 8)
         self.slm_drift_rng = np.random.default_rng(episode.seed + 9)
@@ -533,7 +584,7 @@ class SimulationPlant:
                 pump_radius_m=self.latest_operating_point["pump_radius_m"],
             )
             if not ideal and self.episode.enable_thermal_variation
-            else self.settings
+            else (self.ideal_settings if ideal else self.settings)
         )
         seed_energy_nj = (
             self.latest_operating_point["seed_energy_nj"]
@@ -598,16 +649,18 @@ class SimulationPlant:
             )
             self.last_camera_time_s = clock_s
         gains = []
-        for arm, arm_field in enumerate(
-            diagnostic_fields(
-                field,
-                self.grid,
-                1030e-9,
-                self.settings.waist_m,
-                self.episode.diagnostic_distance_m,
-                self.episode.diagnostic_astigmatism_waves,
-            )
-        ):
+        arms = (self._dataset_planes(field) if self.measurement_mode == "dataset_camera" else
+                diagnostic_fields(
+                    field,
+                    self.grid,
+                    1030e-9,
+                    self.settings.waist_m,
+                    self.episode.diagnostic_distance_m,
+                    self.episode.diagnostic_astigmatism_waves,
+                ))
+        variation = (self.dataset_camera.get("pulse_exposure_variation")
+                     if self.measurement_mode == "dataset_camera" and noisy else None)
+        for arm, arm_field in enumerate(arms):
             gain = (
                 (
                     1.0
@@ -635,6 +688,7 @@ class SimulationPlant:
                 self.camera_setup,
                 seed + arm,
                 enabled=noisy,
+                pulse_variation=variation,
             )
             frames.append(frame)
             sat.append(info["saturated_fraction"])
@@ -709,16 +763,16 @@ class SimulationPlant:
         unattenuated = replace(self.camera, optical_throughput=1.0)
         field = np.asarray(result["output_complex_field_sqrt_J_m"], complex)
         peaks = []
-        for arm, arm_field in enumerate(
-            diagnostic_fields(
-                field,
-                self.grid,
-                1030e-9,
-                self.settings.waist_m,
-                self.episode.diagnostic_distance_m,
-                self.episode.diagnostic_astigmatism_waves,
-            )
-        ):
+        arms = (self._dataset_planes(field) if self.measurement_mode == "dataset_camera" else
+                diagnostic_fields(
+                    field,
+                    self.grid,
+                    1030e-9,
+                    self.settings.waist_m,
+                    self.episode.diagnostic_distance_m,
+                    self.episode.diagnostic_astigmatism_waves,
+                ))
+        for arm, arm_field in enumerate(arms):
             _, _, info = capture(
                 abs(arm_field) ** 2,
                 self.grid.x,
@@ -732,9 +786,12 @@ class SimulationPlant:
             peaks.append(info["expected_electron_peak"])
         if not np.all(np.isfinite(peaks)) or max(peaks) <= 0:
             raise ValueError("reference has no finite illuminated camera pixels")
+        # The dataset detector is exposed like the dataset generator (half
+        # full well at the brightest plane); the diagnostic arms keep headroom.
+        well_fraction = 0.5 if self.measurement_mode == "dataset_camera" else 0.15
         self.camera = replace(
             self.camera,
-            optical_throughput=min(1.0, 0.15 * self.camera.full_well_e / max(peaks)),
+            optical_throughput=min(1.0, well_fraction * self.camera.full_well_e / max(peaks)),
         )
         if self.measurement_mode == "interferometric":
             self.local_oscillator = reference_amplitude(
@@ -774,7 +831,7 @@ class SimulationPlant:
     def observe(self, coefficients_rad):
         a = np.asarray(coefficients_rad, float)
         allowed = ((len(self.basis),),)
-        if self.measurement_mode == "interferometric":
+        if self.measurement_mode in ("interferometric", "dataset_camera"):
             allowed = allowed + (self.grid.shape,)
         if a.shape not in allowed or not np.all(np.isfinite(a)):
             raise ValueError("invalid SLM phase command")
@@ -869,6 +926,35 @@ class SimulationPlant:
         )
         return obs
 
+    def _dataset_planes(self, field):
+        return [field if z == 0 else angular_spectrum_propagate(field, self.grid, 1030e-9, z)
+                for z in self.camera_planes_m]
+
+    def nn_measurements(self, observation):
+        """Measured inputs for the NN, named like a dataset trial.
+
+        Contains only detector frames, the delivered SLM command, the known
+        target mask and nominal/measured beam and pump settings: no truth.
+        """
+        if self.measurement_mode != "dataset_camera":
+            raise ValueError("NN measurements need the dataset camera mode")
+        if self.last_result is None:
+            raise ValueError("no measured state")
+        incoming = np.asarray(self.last_result["input_fluence_J_m2"], float)
+        command = np.mod(self.target_phase + self.correction_phase(
+            observation.delivered_coefficients_rad), 2*np.pi)
+        measured = {
+            "input__camera_adu": np.asarray(observation.camera_adu),
+            "input__incoming_beam_shape": incoming/max(float(incoming.sum()), 1e-30),
+            "input__slm_command_rad": command,
+            "input__target_phase_mask_rad": self.target_phase,
+            "input__seed_waist_m": np.asarray(self.settings.waist_m),
+            "input__pump_radius_m": np.asarray(self.settings.pump_radius_m),
+        }
+        from dataclasses import asdict
+        metadata = {"camera_settings": asdict(self.camera), "selected_target": self.episode.target}
+        return measured, metadata
+
     def validation_truth(self, result=None):
         """Separate, truth-assisted report; never passed into controller."""
         result = result or self.last_result
@@ -886,3 +972,32 @@ class SimulationPlant:
             useful_target_mode_energy_J=float(overlap * result["output_energy_J"]),
             physical_output_energy_J=float(result["output_energy_J"]),
         )
+
+
+def episode_for_nn_model(episode: EpisodeConfig, model_config: dict, spec) -> EpisodeConfig:
+    """Episode geometry and operating point of the NN's training data.
+
+    The in-situ NN expects the grid, disk passes, seed and pump it was trained
+    on; everything else (target, mode, noise and drift settings) is kept.
+    """
+    nominal = model_config["nominal"]
+    return replace(
+        episode,
+        grid_n=int(spec.slm_n),
+        field_size_mm=float(spec.field_m)*1e3,
+        waist_mm=float(spec.waist_m)*1e3,
+        signal_traversals=int(spec.encounters),
+        pump_radius_mm=float(nominal["radius_mm"]),
+        pump_W=float(nominal["pump_W"]),
+        yb_at_percent=float(nominal["yb_at_percent_candidates"][0]),
+        thickness_um=float(nominal["disk_thickness_um"]),
+        disk_radius_mm=float(nominal["disk_radius_mm"]),
+        seed_energy_nj=float(nominal["seed_energy_nj"]),
+        seed_fwhm_ps=float(nominal["seed_fwhm_ps"]),
+        repetition_rate_kHz=float(nominal["repetition_rate_kHz"]),
+        pump_passes=int(nominal["pump_passes"]),
+        thermal_nr=int(nominal["thermal_nr"]),
+        thermal_nphi=int(nominal["thermal_nphi"]),
+        thermal_nz=int(nominal["thermal_nz"]),
+        coolant_setpoint_C=float(nominal["coolant_temperature_C"]),
+    )

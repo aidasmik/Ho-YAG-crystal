@@ -25,6 +25,9 @@ from hoyag.thermal import DiskThermalMesh
 from hoyag.local_supervisor import atomic_json
 from ybluag.beam_shaping import gaussian_seed_and_target_mask
 from ybluag.gallery import YbGallerySettings, simulate_pulsed_seed, _assembly_configuration
+from ybluag.gallery import active_multipass_geometry
+from ybluag.multipass_geometry import (from_nominal as multipass_from_nominal,
+                                       sample_mirror_tilts, sample_relay_defocus)
 from ybluag.regenerative import RegenerativeCavity
 from ybluag.assembly import yb_cooler_solver
 from ybluag.camera_dataset import CameraSettings, suggest_optical_throughput
@@ -75,7 +78,8 @@ def _numerical_sources_sha256():
     return digest.hexdigest()
 
 
-def _settings(nominal, pump, beam):
+def _settings(nominal, pump, beam, geometry=None):
+    """``geometry``: per-setup mirror-array geometry (with its mirror errors)."""
     return YbGallerySettings(
         pump_power_W=pump["pump_W"], pump_radius_m=pump["radius_mm"]*1e-3,
         thickness_m=nominal["disk_thickness_um"]*1e-6,
@@ -87,7 +91,10 @@ def _settings(nominal, pump, beam):
         phase_mask_name="none", cluster_contrast=0.,
         grid_n=int(nominal["grid_n"]),field_size_m=nominal["field_size_mm"]*1e-3,
         z_steps=4, thermal_nr=int(nominal["thermal_nr"]),
-        thermal_nphi=int(nominal["thermal_nphi"]),thermal_nz=int(nominal["thermal_nz"]))
+        thermal_nphi=int(nominal["thermal_nphi"]),thermal_nz=int(nominal["thermal_nz"]),
+        inter_pass_distance_m=float(nominal.get("inter_pass_distance_m",0.)),
+        inter_pass_focal_m=float(nominal.get("inter_pass_focal_m",0.)),
+        multipass_geometry=geometry)
 
 
 def _phase_target(result, desired_disk_field, grid, wavelength_m,
@@ -135,16 +142,18 @@ def setup_plan(config, split_counts=None):
     if (set(counts) != {"train", "validation", "test", "stress"} or
             any(type(v) is not int or v < 0 for v in counts.values())):
         raise ValueError("invalid setup split counts")
-    concentrations = tuple(float(x) for x in config["nominal"]["yb_at_percent_candidates"])
+    # The configured concentrations define coverage (default 5/10/15 at.%; a
+    # single-concentration campaign such as 10 at.% is allowed).
+    concentrations = tuple(sorted(set(float(x) for x in
+                                      config["nominal"]["yb_at_percent_candidates"])))
     targets = tuple(config["nominal"]["target_candidates"])
-    if (set(concentrations) != set(REQUIRED_CONCENTRATIONS) or
-            set(targets) != set(REQUIRED_TARGETS)):
-        raise ValueError("required 5/10/15 at.% and four structured targets")
-    combinations = [(doping, target) for doping in REQUIRED_CONCENTRATIONS
+    if not concentrations or set(targets) != set(REQUIRED_TARGETS):
+        raise ValueError("at least one concentration and the four structured targets are required")
+    combinations = [(doping, target) for doping in concentrations
                     for target in REQUIRED_TARGETS]
     if any(counts[split] < len(combinations)
            for split in ("train", "validation", "test")):
-        raise ValueError("each split needs at least 12 complete setups for coverage")
+        raise ValueError(f"each split needs at least {len(combinations)} complete setups for coverage")
     plan = {split: [] for split in counts}
     number = 0
     for split in ("train", "validation", "test", "stress"):
@@ -164,11 +173,12 @@ def shard_setup_plan(plan, shard_index=0, shard_count=1):
         raise ValueError("invalid setup shard")
     if shard_count == 1:
         return plan
-    width = len(REQUIRED_CONCENTRATIONS) * len(REQUIRED_TARGETS)
+    concentrations = sorted({row["yb_at_percent"] for row in plan["train"]})
+    width = len(concentrations) * len(REQUIRED_TARGETS)
     sharded = {split: [row for index, row in enumerate(rows)
                        if (index // width) % shard_count == shard_index]
                for split, rows in plan.items()}
-    required = {(doping, target) for doping in REQUIRED_CONCENTRATIONS
+    required = {(doping, target) for doping in concentrations
                 for target in REQUIRED_TARGETS}
     for split in ("train", "validation", "test"):
         covered = {(row["yb_at_percent"], row["target"])
@@ -205,6 +215,17 @@ def trial_command(retained_command, target_phase, grid, trial_index,
     coordinate=((trial_index-1)//2) % len(modes)
     sign=1 if trial_index % 2 else -1
     return np.mod(retained_command+sign*step_rad*modes[coordinate],2*np.pi)
+
+
+def setup_geometry(nominal, mirror_tilts, waist_m, relay_defocus=None):
+    """The setup's multipass geometry; None keeps the ideal relay."""
+    if nominal["architecture"]!="ideal_multipass":
+        return None
+    layout="multipass" in nominal
+    image=layout and nominal["multipass"].get("layout")=="image_relay"
+    return multipass_from_nominal(nominal,int(nominal["signal_traversals"]),
+        waist_m=float(waist_m),tilt_rad=mirror_tilts if layout else None,
+        defocus_m=relay_defocus if image else None)
 
 
 def _plot_validation(path, arrays, sensor):
@@ -297,7 +318,9 @@ def _run_parallel_setups(config_path, output, counts, plan, points_per_setup,
         atomic_json(manifest_path,manifest)
 
     pending=[]
-    for split in ("train","validation","test","stress"):
+    # Held-out splits first: a run stopped by its time limit still leaves
+    # complete validation/test setups; train resumes with --resume.
+    for split in ("validation","test","train","stress"):
         for spec in plan[split]:
             group_id=spec["setup_id"]
             final_rows=_complete_group_rows(output,split,group_id,points_per_setup,
@@ -319,7 +342,16 @@ def _run_parallel_setups(config_path, output, counts, plan, points_per_setup,
                  for split,group_id in pending}
         for future in as_completed(futures):
             split,group_id=futures[future]
-            future.result()
+            try:
+                future.result()
+            except Exception as exc:
+                # One unsupported physical state must not end an unattended
+                # campaign; the setup is recorded and can be retried on resume.
+                manifest.setdefault("failed_setups",[]).append(
+                    {"split":split,"setup_id":group_id,
+                     "error":f"{type(exc).__name__}: {str(exc)[:400]}"})
+                atomic_json(manifest_path,manifest)
+                continue
             stage=_stage_directory(output,split,group_id)
             rows=_complete_group_rows(stage,split,group_id,points_per_setup,
                                       manifest["source_config_sha256"])
@@ -463,7 +495,8 @@ def generate(config_path, output_dir, *, split_counts=None, points_per_setup=3,
             x,y=grid.mesh
             wavelength_m=1030e-9
             enabled=config["enabled"]
-            crystal=sample_material(grid.shape,ranges,group_seed[0],
+            crystal=sample_material(grid.shape,ranges,group_seed[0],grid=grid,
+                yb_at_percent=group_concentration,
                 enabled=enabled["material"],stress=stress)
             contact=sample_contact((int(nominal["thermal_nr"]),int(nominal["thermal_nphi"])),
                 ranges,group_seed[1],enabled=enabled["thermal"],stress=stress)
@@ -483,7 +516,22 @@ def generate(config_path, output_dir, *, split_counts=None, points_per_setup=3,
             folder=output/split/group_id
             folder.mkdir(parents=True,exist_ok=True)
             setup_file=folder/"setup.npz"
+            # Every array mirror keeps one pointing error for the whole setup.
+            encounters=int(nominal["signal_traversals"])
+            mirror_tilts=(sample_mirror_tilts(encounters,
+                stress*float(ranges.get("mirror_tilt_error_urad",0.)),
+                int(np.random.default_rng([group_seed[2],4242]).integers(2**32-1)))
+                if enabled["optical"] and "multipass" in nominal else
+                np.zeros((max(encounters-1,0),2)))
+            # Image relays also keep one path-length (focus) error per setup.
+            relay_defocus=(sample_relay_defocus(encounters,
+                stress*float(ranges.get("relay_defocus_error_mm",0.)),
+                int(np.random.default_rng([group_seed[2],4243]).integers(2**32-1)))
+                if enabled["optical"] and "multipass" in nominal else
+                np.zeros(max(encounters-1,0)))
             np.savez_compressed(setup_file,
+                multipass_mirror_tilt_rad=mirror_tilts,
+                multipass_relay_defocus_m=relay_defocus,
                 yb_concentration_scale=crystal["yb_concentration_scale"],
                 thickness_scale=crystal["thickness_scale"],
                 background_absorption_m1=crystal["background_absorption_m1"],
@@ -535,7 +583,8 @@ def generate(config_path, output_dir, *, split_counts=None, points_per_setup=3,
                     pump["pump_center_m"]=tuple(np.asarray(base_pump["pump_center_m"])+
                         jitter_rng.normal(0,stress*ranges["pump_pointing_jitter_radius_fraction"]*
                                           pump["radius_mm"]*1e-3,2))
-                settings=_settings(nominal,pump,beam)
+                settings=_settings(nominal,pump,beam,setup_geometry(nominal,
+                    mirror_tilts,beam["waist_mm"]*1e-3,relay_defocus))
                 material=YbYAGMaterial(yb_at_percent=group_concentration)
                 architecture=nominal["architecture"]
                 if architecture not in ("ideal_multipass","regenerative"):
@@ -749,6 +798,9 @@ def generate(config_path, output_dir, *, split_counts=None, points_per_setup=3,
                 if teacher_kind not in ("legacy_candidates","response_matrix","modal"):
                     raise ValueError("unknown label_teacher")
                 modal_status=None
+                # Absolute modal target, optionally capped just below this
+                # trial's phase-only reachable limit (flattop cannot reach 0.96).
+                effective_target_fidelity=float(config.get("modal_target_fidelity",.9))
                 passive_fidelity_limit=None
                 best_improved_command=None
                 best_improved_fidelity=None
@@ -841,7 +893,10 @@ def generate(config_path, output_dir, *, split_counts=None, points_per_setup=3,
                             actual_slm_phase=actual_slm,
                             external_phase=external,screen_phase=screen_phase,
                             baseline_field=field,slm_setup=slm_setup,
-                            drift_fraction=ranges["slm_drift_fraction_per_s"]*elapsed)
+                            drift_fraction=ranges["slm_drift_fraction_per_s"]*elapsed,
+                            encounters=int(result["effective_signal_traversals"]),
+                            geometry=active_multipass_geometry(
+                                settings,int(result["effective_signal_traversals"])))
                         modal_names,basis,_=modal_basis(x,y,
                             result["input_complex_field_sqrt_J_m"],settings.waist_m,
                             radial_order=int(config.get("modal_radial_order",4)))
@@ -861,9 +916,13 @@ def generate(config_path, output_dir, *, split_counts=None, points_per_setup=3,
                             valid=(solved["thermal_feedback_applied"] and
                                    solved["thermal_timeline"]["requested_material_range_valid"])
                             return solved["output_complex_field_sqrt_J_m"],valid
+                        limit_margin=config.get("modal_target_limit_margin")
+                        if limit_margin is not None:
+                            effective_target_fidelity=min(effective_target_fidelity,
+                                proposal_model.fidelity_limit(desired_observed)-float(limit_margin))
                         modal_options=dict(
                             min_coherent_gain=float(config.get("modal_min_coherent_gain",.01)),
-                            target_fidelity=float(config.get("modal_target_fidelity",.9)),
+                            target_fidelity=effective_target_fidelity,
                             min_shape_overlap=shape_floor,max_shape_drop=shape_drop,
                             min_energy_fraction=float(config.get(
                                 "modal_min_energy_fraction",.8)),
@@ -1104,8 +1163,11 @@ def generate(config_path, output_dir, *, split_counts=None, points_per_setup=3,
                                                        teacher_kind=="modal" else "phase_rms"),
                                                    "min_coherent_gain":float(config.get(
                                                        "modal_min_coherent_gain",.01)),
-                                                   "target_fidelity":float(config.get(
+                                                   "target_fidelity":effective_target_fidelity,
+                                                   "configured_target_fidelity":float(config.get(
                                                        "modal_target_fidelity",.9)),
+                                                   "passive_limit_margin":config.get(
+                                                       "modal_target_limit_margin"),
                                                    "min_energy_fraction":float(config.get(
                                                        "modal_min_energy_fraction",.8))},
                     "correction_candidate_checks":candidate_checks,

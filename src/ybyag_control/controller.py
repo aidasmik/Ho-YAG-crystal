@@ -55,10 +55,22 @@ class ControllerConfig:
     phase_gain_rad: float = 0.12
     phase_smoothing_pixels: float = 0.7
     phase_target_rms_rad: float = 0.5
+    # One-shot certified NN (``nn_v3``): trained model directory (relative to
+    # the repository or absolute), inference device and precision.
+    nn_model: str = ""
+    nn_device: str = "cpu"
+    nn_precision: str = "double"
+    nn_allow_uncalibrated: bool = False
 
     def __post_init__(self):
+        if self.method == "nn_v3" and (
+            not self.nn_model or self.nn_device not in ("cpu", "cuda")
+            or self.nn_precision not in ("single", "double")
+            or not isinstance(self.nn_allow_uncalibrated, bool)
+        ):
+            raise ValueError("nn_v3 needs a model directory, cpu/cuda device and precision")
         if (
-            self.method not in ("response_matrix", "spgd", "interferometric", "hybrid")
+            self.method not in ("response_matrix", "spgd", "interferometric", "hybrid", "nn_v3")
             or not 1 <= self.mode_count <= 14
             or not 1 <= self.iterations <= 200
             or not 1 <= self.evaluation_limit <= 500
@@ -237,6 +249,12 @@ def run_controller(
     phase_geometry: PhaseControlGeometry | None = None,
 ):
     """Run the selected measurement-only controller."""
+    if config.method == "nn_v3":
+        return run_nn_controller(
+            plant, reference_observation, target_energy_J, config,
+            black_level_adu=black_level_adu, on_step=on_step,
+            on_observation=on_observation, cancelled=cancelled,
+        )
     if config.method in ("interferometric", "hybrid"):
         if phase_geometry is None:
             raise ValueError("interferometric control requires calibrated geometry")
@@ -979,6 +997,134 @@ def run_spgd_controller(
         final_coefficients_rad=coeff,
         best_recheck_status=best_recheck_status,
     )
+
+
+def run_nn_controller(
+    plant,
+    reference_observation: Observation,
+    target_energy_J: float,
+    config: ControllerConfig,
+    *,
+    black_level_adu=32,
+    on_step: Callable | None = None,
+    on_observation: Callable | None = None,
+    cancelled: Callable[[], bool] | None = None,
+):
+    """In-situ one-shot NN correction with measured verification and rollback.
+
+    Each cycle: measure the held command, let the certified NN propose a full
+    SLM command (or hold), apply it, and measure again. A correction is kept
+    only if the measured camera loss does not rise beyond the allowance and the
+    photodiode energy stays above the floor; otherwise the previous command is
+    re-applied and measured (physical time is not rewound). The NN sees only
+    detector frames, the delivered command, the known target mask and nominal
+    beam/pump settings, like its training dataset.
+    """
+    from pathlib import Path
+    from .nn_v3 import TrialInputs, load_controller
+
+    if not np.isfinite(target_energy_J) or target_energy_J <= 0:
+        raise ValueError("positive calibrated reference energy required")
+    if not hasattr(plant, "nn_measurements"):
+        raise ValueError("nn_v3 needs a plant with dataset-camera measurements")
+    folder = Path(config.nn_model)
+    if not folder.is_absolute():
+        folder = Path(__file__).resolve().parents[2]/folder
+    model_json, nn = load_controller(folder, config.nn_device, precision=config.nn_precision)
+    spec = nn.spec
+    if tuple(plant.grid.shape) != (spec.slm_n, spec.slm_n):
+        raise ValueError(f"episode grid {plant.grid.shape} differs from the NN grid {spec.slm_n}")
+    frame = np.asarray(reference_observation.camera_adu)
+    reference = _Reference(
+        _calibrated_vector(reference_observation, black_level_adu, frame.shape),
+        frame.shape, frame.shape[0])
+    correction = np.zeros(plant.grid.shape)
+    count = 0
+    history = []
+
+    def acquire(command):
+        nonlocal count
+        for _ in range(3):
+            if cancelled is not None and cancelled():
+                raise InterruptedError("controller cancelled")
+            if count >= config.evaluation_limit:
+                raise StopIteration("evaluation budget reached")
+            obs = plant.observe(np.asarray(command, float).copy())
+            count += 1
+            if on_observation is not None:
+                on_observation(obs, count)
+            if obs.valid and obs.saturated_fraction <= config.saturation_limit:
+                return obs
+        raise InvalidObservationError(
+            "three invalid or saturated observations under one command")
+
+    def row(iteration, obs, loss, energy, status, certificate=None, **extra):
+        entry = dict(
+            iteration=iteration, evaluation=count, camera_loss=loss,
+            measured_energy_J=obs.measured_energy_J, energy_fraction=energy,
+            time_s=obs.time_s, coefficients_rad=correction.copy(),
+            accepted=status in ("baseline", "nn_applied", "nn_hold"),
+            update_status=status, **extra)
+        if certificate is not None:
+            chosen = certificate["candidates"][certificate["decision"]]
+            entry.update(nn_decision=certificate["decision"], nn_status=certificate["status"],
+                         nn_model_consistent=certificate["model_consistent"],
+                         nn_certified_gain=chosen.get("gain_certified"),
+                         nn_predicted_fidelity=chosen.get("fidelity_map"),
+                         nn_predicted_hold_fidelity=chosen.get("fidelity_hold_map"))
+        history.append(entry)
+        if on_step is not None:
+            on_step(entry, obs)
+
+    status = "iteration_limit"
+    holds = 0
+    try:
+        current = acquire(correction)
+        _, loss, energy = _score(current, reference, target_energy_J, config, black_level_adu)
+        row(0, current, loss, energy, "baseline")
+        for iteration in range(1, config.iterations+1):
+            measured, metadata = plant.nn_measurements(current)
+            inputs = TrialInputs.from_trial(measured, metadata, spec)
+            proposal = nn.propose(inputs, seed=iteration,
+                                  allow_uncalibrated=config.nn_allow_uncalibrated)
+            certificate = proposal["certificate"]
+            if certificate["decision"] == "hold":
+                holds += 1
+                current = acquire(correction)           # keep measuring in situ
+                _, loss, energy = _score(current, reference, target_energy_J, config,
+                                         black_level_adu)
+                row(iteration, current, loss, energy, "nn_hold", certificate)
+                if holds >= config.target_confirmations:
+                    status = "nn_certified_hold"
+                    break
+                continue
+            holds = 0
+            candidate = np.angle(np.exp(1j*(np.asarray(proposal["command"], float)
+                                            - plant.target_phase)))
+            previous = correction
+            correction = candidate
+            obs = acquire(candidate)
+            _, new_loss, new_energy = _score(obs, reference, target_energy_J, config,
+                                             black_level_adu)
+            if (new_energy >= config.minimum_energy_fraction
+                    and new_loss <= loss+config.improvement_tolerance):
+                current, loss, energy = obs, new_loss, new_energy
+                row(iteration, obs, loss, energy, "nn_applied", certificate,
+                    measured_loss_change=new_loss-history[-1]["camera_loss"])
+            else:
+                correction = previous
+                row(iteration, obs, new_loss, new_energy, "nn_rejected", certificate)
+                current = acquire(correction)
+                _, loss, energy = _score(current, reference, target_energy_J, config,
+                                         black_level_adu)
+                row(iteration, current, loss, energy, "nn_rollback")
+    except StopIteration:
+        status = "evaluation_budget"
+    except InvalidObservationError:
+        status = "camera_observation_invalid"
+    return dict(status=status, history=history, evaluations=count,
+                final_coefficients_rad=correction, nn_model=str(folder),
+                nn_calibrated=bool(nn.limits.calibrated))
 
 
 def measurement_metrics(

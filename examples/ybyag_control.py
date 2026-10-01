@@ -60,6 +60,24 @@ def _command_key(command):
 def run(config, *, progress_path=None):
     episode = EpisodeConfig(**config["episode"])
     controller = ControllerConfig(**config["controller"])
+    dataset_camera = None
+    if controller.method == "nn_v3":
+        # The NN measures and acts like its training data: same grid, disk
+        # passes, seed, pump and phase-diverse dataset camera.
+        from dataclasses import replace
+        from ybyag_control.adapter import episode_for_nn_model
+        from ybyag_control.nn_v3 import TARGETS as NN_TARGETS, Spec
+        if episode.target not in NN_TARGETS:
+            raise ValueError(f"The NN was trained only for {', '.join(NN_TARGETS)}; "
+                             f"'{episode.target}' is not supported by nn_v3.")
+        model = Path(controller.nn_model)
+        model = model if model.is_absolute() else ROOT/model
+        model_json = json.loads((model/"model.json").read_text(encoding="utf-8"))
+        model_config = model_json["config"]
+        episode = episode_for_nn_model(episode, model_config, Spec.from_json(model_json["spec"]))
+        dataset_camera = dict(camera=model_config["camera"], ranges=model_config["ranges"],
+                              planes_m=model_config["planes_m"],
+                              pulse_exposure_variation=model_config.get("pulse_exposure_variation"))
     if episode.yb_at_percent != 15.0:
         print(
             "Yb:YAG material approximation: interpolating thermal resistivity "
@@ -69,7 +87,9 @@ def run(config, *, progress_path=None):
     plant = SimulationPlant(
         episode, controller.mode_count,
         measurement_mode=("interferometric" if controller.method in ("interferometric", "hybrid")
+                          else "dataset_camera" if controller.method == "nn_v3"
                           else "intensity"),
+        dataset_camera=dataset_camera,
     )
     start = time.perf_counter()
     # The reference method counts its ideal and physical warm-up solves.
@@ -279,7 +299,8 @@ def run(config, *, progress_path=None):
                             if controller.method in ("interferometric", "hybrid") else None),
         )
     else:
-        zero = (np.zeros(plant.grid.shape) if controller.method in ("interferometric", "hybrid")
+        zero = (np.zeros(plant.grid.shape)
+                if controller.method in ("interferometric", "hybrid", "nn_v3")
                 else np.zeros(controller.mode_count))
         uncorrected = plant.observe(zero)
         record(

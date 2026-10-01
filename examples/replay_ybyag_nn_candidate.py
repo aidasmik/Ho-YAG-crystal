@@ -16,7 +16,7 @@ from ybluag.beam_shaping import gaussian_seed_and_target_mask
 from ybluag.gallery import simulate_pulsed_seed
 from ybluag.regenerative import RegenerativeCavity
 from ybyag.model import YbYAGMaterial
-from ybyag_dataset.generator import _settings
+from ybyag_dataset.generator import _settings, setup_geometry
 from ybyag_dataset.distortions.slm import apply_slm
 from ybyag_dataset.field_metrics import field_metrics, phase_support
 
@@ -47,6 +47,13 @@ def replay(trial: Path, config_file: Path, candidate_file: Path) -> dict:
         lut = np.asarray(setup['slm_phase_lut_rad'], float)
         if lut.size:
             slm_setup['phase_lut_rad'] = lut
+        tilts = (np.asarray(setup['multipass_mirror_tilt_rad'], float)
+                 if 'multipass_mirror_tilt_rad' in setup.files else None)
+        focus = (np.asarray(setup['multipass_relay_defocus_m'], float)
+                 if 'multipass_relay_defocus_m' in setup.files else None)
+    # The same multipass geometry, pointing and focus errors as the setup.
+    settings = _settings(nominal, pump, beam,
+                         setup_geometry(nominal, tilts, beam['waist_mm']*1e-3, focus))
     with np.load(trial.parent / metadata['truth_file']) as truth:
         saved_field = np.asarray(truth['truth__complex_field_sqrt_J_m'], complex)
         baseline_slm = np.asarray(truth['truth__slm_actual_phase_rad'], float)

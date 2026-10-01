@@ -28,6 +28,11 @@ from ybyag import YbYAGMaterial
 from ybluag.regenerative import RegenerativeCavity
 from ybluag.diagnostics import gain_feasibility, hardware_validity, spectral_gain_screen
 from ybluag.sensors import TemperatureProbe
+from hoyag.propagation import Grid2D
+from ybyag_dataset.distortions.measured_doping import (relative_map as measured_relative_map,
+                                                       sample_for as measured_sample_for)
+from ybluag.multipass_geometry import (dataset_defaults as multipass_defaults,
+                                      from_request as multipass_from_request)
 
 PAGE = ROOT / "Yb-LuAG" / "app.html"
 COATINGS = ROOT / "config" / "ybluag_10at_coatings.json"
@@ -304,6 +309,11 @@ def calculate_pulsed(data, *, compute_thermal=True, summary_only=False):
         "extraction_efficiency": 0.9,
         "cooling_h_max_W_m2K": 100000.0,
         "ideal_relay_power_retention": 1.0,
+        # Yb:YAG multipass: the dataset generator's mirror array by default.
+        **multipass_defaults(), "mirror_tilt_seed": 0,
+        # Yb:YAG: measured PL-mapped relative Yb distribution by default.
+        "yb_distribution": "measured", "yb_map_rotation_deg": 0.0,
+        "yb_map_offset_x_mm": 0.0, "yb_map_offset_y_mm": 0.0,
         **data,
     }
     source_fwhm_fs = number(data, "source_fwhm_fs", 50, 10000)
@@ -341,7 +351,7 @@ def calculate_pulsed(data, *, compute_thermal=True, summary_only=False):
         number(data, "seed_energy_nj", 0.001, 100000) * 1e-9,
         amplifier_fwhm_ps * 1e-12,
         number(data, "repetition_rate_kHz", 0.01, 100) * 1e3,
-        integer(data, "signal_traversals", 1, 10))
+        integer(data, "signal_traversals", 1, 48))
     pump_passes = integer(data, "pump_passes", 1, 48)
     architecture = data.get("architecture", "ideal_multipass")
     if architecture not in ("ideal_multipass", "regenerative"):
@@ -355,6 +365,27 @@ def calculate_pulsed(data, *, compute_thermal=True, summary_only=False):
         injection_efficiency=number(data, "injection_efficiency", 0.01, 1),
         extraction_efficiency=number(data, "extraction_efficiency", 0.01, 1),
         disk_diameter_m=2*settings.disk_radius_m) if architecture == "regenerative" else None
+    geometry = reference_geometry = None
+    if yag and architecture == "ideal_multipass":
+        encounters = pulse_args[3]
+        geometry = multipass_from_request(data, encounters, waist_m=settings.waist_m,
+            tilt_seed=integer(data, "mirror_tilt_seed", 0, 2**31-1))
+        reference_geometry = multipass_from_request(data, encounters, waist_m=settings.waist_m,
+            tilt_seed=0, with_errors=False)
+        settings = replace(settings, multipass_geometry=geometry)
+    yb_map = None
+    measured_sample = None
+    if yag and data.get("yb_distribution", "measured") == "measured":
+        # The measured map replaces the seeded random Yb clusters.
+        measured_sample = measured_sample_for(material.yb_at_percent, nearest=True)
+        yb_map = measured_relative_map(Grid2D.square(settings.grid_n, settings.field_size_m),
+            material.yb_at_percent, nearest=True,
+            offset_m=(number(data, "yb_map_offset_x_mm", -10, 10)*1e-3,
+                      number(data, "yb_map_offset_y_mm", -10, 10)*1e-3),
+            rotation_rad=math.radians(number(data, "yb_map_rotation_deg", -360, 360)))
+        settings = replace(settings, cluster_contrast=0.0)
+    elif yag and data.get("yb_distribution") not in ("measured", "random_clusters"):
+        raise ValueError("yb_distribution must be measured or random_clusters")
     cooling_mode = data.get("cooling_mode", "feedback")
     if cooling_mode not in ("fixed", "feedback", "sensor_feedback"):
         raise ValueError("unknown cooling mode")
@@ -385,14 +416,18 @@ def calculate_pulsed(data, *, compute_thermal=True, summary_only=False):
         temperature_probes=temperature_probes,
         probe_seed=integer(data, "probe_seed", 0, 2**31-1),
         static_cold_phase_rad=data.get("static_cold_phase_rad"),
-        slm_correction_phase_rad=data.get("slm_correction_phase_rad"))
+        slm_correction_phase_rad=data.get("slm_correction_phase_rad"),
+        dataset_physical=None if yb_map is None else {"yb_concentration_scale": yb_map})
     if summary_only:
         return {"incident_pump_W": settings.pump_power_W,
                 "average_output_W": result["output_energy_J"]*pulse_args[2],
                 "net_energy_gain": result["output_energy_J"]/result["input_energy_J"]}
+    # The reference keeps the multipass layout but has perfect array mirrors.
     reference = (result if settings.cluster_contrast == 0 and not result["thermal_feedback_applied"]
-                 and not np.any(result["static_cold_phase_rad"]) else
-                 simulate_pulsed_seed(material, replace(settings, cluster_contrast=0.0),
+                 and not np.any(result["static_cold_phase_rad"]) and geometry == reference_geometry
+                 and yb_map is None else
+                 simulate_pulsed_seed(material, replace(settings, cluster_contrast=0.0,
+                                                        multipass_geometry=reference_geometry),
                                       beam, *pulse_args, pump_passes=pump_passes,
                                       compute_thermal=False, architecture=architecture,
                                       regenerative_cavity=regenerative_cavity,
@@ -462,12 +497,15 @@ def calculate_pulsed(data, *, compute_thermal=True, summary_only=False):
         material_traversals=feasibility["material_traversals"],
         thickness_m=settings.thickness_m)
     return {
+        # Complex solver fields are for dataset generation; JSON cannot hold them
+        # and the display uses the fluence and phase maps instead.
         **{key: jsonable(value) for key, value in result.items()
-           if key not in ("grid", "output_complex_field_sqrt_J_m",
-                          "cold_output_complex_field_sqrt_J_m")},
+           if key != "grid" and not key.endswith("complex_field_sqrt_J_m")},
         "material": material.name,
         "material_status": material_status(material),
         "scope": result["scope"].replace("Yb:LuAG", material.name),
+        "yb_distribution": ("measured PL 969/1030 map of the %g at.%% sample (relative proxy)" %
+                            measured_sample if yb_map is not None else "seeded random clusters"),
         "yb_at_percent": material.yb_at_percent,
         "pump_wavelength_nm": material.pump_wavelength_nm,
         "signal_wavelength_nm": material.signal_wavelength_nm,

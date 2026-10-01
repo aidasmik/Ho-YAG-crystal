@@ -1,0 +1,830 @@
+{
+  "camera_calibration": {
+    "source": null,
+    "specification_examples": [
+      "https://www.hamamatsu.com/us/en/product/cameras/cmos-cameras/C13440-20CU.html",
+      "https://www.hamamatsu.com/eu/en/product/cameras/ingaas-cameras/C12741-03-02.html"
+    ],
+    "status": "illustrative",
+    "unmeasured_at_1030_nm": [
+      "quantum efficiency",
+      "point-spread function",
+      "optical throughput",
+      "fixed-pattern noise",
+      "SLM phase transfer"
+    ]
+  },
+  "coverage": {
+    "stress": {
+      "concentrations_at_percent": [],
+      "setups": 0,
+      "targets": []
+    },
+    "test": {
+      "concentrations_at_percent": [
+        10.0
+      ],
+      "setups": 8,
+      "targets": [
+        "Flattop super-Gaussian",
+        "Gaussian TEM00",
+        "Helical LG(0,+1)",
+        "Needle Bessel-Gaussian"
+      ]
+    },
+    "train": {
+      "concentrations_at_percent": [
+        10.0
+      ],
+      "setups": 64,
+      "targets": [
+        "Flattop super-Gaussian",
+        "Gaussian TEM00",
+        "Helical LG(0,+1)",
+        "Needle Bessel-Gaussian"
+      ]
+    },
+    "validation": {
+      "concentrations_at_percent": [
+        10.0
+      ],
+      "setups": 8,
+      "targets": [
+        "Flattop super-Gaussian",
+        "Gaussian TEM00",
+        "Helical LG(0,+1)",
+        "Needle Bessel-Gaussian"
+      ]
+    }
+  },
+  "created_unix_s": 1790721795.16626,
+  "dataset_ready": false,
+  "limits": [
+    "Yb:YAG hot gain unavailable; all accepted states are room-temperature lumped-phase approximations.",
+    "Thickness uses an optical-column and static geometric-phase approximation; the FEM retains nominal thickness.",
+    "Background absorption uses first-order pre-pump attenuation and distributed heat.",
+    "Photoelasticity and stress tensor are not solved in this scalar Yb amplifier.",
+    "Phase-only labels are best passing commands from a bounded, solver-verified candidate search, not guaranteed global optima.",
+    "Response-matrix teacher, when selected, probes privileged simulated complex fields; these are not experimentally measured calibration data.",
+    "Instrument distributions are illustrative until calibrated."
+  ],
+  "numerical_source_sha256": "900d4980d98d0c9ccb8ae70d7f3fa58402649acce07caf39a3d392422b43e5ce",
+  "resume_source_versions": [
+    {
+      "generator": "b96b378c876e3acb85266219b301dfb6b7baa2bd04302df4feb366747be8bc53",
+      "numerical_sources": "900d4980d98d0c9ccb8ae70d7f3fa58402649acce07caf39a3d392422b43e5ce"
+    }
+  ],
+  "runtime_versions": {
+    "matplotlib": "3.8.0",
+    "numpy": "1.26.4",
+    "psutil": "5.9.8",
+    "python": "3.11.9",
+    "scipy": "1.17.0"
+  },
+  "schema": "ybyag_nn_closed_loop_v3",
+  "setup_plan": {
+    "stress": [],
+    "test": [
+      {
+        "seed_index": 72,
+        "setup_id": "test_crystal_0072",
+        "target": "Gaussian TEM00",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 73,
+        "setup_id": "test_crystal_0073",
+        "target": "Flattop super-Gaussian",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 74,
+        "setup_id": "test_crystal_0074",
+        "target": "Helical LG(0,+1)",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 75,
+        "setup_id": "test_crystal_0075",
+        "target": "Needle Bessel-Gaussian",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 76,
+        "setup_id": "test_crystal_0076",
+        "target": "Gaussian TEM00",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 77,
+        "setup_id": "test_crystal_0077",
+        "target": "Flattop super-Gaussian",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 78,
+        "setup_id": "test_crystal_0078",
+        "target": "Helical LG(0,+1)",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 79,
+        "setup_id": "test_crystal_0079",
+        "target": "Needle Bessel-Gaussian",
+        "yb_at_percent": 10.0
+      }
+    ],
+    "train": [
+      {
+        "seed_index": 0,
+        "setup_id": "train_crystal_0000",
+        "target": "Gaussian TEM00",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 1,
+        "setup_id": "train_crystal_0001",
+        "target": "Flattop super-Gaussian",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 2,
+        "setup_id": "train_crystal_0002",
+        "target": "Helical LG(0,+1)",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 3,
+        "setup_id": "train_crystal_0003",
+        "target": "Needle Bessel-Gaussian",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 4,
+        "setup_id": "train_crystal_0004",
+        "target": "Gaussian TEM00",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 5,
+        "setup_id": "train_crystal_0005",
+        "target": "Flattop super-Gaussian",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 6,
+        "setup_id": "train_crystal_0006",
+        "target": "Helical LG(0,+1)",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 7,
+        "setup_id": "train_crystal_0007",
+        "target": "Needle Bessel-Gaussian",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 8,
+        "setup_id": "train_crystal_0008",
+        "target": "Gaussian TEM00",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 9,
+        "setup_id": "train_crystal_0009",
+        "target": "Flattop super-Gaussian",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 10,
+        "setup_id": "train_crystal_0010",
+        "target": "Helical LG(0,+1)",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 11,
+        "setup_id": "train_crystal_0011",
+        "target": "Needle Bessel-Gaussian",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 12,
+        "setup_id": "train_crystal_0012",
+        "target": "Gaussian TEM00",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 13,
+        "setup_id": "train_crystal_0013",
+        "target": "Flattop super-Gaussian",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 14,
+        "setup_id": "train_crystal_0014",
+        "target": "Helical LG(0,+1)",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 15,
+        "setup_id": "train_crystal_0015",
+        "target": "Needle Bessel-Gaussian",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 16,
+        "setup_id": "train_crystal_0016",
+        "target": "Gaussian TEM00",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 17,
+        "setup_id": "train_crystal_0017",
+        "target": "Flattop super-Gaussian",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 18,
+        "setup_id": "train_crystal_0018",
+        "target": "Helical LG(0,+1)",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 19,
+        "setup_id": "train_crystal_0019",
+        "target": "Needle Bessel-Gaussian",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 20,
+        "setup_id": "train_crystal_0020",
+        "target": "Gaussian TEM00",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 21,
+        "setup_id": "train_crystal_0021",
+        "target": "Flattop super-Gaussian",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 22,
+        "setup_id": "train_crystal_0022",
+        "target": "Helical LG(0,+1)",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 23,
+        "setup_id": "train_crystal_0023",
+        "target": "Needle Bessel-Gaussian",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 24,
+        "setup_id": "train_crystal_0024",
+        "target": "Gaussian TEM00",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 25,
+        "setup_id": "train_crystal_0025",
+        "target": "Flattop super-Gaussian",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 26,
+        "setup_id": "train_crystal_0026",
+        "target": "Helical LG(0,+1)",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 27,
+        "setup_id": "train_crystal_0027",
+        "target": "Needle Bessel-Gaussian",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 28,
+        "setup_id": "train_crystal_0028",
+        "target": "Gaussian TEM00",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 29,
+        "setup_id": "train_crystal_0029",
+        "target": "Flattop super-Gaussian",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 30,
+        "setup_id": "train_crystal_0030",
+        "target": "Helical LG(0,+1)",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 31,
+        "setup_id": "train_crystal_0031",
+        "target": "Needle Bessel-Gaussian",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 32,
+        "setup_id": "train_crystal_0032",
+        "target": "Gaussian TEM00",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 33,
+        "setup_id": "train_crystal_0033",
+        "target": "Flattop super-Gaussian",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 34,
+        "setup_id": "train_crystal_0034",
+        "target": "Helical LG(0,+1)",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 35,
+        "setup_id": "train_crystal_0035",
+        "target": "Needle Bessel-Gaussian",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 36,
+        "setup_id": "train_crystal_0036",
+        "target": "Gaussian TEM00",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 37,
+        "setup_id": "train_crystal_0037",
+        "target": "Flattop super-Gaussian",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 38,
+        "setup_id": "train_crystal_0038",
+        "target": "Helical LG(0,+1)",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 39,
+        "setup_id": "train_crystal_0039",
+        "target": "Needle Bessel-Gaussian",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 40,
+        "setup_id": "train_crystal_0040",
+        "target": "Gaussian TEM00",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 41,
+        "setup_id": "train_crystal_0041",
+        "target": "Flattop super-Gaussian",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 42,
+        "setup_id": "train_crystal_0042",
+        "target": "Helical LG(0,+1)",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 43,
+        "setup_id": "train_crystal_0043",
+        "target": "Needle Bessel-Gaussian",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 44,
+        "setup_id": "train_crystal_0044",
+        "target": "Gaussian TEM00",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 45,
+        "setup_id": "train_crystal_0045",
+        "target": "Flattop super-Gaussian",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 46,
+        "setup_id": "train_crystal_0046",
+        "target": "Helical LG(0,+1)",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 47,
+        "setup_id": "train_crystal_0047",
+        "target": "Needle Bessel-Gaussian",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 48,
+        "setup_id": "train_crystal_0048",
+        "target": "Gaussian TEM00",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 49,
+        "setup_id": "train_crystal_0049",
+        "target": "Flattop super-Gaussian",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 50,
+        "setup_id": "train_crystal_0050",
+        "target": "Helical LG(0,+1)",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 51,
+        "setup_id": "train_crystal_0051",
+        "target": "Needle Bessel-Gaussian",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 52,
+        "setup_id": "train_crystal_0052",
+        "target": "Gaussian TEM00",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 53,
+        "setup_id": "train_crystal_0053",
+        "target": "Flattop super-Gaussian",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 54,
+        "setup_id": "train_crystal_0054",
+        "target": "Helical LG(0,+1)",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 55,
+        "setup_id": "train_crystal_0055",
+        "target": "Needle Bessel-Gaussian",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 56,
+        "setup_id": "train_crystal_0056",
+        "target": "Gaussian TEM00",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 57,
+        "setup_id": "train_crystal_0057",
+        "target": "Flattop super-Gaussian",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 58,
+        "setup_id": "train_crystal_0058",
+        "target": "Helical LG(0,+1)",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 59,
+        "setup_id": "train_crystal_0059",
+        "target": "Needle Bessel-Gaussian",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 60,
+        "setup_id": "train_crystal_0060",
+        "target": "Gaussian TEM00",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 61,
+        "setup_id": "train_crystal_0061",
+        "target": "Flattop super-Gaussian",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 62,
+        "setup_id": "train_crystal_0062",
+        "target": "Helical LG(0,+1)",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 63,
+        "setup_id": "train_crystal_0063",
+        "target": "Needle Bessel-Gaussian",
+        "yb_at_percent": 10.0
+      }
+    ],
+    "validation": [
+      {
+        "seed_index": 64,
+        "setup_id": "validation_crystal_0064",
+        "target": "Gaussian TEM00",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 65,
+        "setup_id": "validation_crystal_0065",
+        "target": "Flattop super-Gaussian",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 66,
+        "setup_id": "validation_crystal_0066",
+        "target": "Helical LG(0,+1)",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 67,
+        "setup_id": "validation_crystal_0067",
+        "target": "Needle Bessel-Gaussian",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 68,
+        "setup_id": "validation_crystal_0068",
+        "target": "Gaussian TEM00",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 69,
+        "setup_id": "validation_crystal_0069",
+        "target": "Flattop super-Gaussian",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 70,
+        "setup_id": "validation_crystal_0070",
+        "target": "Helical LG(0,+1)",
+        "yb_at_percent": 10.0
+      },
+      {
+        "seed_index": 71,
+        "setup_id": "validation_crystal_0071",
+        "target": "Needle Bessel-Gaussian",
+        "yb_at_percent": 10.0
+      }
+    ]
+  },
+  "shard_count": 1,
+  "shard_index": 0,
+  "smoke_setup_index": null,
+  "smoke_unqualified": false,
+  "source_config_sha256": "8bcf8c057e9658992b5c86c6b798b62262af951591405adc0431a3cdf2e9912b",
+  "source_generator_sha256": "b96b378c876e3acb85266219b301dfb6b7baa2bd04302df4feb366747be8bc53",
+  "splits": {
+    "stress": [],
+    "test": [
+      "test/test_crystal_0072/point_000.json",
+      "test/test_crystal_0072/point_001.json",
+      "test/test_crystal_0072/point_002.json",
+      "test/test_crystal_0073/point_000.json",
+      "test/test_crystal_0073/point_001.json",
+      "test/test_crystal_0073/point_002.json",
+      "test/test_crystal_0074/point_000.json",
+      "test/test_crystal_0074/point_001.json",
+      "test/test_crystal_0074/point_002.json",
+      "test/test_crystal_0075/point_000.json",
+      "test/test_crystal_0075/point_001.json",
+      "test/test_crystal_0075/point_002.json",
+      "test/test_crystal_0076/point_000.json",
+      "test/test_crystal_0076/point_001.json",
+      "test/test_crystal_0076/point_002.json",
+      "test/test_crystal_0077/point_000.json",
+      "test/test_crystal_0077/point_001.json",
+      "test/test_crystal_0077/point_002.json",
+      "test/test_crystal_0078/point_000.json",
+      "test/test_crystal_0078/point_001.json",
+      "test/test_crystal_0078/point_002.json",
+      "test/test_crystal_0079/point_000.json",
+      "test/test_crystal_0079/point_001.json",
+      "test/test_crystal_0079/point_002.json"
+    ],
+    "train": [
+      "train/train_crystal_0000/point_000.json",
+      "train/train_crystal_0000/point_001.json",
+      "train/train_crystal_0000/point_002.json",
+      "train/train_crystal_0001/point_000.json",
+      "train/train_crystal_0001/point_001.json",
+      "train/train_crystal_0001/point_002.json",
+      "train/train_crystal_0002/point_000.json",
+      "train/train_crystal_0002/point_001.json",
+      "train/train_crystal_0002/point_002.json",
+      "train/train_crystal_0003/point_000.json",
+      "train/train_crystal_0003/point_001.json",
+      "train/train_crystal_0003/point_002.json",
+      "train/train_crystal_0004/point_000.json",
+      "train/train_crystal_0004/point_001.json",
+      "train/train_crystal_0004/point_002.json",
+      "train/train_crystal_0005/point_000.json",
+      "train/train_crystal_0005/point_001.json",
+      "train/train_crystal_0005/point_002.json",
+      "train/train_crystal_0006/point_000.json",
+      "train/train_crystal_0006/point_001.json",
+      "train/train_crystal_0006/point_002.json",
+      "train/train_crystal_0007/point_000.json",
+      "train/train_crystal_0007/point_001.json",
+      "train/train_crystal_0007/point_002.json",
+      "train/train_crystal_0008/point_000.json",
+      "train/train_crystal_0008/point_001.json",
+      "train/train_crystal_0008/point_002.json",
+      "train/train_crystal_0009/point_000.json",
+      "train/train_crystal_0009/point_001.json",
+      "train/train_crystal_0009/point_002.json",
+      "train/train_crystal_0010/point_000.json",
+      "train/train_crystal_0010/point_001.json",
+      "train/train_crystal_0010/point_002.json",
+      "train/train_crystal_0011/point_000.json",
+      "train/train_crystal_0011/point_001.json",
+      "train/train_crystal_0011/point_002.json",
+      "train/train_crystal_0012/point_000.json",
+      "train/train_crystal_0012/point_001.json",
+      "train/train_crystal_0012/point_002.json",
+      "train/train_crystal_0013/point_000.json",
+      "train/train_crystal_0013/point_001.json",
+      "train/train_crystal_0013/point_002.json",
+      "train/train_crystal_0014/point_000.json",
+      "train/train_crystal_0014/point_001.json",
+      "train/train_crystal_0014/point_002.json",
+      "train/train_crystal_0015/point_000.json",
+      "train/train_crystal_0015/point_001.json",
+      "train/train_crystal_0015/point_002.json",
+      "train/train_crystal_0016/point_000.json",
+      "train/train_crystal_0016/point_001.json",
+      "train/train_crystal_0016/point_002.json",
+      "train/train_crystal_0017/point_000.json",
+      "train/train_crystal_0017/point_001.json",
+      "train/train_crystal_0017/point_002.json",
+      "train/train_crystal_0018/point_000.json",
+      "train/train_crystal_0018/point_001.json",
+      "train/train_crystal_0018/point_002.json",
+      "train/train_crystal_0019/point_000.json",
+      "train/train_crystal_0019/point_001.json",
+      "train/train_crystal_0019/point_002.json",
+      "train/train_crystal_0020/point_000.json",
+      "train/train_crystal_0020/point_001.json",
+      "train/train_crystal_0020/point_002.json",
+      "train/train_crystal_0021/point_000.json",
+      "train/train_crystal_0021/point_001.json",
+      "train/train_crystal_0021/point_002.json",
+      "train/train_crystal_0022/point_000.json",
+      "train/train_crystal_0022/point_001.json",
+      "train/train_crystal_0022/point_002.json",
+      "train/train_crystal_0023/point_000.json",
+      "train/train_crystal_0023/point_001.json",
+      "train/train_crystal_0023/point_002.json",
+      "train/train_crystal_0024/point_000.json",
+      "train/train_crystal_0024/point_001.json",
+      "train/train_crystal_0024/point_002.json",
+      "train/train_crystal_0025/point_000.json",
+      "train/train_crystal_0025/point_001.json",
+      "train/train_crystal_0025/point_002.json",
+      "train/train_crystal_0026/point_000.json",
+      "train/train_crystal_0026/point_001.json",
+      "train/train_crystal_0026/point_002.json",
+      "train/train_crystal_0027/point_000.json",
+      "train/train_crystal_0027/point_001.json",
+      "train/train_crystal_0027/point_002.json",
+      "train/train_crystal_0028/point_000.json",
+      "train/train_crystal_0028/point_001.json",
+      "train/train_crystal_0028/point_002.json",
+      "train/train_crystal_0029/point_000.json",
+      "train/train_crystal_0029/point_001.json",
+      "train/train_crystal_0029/point_002.json",
+      "train/train_crystal_0030/point_000.json",
+      "train/train_crystal_0030/point_001.json",
+      "train/train_crystal_0030/point_002.json",
+      "train/train_crystal_0031/point_000.json",
+      "train/train_crystal_0031/point_001.json",
+      "train/train_crystal_0031/point_002.json",
+      "train/train_crystal_0032/point_000.json",
+      "train/train_crystal_0032/point_001.json",
+      "train/train_crystal_0032/point_002.json",
+      "train/train_crystal_0033/point_000.json",
+      "train/train_crystal_0033/point_001.json",
+      "train/train_crystal_0033/point_002.json",
+      "train/train_crystal_0034/point_000.json",
+      "train/train_crystal_0034/point_001.json",
+      "train/train_crystal_0034/point_002.json",
+      "train/train_crystal_0035/point_000.json",
+      "train/train_crystal_0035/point_001.json",
+      "train/train_crystal_0035/point_002.json",
+      "train/train_crystal_0036/point_000.json",
+      "train/train_crystal_0036/point_001.json",
+      "train/train_crystal_0036/point_002.json",
+      "train/train_crystal_0037/point_000.json",
+      "train/train_crystal_0037/point_001.json",
+      "train/train_crystal_0037/point_002.json",
+      "train/train_crystal_0038/point_000.json",
+      "train/train_crystal_0038/point_001.json",
+      "train/train_crystal_0038/point_002.json",
+      "train/train_crystal_0039/point_000.json",
+      "train/train_crystal_0039/point_001.json",
+      "train/train_crystal_0039/point_002.json",
+      "train/train_crystal_0040/point_000.json",
+      "train/train_crystal_0040/point_001.json",
+      "train/train_crystal_0040/point_002.json",
+      "train/train_crystal_0041/point_000.json",
+      "train/train_crystal_0041/point_001.json",
+      "train/train_crystal_0041/point_002.json",
+      "train/train_crystal_0042/point_000.json",
+      "train/train_crystal_0042/point_001.json",
+      "train/train_crystal_0042/point_002.json",
+      "train/train_crystal_0043/point_000.json",
+      "train/train_crystal_0043/point_001.json",
+      "train/train_crystal_0043/point_002.json",
+      "train/train_crystal_0044/point_000.json",
+      "train/train_crystal_0044/point_001.json",
+      "train/train_crystal_0044/point_002.json",
+      "train/train_crystal_0045/point_000.json",
+      "train/train_crystal_0045/point_001.json",
+      "train/train_crystal_0045/point_002.json",
+      "train/train_crystal_0046/point_000.json",
+      "train/train_crystal_0046/point_001.json",
+      "train/train_crystal_0046/point_002.json",
+      "train/train_crystal_0047/point_000.json",
+      "train/train_crystal_0047/point_001.json",
+      "train/train_crystal_0047/point_002.json",
+      "train/train_crystal_0048/point_000.json",
+      "train/train_crystal_0048/point_001.json",
+      "train/train_crystal_0048/point_002.json",
+      "train/train_crystal_0049/point_000.json",
+      "train/train_crystal_0049/point_001.json",
+      "train/train_crystal_0049/point_002.json",
+      "train/train_crystal_0050/point_000.json",
+      "train/train_crystal_0050/point_001.json",
+      "train/train_crystal_0050/point_002.json",
+      "train/train_crystal_0051/point_000.json",
+      "train/train_crystal_0051/point_001.json",
+      "train/train_crystal_0051/point_002.json",
+      "train/train_crystal_0052/point_000.json",
+      "train/train_crystal_0052/point_001.json",
+      "train/train_crystal_0052/point_002.json",
+      "train/train_crystal_0053/point_000.json",
+      "train/train_crystal_0053/point_001.json",
+      "train/train_crystal_0053/point_002.json",
+      "train/train_crystal_0054/point_000.json",
+      "train/train_crystal_0054/point_001.json",
+      "train/train_crystal_0054/point_002.json",
+      "train/train_crystal_0055/point_000.json",
+      "train/train_crystal_0055/point_001.json",
+      "train/train_crystal_0055/point_002.json",
+      "train/train_crystal_0056/point_000.json",
+      "train/train_crystal_0056/point_001.json",
+      "train/train_crystal_0056/point_002.json",
+      "train/train_crystal_0057/point_000.json",
+      "train/train_crystal_0057/point_001.json",
+      "train/train_crystal_0057/point_002.json",
+      "train/train_crystal_0058/point_000.json",
+      "train/train_crystal_0058/point_001.json",
+      "train/train_crystal_0058/point_002.json",
+      "train/train_crystal_0059/point_000.json",
+      "train/train_crystal_0059/point_001.json",
+      "train/train_crystal_0059/point_002.json",
+      "train/train_crystal_0060/point_000.json",
+      "train/train_crystal_0060/point_001.json",
+      "train/train_crystal_0060/point_002.json",
+      "train/train_crystal_0061/point_000.json",
+      "train/train_crystal_0061/point_001.json",
+      "train/train_crystal_0061/point_002.json",
+      "train/train_crystal_0062/point_000.json",
+      "train/train_crystal_0062/point_001.json",
+      "train/train_crystal_0062/point_002.json",
+      "train/train_crystal_0063/point_000.json",
+      "train/train_crystal_0063/point_001.json",
+      "train/train_crystal_0063/point_002.json"
+    ],
+    "validation": [
+      "validation/validation_crystal_0064/point_000.json",
+      "validation/validation_crystal_0064/point_001.json",
+      "validation/validation_crystal_0064/point_002.json",
+      "validation/validation_crystal_0065/point_000.json",
+      "validation/validation_crystal_0065/point_001.json",
+      "validation/validation_crystal_0065/point_002.json",
+      "validation/validation_crystal_0066/point_000.json",
+      "validation/validation_crystal_0066/point_001.json",
+      "validation/validation_crystal_0066/point_002.json",
+      "validation/validation_crystal_0067/point_000.json",
+      "validation/validation_crystal_0067/point_001.json",
+      "validation/validation_crystal_0067/point_002.json",
+      "validation/validation_crystal_0068/point_000.json",
+      "validation/validation_crystal_0068/point_001.json",
+      "validation/validation_crystal_0068/point_002.json",
+      "validation/validation_crystal_0069/point_000.json",
+      "validation/validation_crystal_0069/point_001.json",
+      "validation/validation_crystal_0069/point_002.json",
+      "validation/validation_crystal_0070/point_000.json",
+      "validation/validation_crystal_0070/point_001.json",
+      "validation/validation_crystal_0070/point_002.json",
+      "validation/validation_crystal_0071/point_000.json",
+      "validation/validation_crystal_0071/point_001.json",
+      "validation/validation_crystal_0071/point_002.json"
+    ]
+  }
+}

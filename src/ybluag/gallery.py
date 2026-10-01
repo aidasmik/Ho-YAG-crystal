@@ -10,6 +10,7 @@ from dataclasses import dataclass, replace
 from copy import deepcopy
 import json
 import math
+import os
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -17,6 +18,7 @@ import numpy as np
 from scipy.ndimage import map_coordinates
 
 from hoyag.propagation import Grid2D, angular_spectrum_propagate, optical_power
+from .multipass_geometry import MultipassGeometry, uniform as uniform_multipass
 from hoyag.resonator import ThinDiskResonator
 from hoyag.structured_beam_gallery import (BEAM_NAMES, PHASE_MASKS, GallerySettings,
                                             _cartesian_to_polar,
@@ -64,6 +66,15 @@ class YbGallerySettings:
     thermal_nphi: int = 12
     thermal_nz: int = 4
     ideal_relay_power_retention: float = 1.0
+    # Free-space path between successive disk encounters of the multipass
+    # amplifier. Zero keeps the ideal unit-magnification relay. A nonzero
+    # path diffracts the field between encounters; an optional thin-lens
+    # focal length models the relay mirror (zero means no lens).
+    inter_pass_distance_m: float = 0.0
+    inter_pass_focal_m: float = 0.0
+    # Per-encounter mirror-array geometry (``ybluag.multipass_geometry``).
+    # When given it replaces the uniform inter-pass path above.
+    multipass_geometry: object = None
 
     def __post_init__(self):
         if self.phase_mask_name not in PHASE_MASKS:
@@ -92,7 +103,12 @@ class YbGallerySettings:
                 not 4 <= self.thermal_nphi <= 96 or
                 not 1 <= self.thermal_nz <= 24 or
                 not np.isfinite(self.ideal_relay_power_retention) or
-                not 0 < self.ideal_relay_power_retention <= 1):
+                not 0 < self.ideal_relay_power_retention <= 1 or
+                not np.isfinite(self.inter_pass_distance_m) or
+                not 0 <= self.inter_pass_distance_m <= 20 or
+                not np.isfinite(self.inter_pass_focal_m) or
+                (self.multipass_geometry is not None and
+                 not isinstance(self.multipass_geometry, MultipassGeometry))):
             raise ValueError("invalid structured-gallery settings")
 
 
@@ -845,16 +861,32 @@ def simulate_structured_gallery(material: YbLuAGMaterial,
                       "follows the disk. Fluorescence escape yield is assumed by the user.")}
 
 
+def active_multipass_geometry(settings, encounters):
+    """The per-encounter geometry in use, or None for the ideal 1:1 relay."""
+    geometry = settings.multipass_geometry
+    if geometry is None and settings.inter_pass_distance_m > 0:
+        geometry = uniform_multipass(encounters, settings.inter_pass_distance_m,
+                                     settings.inter_pass_focal_m)
+    if geometry is not None and geometry.encounters != encounters:
+        raise ValueError("multipass geometry and signal traversal count disagree")
+    return geometry
+
+
 def _periodic_ideal_multipass(material, settings, grid, seed, seed_energy_J,
                               pump, scale, pump_passes, repetition_rate_Hz,
                               signal_traversals, time, pulse_shape,
                               fluorescence_energy_J, *,
                               temperature_K_by_slice=None, encounter_opd_m=None):
-    """One shared inversion and one coherent field through ideal 1:1 relays.
+    """One shared inversion and one coherent field through the multipass relay.
 
-    Retarded-time intensity transport resolves saturation. The relay has unit
-    magnification and no assumed loss. Thin-disk phase is imposed after every
-    encounter; the temporal envelope is not assigned a fabricated chirp.
+    Retarded-time intensity transport resolves saturation. With zero
+    ``inter_pass_distance_m`` the relay has unit magnification and no assumed
+    loss. Otherwise the field diffracts over that free-space path (and an
+    optional thin lens) between encounters, so the per-encounter disk phase
+    reshapes the fluence seen by later encounters. After diffraction each
+    pixel's temporal pulse shape is replaced by the energy-weighted mean shape
+    (space-time separable approximation). Thin-disk phase is imposed after
+    every encounter; the temporal envelope is not assigned a fabricated chirp.
     """
     temperature = temperature_K_by_slice
     pump_state = steady_multipass_pump(
@@ -870,8 +902,25 @@ def _periodic_ideal_multipass(material, settings, grid, seed, seed_energy_J,
            np.asarray(encounter_opd_m, float))
     if opd.shape != grid.shape or not np.all(np.isfinite(opd)):
         raise ValueError("encounter OPD must be a finite optical-grid map")
-    encounter_phase = np.exp(2j*np.pi*opd/(material.signal_wavelength_nm*1e-9))
+    wavelength_m = material.signal_wavelength_nm*1e-9
+    geometry = active_multipass_geometry(settings, signal_traversals)
+    free_space = geometry is not None
+    if free_space:
+        # Each encounter sees the disk OPD at its own angle of incidence.
+        encounter_phases = [np.exp(2j*np.pi*geometry.encounter_map(k, opd, grid)/wavelength_m)
+                            for k in range(signal_traversals)]
+        mirrors = geometry.mirror_phases(grid, wavelength_m)
+    else:
+        encounter_phases = [np.exp(2j*np.pi*opd/wavelength_m)]*signal_traversals
     beta_before = beta_steady.copy()
+    # Per-pixel Aitken extrapolation of the periodic population fixed point.
+    # Convergence is still tested on the true residual of an evaluated cycle,
+    # so the accepted state is the same fixed point within the tolerance.
+    # YB_PERIODIC_ACCELERATION=0 restores plain fixed-point iteration.
+    accelerate = os.environ.get("YB_PERIODIC_ACCELERATION", "1") != "0"
+    previous_input = None
+    input_is_iterate = False
+    last_residual = np.inf
     for cycles in range(1, 101):
         initial_beta = beta_before.copy()
         beta = beta_before.copy()
@@ -894,7 +943,7 @@ def _periodic_ideal_multipass(material, settings, grid, seed, seed_energy_J,
             field *= np.sqrt(np.divide(
                 outgoing_fluence, incident_fluence,
                 out=np.ones_like(outgoing_fluence), where=incident_fluence > 0))
-            field *= encounter_phase
+            field *= encounter_phases[encounter]
             signal_gain_fluence += pulse.signal_fluence_change_J_m2_by_slice
             pulse_beta_integral += pulse.excited_fraction_time_integral_s_by_slice
             beta = pulse.final_excited_fraction_by_slice
@@ -904,13 +953,42 @@ def _periodic_ideal_multipass(material, settings, grid, seed, seed_energy_J,
                 relay_loss_J += after_disk*(1-settings.ideal_relay_power_retention)
                 field *= math.sqrt(settings.ideal_relay_power_retention)
                 signal = signal*settings.ideal_relay_power_retention
+                if free_space and geometry.paths[encounter].kind != "reflection":
+                    # The HR reflection inside one bounce is the identity and
+                    # keeps each pixel's temporal saturation shape.
+                    before = optical_power(field, grid)
+                    field = geometry.relay(encounter, field, grid, wavelength_m,
+                                           mirrors[encounter])
+                    # Band-limit/window losses stay in the energy ledger.
+                    relay_loss_J += before-optical_power(field, grid)
+                    shape = np.sum(signal, axis=(1, 2))
+                    shape = shape/max(float(trapezoid(shape, time)), 1e-300)
+                    signal = shape[:, None, None]*abs(field)**2
         following, absorbed_integral, recovery_beta_integral = recover_pumped_population(
             material, pump, scale, settings.thickness_m, pump_passes, beta,
             dark_time, 8, temperature_K_by_slice=temperature)
         residual = float(np.max(abs(following-beta_before)))
-        beta_before = following
+        if os.environ.get("YB_PERIODIC_TRACE"):
+            print(f"periodic cycle {cycles}: residual {residual:.3e}", flush=True)
         if residual <= 1e-6:
+            beta_before = following
             break
+        if accelerate and residual > last_residual and not input_is_iterate:
+            accelerate = False              # extrapolation did not help; plain iteration
+        next_input = following
+        if accelerate and input_is_iterate and previous_input is not None:
+            d1 = beta_before-previous_input
+            d2 = following-beta_before
+            with np.errstate(divide="ignore", invalid="ignore"):
+                ratio = np.where(abs(d1) > 1e-12, d2/d1, 0.)
+            ratio = np.clip(np.nan_to_num(ratio), 0., .95)
+            next_input = np.clip(following+d2*ratio/(1-ratio), 0., 1.)
+            input_is_iterate = False
+        else:
+            input_is_iterate = True
+        last_residual = residual
+        previous_input = beta_before
+        beta_before = next_input
     else:
         raise RuntimeError("ideal multipass Yb population did not converge")
     beta_average = (pulse_beta_integral+recovery_beta_integral)*repetition_rate_Hz
@@ -949,12 +1027,17 @@ def _periodic_ideal_multipass(material, settings, grid, seed, seed_energy_J,
         "local_temperature_K_by_slice": (None if temperature is None else
                                            np.asarray(temperature).copy()),
         "pump_steady_iterations": pump_state.iterations,
-        "cycles": cycles, "residual": residual,
+        "cycles": cycles, "periodic_acceleration": accelerate, "residual": residual,
         "population_photon_balance_relative_L1": photon_error,
         "optical_energy_balance_residual_J": energy_error,
         "recovery_substeps": 8,
         "recovery_scope": "Pump bleaching recomputed by exponential midpoint recovery; pump during picosecond signal windows omitted. Refine recovery, temporal and axial grids to assess error.",
-        "ideal_relay": "unit_magnification_phase_preserving",
+        "ideal_relay": ("unit_magnification_phase_preserving" if not free_space else
+                        "free_space_between_encounters"),
+        "multipass_geometry": None if geometry is None else geometry.summary(),
+        "inter_pass_distance_m": settings.inter_pass_distance_m,
+        "inter_pass_focal_m": settings.inter_pass_focal_m,
+        "thermal_phase_per_encounter": False,
         "ideal_relay_power_retention": settings.ideal_relay_power_retention,
         "ideal_relay_loss_J": relay_loss_J,
         "encounter_exit_energies_J": encounter_energies_J,
@@ -991,7 +1074,7 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
     if (not np.isfinite(seed_energy_J) or seed_energy_J <= 0 or
             not np.isfinite(seed_fwhm_s) or seed_fwhm_s <= 0 or
             not np.isfinite(repetition_rate_Hz) or repetition_rate_Hz <= 0 or
-            isinstance(signal_traversals, bool) or not 1 <= signal_traversals <= 10 or
+            isinstance(signal_traversals, bool) or not 1 <= signal_traversals <= 48 or
             isinstance(pump_passes, bool) or not isinstance(pump_passes, int) or
             not 1 <= pump_passes <= 48 or
             not np.isfinite(operation_duration_s) or
@@ -1319,7 +1402,19 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
                                  timeline["requested_material_range_valid"]))
     cold_field_out = (field_out.copy() if coupled_cold_field is None else
                       coupled_cold_field)
-    if thermal_feedback_applied and coupled_assembly is None:
+    if (thermal_feedback_applied and coupled_assembly is None and
+            architecture == "ideal_multipass" and
+            active_multipass_geometry(settings, signal_traversals) is not None):
+        # With diffraction between encounters a single post-amplifier screen is
+        # not equivalent. Re-solve the optics once with the thermal OPD on every
+        # encounter (half the round-trip OPD per traversal). Heat and the
+        # thermal state stay from the first solve: one thermal-to-optical update.
+        ideal = ideal_optics(None, .5*np.asarray(timeline["final_roundtrip_opd_m"], float))
+        ideal["thermal_phase_per_encounter"] = True
+        field_out = ideal["output_field"] / math.sqrt(seed_energy_J)
+        disk_output_J = ideal["output_energy_J"]
+        signal = ideal["output_power_trace_W"]
+    elif thermal_feedback_applied and coupled_assembly is None:
         # This is a lumped post-amplifier OPD approximation. A fully coupled
         # hot-cavity model must apply the screen on each disk encounter.
         effective_traversals = (2 * cavity.round_trips
@@ -1434,6 +1529,9 @@ def simulate_pulsed_seed(material: YbLuAGMaterial, settings: YbGallerySettings,
                           if regen is not None else None),
         "ideal_multipass": ({key: ideal[key] for key in
                               ("ideal_relay", "ideal_relay_power_retention",
+                               "inter_pass_distance_m", "inter_pass_focal_m",
+                               "multipass_geometry",
+                               "thermal_phase_per_encounter",
                                "ideal_relay_loss_J", "encounter_exit_energies_J",
                                "population_photon_balance_relative_L1",
                                "optical_energy_balance_residual_J",

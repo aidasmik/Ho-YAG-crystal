@@ -154,7 +154,9 @@ def check(root):
                 raise ValueError(f"crystals shared between {a} and {b}")
     if not smoke and not all(groups[k] for k in ("train","validation","test")):
         raise ValueError("train/validation/test must each contain a complete setup")
-    required={(float(d),t) for d in (5,10,15) for t in
+    planned=manifest.get("setup_plan",{}).get("train") or []
+    doping={float(r["yb_at_percent"]) for r in planned} or {5.,10.,15.}
+    required={(float(d),t) for d in doping for t in
               ("Gaussian TEM00","Flattop super-Gaussian","Helical LG(0,+1)",
                "Needle Bessel-Gaussian")}
     if not smoke:

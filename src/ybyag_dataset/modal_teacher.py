@@ -14,6 +14,7 @@ import numpy as np
 from scipy.optimize import minimize
 
 from hoyag.propagation import angular_spectrum_propagate
+from ybluag.multipass_geometry import uniform as uniform_multipass
 from .distortions.slm import apply_slm
 from .field_metrics import FieldMetrics, field_metrics, phase_support
 
@@ -103,7 +104,16 @@ class FrozenOpticalModel:
 
     def __init__(self, *, grid, wavelength_m, slm_to_disk_m, output_distance_m,
                  input_field, current_command, actual_slm_phase, external_phase,
-                 screen_phase, baseline_field, slm_setup, drift_fraction=0.):
+                 screen_phase, baseline_field, slm_setup, drift_fraction=0.,
+                 encounters=1, inter_pass_distance_m=0., inter_pass_focal_m=0.,
+                 geometry=None):
+        """``screen_phase`` is the total disk phase over all encounters.
+
+        With a multipass ``geometry`` (or a nonzero uniform
+        ``inter_pass_distance_m``) it is split equally over the encounters,
+        each seen at its own angle of incidence, with the solver's relay paths
+        between them; otherwise it is one screen.
+        """
         self.grid = grid
         self.wavelength_m = float(wavelength_m)
         self.slm_to_disk_m = float(slm_to_disk_m)
@@ -112,12 +122,25 @@ class FrozenOpticalModel:
         self.current_command = np.asarray(current_command, float)
         self.actual_slm_phase = np.asarray(actual_slm_phase, float)
         self.external_phase = np.asarray(external_phase, float)
-        self.screen = np.exp(1j * np.asarray(screen_phase, float))
+        if geometry is None and float(inter_pass_distance_m) > 0:
+            geometry = uniform_multipass(int(encounters), float(inter_pass_distance_m),
+                                         float(inter_pass_focal_m))
+        self.geometry = geometry
+        self.encounters = 1 if geometry is None else geometry.encounters
+        per = np.asarray(screen_phase, float) / self.encounters
+        if geometry is None:
+            self.screens = [np.exp(1j * per)]
+            self.mirrors = []
+        else:
+            self.screens = [np.exp(1j * geometry.encounter_map(k, per, grid))
+                            for k in range(self.encounters)]
+            self.mirrors = geometry.mirror_phases(grid, self.wavelength_m)
+        self.screen = self.screens[0]
         self.slm_setup = slm_setup
         self.drift_fraction = float(drift_fraction)
         shape = grid.shape
         for value in (self.input_field, self.current_command,
-                      self.actual_slm_phase, self.external_phase, self.screen):
+                      self.actual_slm_phase, self.external_phase, *self.screens):
             if value.shape != shape or not np.all(np.isfinite(value)):
                 raise ValueError("passive model arrays must be finite and aligned")
         self.source = self.input_field * np.exp(
@@ -136,7 +159,10 @@ class FrozenOpticalModel:
 
     def _operator(self, input_field):
         output = angular_spectrum_propagate(input_field, self.grid,
-            self.wavelength_m, self.slm_to_disk_m) * self.screen
+            self.wavelength_m, self.slm_to_disk_m) * self.screens[0]
+        for k in range(1, self.encounters):
+            output = self.geometry.relay(k-1, output, self.grid, self.wavelength_m,
+                                         self.mirrors[k-1]) * self.screens[k]
         if self.output_distance_m:
             output = angular_spectrum_propagate(output, self.grid,
                 self.wavelength_m, self.output_distance_m)
@@ -147,7 +173,11 @@ class FrozenOpticalModel:
         if self.output_distance_m:
             field = angular_spectrum_propagate(field, self.grid,
                 self.wavelength_m, -self.output_distance_m)
-        field = field * np.conj(self.screen)
+        for k in range(self.encounters-1, 0, -1):
+            field = field * np.conj(self.screens[k])
+            field = self.geometry.relay_adjoint(k-1, field, self.grid, self.wavelength_m,
+                                                self.mirrors[k-1])
+        field = field * np.conj(self.screens[0])
         return angular_spectrum_propagate(field, self.grid,
             self.wavelength_m, -self.slm_to_disk_m)
 

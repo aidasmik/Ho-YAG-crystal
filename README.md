@@ -216,7 +216,9 @@ Runs use the shared local supervisor and budget ledger; the GUI reports time
 and memory limits. The [Yb:YAG simulation guide](docs/YBYAG_SIMULATION.md),
 [dataset workflow](docs/YBYAG_NN_DATASET.md) and
 [closed-loop workflow](docs/YBYAG_CLOSED_LOOP.md) describe the corresponding
-inputs and controls. A saved display is a replay of a prior run, not a fresh
+inputs and controls. The [one-shot certified controller (V3)](docs/YBYAG_CONTROLLER_V3.md)
+proposes a single full SLM correction from the two measured frames and releases
+it only when a measurement-fitted posterior certifies the gain. A saved display is a replay of a prior run, not a fresh
 calculation.
 
 ![Ideal and noisy simulated camera views of one Yb:YAG output](Yb-YAG/readme_figures/camera_noise_example.png)

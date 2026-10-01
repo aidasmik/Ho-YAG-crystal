@@ -1,0 +1,4759 @@
+{
+  "schema": "ybyag_nn_dataset_check_v3",
+  "status": "software_checks_passed",
+  "dataset_ready": false,
+  "groups": {
+    "stress": [],
+    "test": [
+      "test_crystal_0072",
+      "test_crystal_0073",
+      "test_crystal_0074",
+      "test_crystal_0075",
+      "test_crystal_0076",
+      "test_crystal_0077",
+      "test_crystal_0078",
+      "test_crystal_0079"
+    ],
+    "train": [
+      "train_crystal_0000",
+      "train_crystal_0001",
+      "train_crystal_0002",
+      "train_crystal_0003",
+      "train_crystal_0004",
+      "train_crystal_0005",
+      "train_crystal_0006",
+      "train_crystal_0007",
+      "train_crystal_0008",
+      "train_crystal_0009",
+      "train_crystal_0010",
+      "train_crystal_0011",
+      "train_crystal_0012",
+      "train_crystal_0013",
+      "train_crystal_0014",
+      "train_crystal_0015",
+      "train_crystal_0016",
+      "train_crystal_0017",
+      "train_crystal_0018",
+      "train_crystal_0019",
+      "train_crystal_0020",
+      "train_crystal_0021",
+      "train_crystal_0022",
+      "train_crystal_0023",
+      "train_crystal_0024",
+      "train_crystal_0025",
+      "train_crystal_0026",
+      "train_crystal_0027",
+      "train_crystal_0028",
+      "train_crystal_0029",
+      "train_crystal_0030",
+      "train_crystal_0031",
+      "train_crystal_0032",
+      "train_crystal_0033",
+      "train_crystal_0034",
+      "train_crystal_0035",
+      "train_crystal_0036",
+      "train_crystal_0037",
+      "train_crystal_0038",
+      "train_crystal_0039",
+      "train_crystal_0040",
+      "train_crystal_0041",
+      "train_crystal_0042",
+      "train_crystal_0043",
+      "train_crystal_0044",
+      "train_crystal_0045",
+      "train_crystal_0046",
+      "train_crystal_0047",
+      "train_crystal_0048",
+      "train_crystal_0049",
+      "train_crystal_0050",
+      "train_crystal_0051",
+      "train_crystal_0052",
+      "train_crystal_0053",
+      "train_crystal_0054",
+      "train_crystal_0055",
+      "train_crystal_0056",
+      "train_crystal_0057",
+      "train_crystal_0058",
+      "train_crystal_0059",
+      "train_crystal_0060",
+      "train_crystal_0061",
+      "train_crystal_0062",
+      "train_crystal_0063"
+    ],
+    "validation": [
+      "validation_crystal_0064",
+      "validation_crystal_0065",
+      "validation_crystal_0066",
+      "validation_crystal_0067",
+      "validation_crystal_0068",
+      "validation_crystal_0069",
+      "validation_crystal_0070",
+      "validation_crystal_0071"
+    ]
+  },
+  "coverage": {
+    "stress": [],
+    "test": [
+      {
+        "yb_at_percent": 10.0,
+        "target": "Flattop super-Gaussian"
+      },
+      {
+        "yb_at_percent": 10.0,
+        "target": "Gaussian TEM00"
+      },
+      {
+        "yb_at_percent": 10.0,
+        "target": "Helical LG(0,+1)"
+      },
+      {
+        "yb_at_percent": 10.0,
+        "target": "Needle Bessel-Gaussian"
+      }
+    ],
+    "train": [
+      {
+        "yb_at_percent": 10.0,
+        "target": "Flattop super-Gaussian"
+      },
+      {
+        "yb_at_percent": 10.0,
+        "target": "Gaussian TEM00"
+      },
+      {
+        "yb_at_percent": 10.0,
+        "target": "Helical LG(0,+1)"
+      },
+      {
+        "yb_at_percent": 10.0,
+        "target": "Needle Bessel-Gaussian"
+      }
+    ],
+    "validation": [
+      {
+        "yb_at_percent": 10.0,
+        "target": "Flattop super-Gaussian"
+      },
+      {
+        "yb_at_percent": 10.0,
+        "target": "Gaussian TEM00"
+      },
+      {
+        "yb_at_percent": 10.0,
+        "target": "Helical LG(0,+1)"
+      },
+      {
+        "yb_at_percent": 10.0,
+        "target": "Needle Bessel-Gaussian"
+      }
+    ]
+  },
+  "trial_outcomes": {
+    "stress": {},
+    "test": {
+      "baseline_accepted": 8,
+      "accepted": 7,
+      "rejected": 9
+    },
+    "train": {
+      "baseline_accepted": 64,
+      "accepted": 44,
+      "rejected": 84
+    },
+    "validation": {
+      "baseline_accepted": 8,
+      "rejected": 8,
+      "accepted": 8
+    }
+  },
+  "samples": [
+    {
+      "path": "test/test_crystal_0072/point_000.json",
+      "split": "test",
+      "crystal_id": "test_crystal_0072",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.3669703006744385,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.3542725777164693,
+        "corrected": 0.07383023400131469
+      }
+    },
+    {
+      "path": "test/test_crystal_0072/point_001.json",
+      "split": "test",
+      "crystal_id": "test_crystal_0072",
+      "trial_index": 1,
+      "trial_outcome": "accepted",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.5671923756599426,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.28625168731850636,
+        "corrected": 0.06457382532831338
+      }
+    },
+    {
+      "path": "test/test_crystal_0072/point_002.json",
+      "split": "test",
+      "crystal_id": "test_crystal_0072",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.514859676361084,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.3023750271458588,
+        "corrected": 0.06418374735824042
+      }
+    },
+    {
+      "path": "test/test_crystal_0073/point_000.json",
+      "split": "test",
+      "crystal_id": "test_crystal_0073",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.48828715085983276,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.13189671704893227,
+        "corrected": 0.13189671704893272
+      }
+    },
+    {
+      "path": "test/test_crystal_0073/point_001.json",
+      "split": "test",
+      "crystal_id": "test_crystal_0073",
+      "trial_index": 1,
+      "trial_outcome": "rejected",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.5382176041603088,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.15658745773960767,
+        "corrected": 0.13066900784588897
+      }
+    },
+    {
+      "path": "test/test_crystal_0073/point_002.json",
+      "split": "test",
+      "crystal_id": "test_crystal_0073",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.4855635464191437,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.13639264286095443,
+        "corrected": 0.13639264286095443
+      }
+    },
+    {
+      "path": "test/test_crystal_0074/point_000.json",
+      "split": "test",
+      "crystal_id": "test_crystal_0074",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.3182979822158813,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.19845521273945016,
+        "corrected": 0.11525340857344733
+      }
+    },
+    {
+      "path": "test/test_crystal_0074/point_001.json",
+      "split": "test",
+      "crystal_id": "test_crystal_0074",
+      "trial_index": 1,
+      "trial_outcome": "accepted",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.3317219018936157,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.19348715660797322,
+        "corrected": 0.11537346905424191
+      }
+    },
+    {
+      "path": "test/test_crystal_0074/point_002.json",
+      "split": "test",
+      "crystal_id": "test_crystal_0074",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.367469310760498,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.20234404649367468,
+        "corrected": 0.12429894697678066
+      }
+    },
+    {
+      "path": "test/test_crystal_0075/point_000.json",
+      "split": "test",
+      "crystal_id": "test_crystal_0075",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.905050277709961,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.3598472219033894,
+        "corrected": 0.1565037323497907
+      }
+    },
+    {
+      "path": "test/test_crystal_0075/point_001.json",
+      "split": "test",
+      "crystal_id": "test_crystal_0075",
+      "trial_index": 1,
+      "trial_outcome": "accepted",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.906669020652771,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.3598963833307087,
+        "corrected": 0.15781404564438647
+      }
+    },
+    {
+      "path": "test/test_crystal_0075/point_002.json",
+      "split": "test",
+      "crystal_id": "test_crystal_0075",
+      "trial_index": 2,
+      "trial_outcome": "accepted",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.910760521888733,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.3433410128802412,
+        "corrected": 0.161303467698537
+      }
+    },
+    {
+      "path": "test/test_crystal_0076/point_000.json",
+      "split": "test",
+      "crystal_id": "test_crystal_0076",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.28079289197921753,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.25980381079732534,
+        "corrected": 0.070209509041434
+      }
+    },
+    {
+      "path": "test/test_crystal_0076/point_001.json",
+      "split": "test",
+      "crystal_id": "test_crystal_0076",
+      "trial_index": 1,
+      "trial_outcome": "accepted",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.27759239077568054,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.25942196659880323,
+        "corrected": 0.06847021873812054
+      }
+    },
+    {
+      "path": "test/test_crystal_0076/point_002.json",
+      "split": "test",
+      "crystal_id": "test_crystal_0076",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.21516364812850952,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.28127965942805744,
+        "corrected": 0.0647456817832196
+      }
+    },
+    {
+      "path": "test/test_crystal_0077/point_000.json",
+      "split": "test",
+      "crystal_id": "test_crystal_0077",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.5860950350761414,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.10250546914602697,
+        "corrected": 0.10250546914602664
+      }
+    },
+    {
+      "path": "test/test_crystal_0077/point_001.json",
+      "split": "test",
+      "crystal_id": "test_crystal_0077",
+      "trial_index": 1,
+      "trial_outcome": "rejected",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.6233064532279968,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.10563144542809767,
+        "corrected": 0.10563144542809809
+      }
+    },
+    {
+      "path": "test/test_crystal_0077/point_002.json",
+      "split": "test",
+      "crystal_id": "test_crystal_0077",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.5726292133331299,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.10917410143995228,
+        "corrected": 0.10917410143995321
+      }
+    },
+    {
+      "path": "test/test_crystal_0078/point_000.json",
+      "split": "test",
+      "crystal_id": "test_crystal_0078",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.4160963296890259,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.24149206051203162,
+        "corrected": 0.0917116703133705
+      }
+    },
+    {
+      "path": "test/test_crystal_0078/point_001.json",
+      "split": "test",
+      "crystal_id": "test_crystal_0078",
+      "trial_index": 1,
+      "trial_outcome": "rejected",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.3671109676361084,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.2589469549648744,
+        "corrected": 0.09044261039818896
+      }
+    },
+    {
+      "path": "test/test_crystal_0078/point_002.json",
+      "split": "test",
+      "crystal_id": "test_crystal_0078",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.3672064542770386,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.255999077333247,
+        "corrected": 0.08918001183446315
+      }
+    },
+    {
+      "path": "test/test_crystal_0079/point_000.json",
+      "split": "test",
+      "crystal_id": "test_crystal_0079",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.9427175521850586,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.12045057127253947,
+        "corrected": 0.051845231189802964
+      }
+    },
+    {
+      "path": "test/test_crystal_0079/point_001.json",
+      "split": "test",
+      "crystal_id": "test_crystal_0079",
+      "trial_index": 1,
+      "trial_outcome": "accepted",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.9320669174194336,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.2623064681738126,
+        "corrected": 0.06050977142094541
+      }
+    },
+    {
+      "path": "test/test_crystal_0079/point_002.json",
+      "split": "test",
+      "crystal_id": "test_crystal_0079",
+      "trial_index": 2,
+      "trial_outcome": "accepted",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.9353923797607422,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.23589607337493504,
+        "corrected": 0.06016283527896143
+      }
+    },
+    {
+      "path": "train/train_crystal_0000/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0000",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.37355348467826843,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.18474875462320647,
+        "corrected": 0.10445328345305326
+      }
+    },
+    {
+      "path": "train/train_crystal_0000/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0000",
+      "trial_index": 1,
+      "trial_outcome": "accepted",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.4008901119232178,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.1833348913512256,
+        "corrected": 0.10709337755455402
+      }
+    },
+    {
+      "path": "train/train_crystal_0000/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0000",
+      "trial_index": 2,
+      "trial_outcome": "accepted",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.6127062439918518,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.1634657322218309,
+        "corrected": 0.1634657322218311
+      }
+    },
+    {
+      "path": "train/train_crystal_0001/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0001",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.53199303150177,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.19774129295040715,
+        "corrected": 0.0963561388217684
+      }
+    },
+    {
+      "path": "train/train_crystal_0001/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0001",
+      "trial_index": 1,
+      "trial_outcome": "rejected",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.5485513210296631,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.17592756811028462,
+        "corrected": 0.17592756811028462
+      }
+    },
+    {
+      "path": "train/train_crystal_0001/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0001",
+      "trial_index": 2,
+      "trial_outcome": "accepted",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.5352979302406311,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.18509209497686757,
+        "corrected": 0.18509209497686757
+      }
+    },
+    {
+      "path": "train/train_crystal_0002/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0002",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.4274139404296875,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.2498830812593705,
+        "corrected": 0.13152588371261373
+      }
+    },
+    {
+      "path": "train/train_crystal_0002/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0002",
+      "trial_index": 1,
+      "trial_outcome": "accepted",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.3296771049499512,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.2600260158318999,
+        "corrected": 0.11947484161063653
+      }
+    },
+    {
+      "path": "train/train_crystal_0002/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0002",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.2749404907226562,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.2675395949681695,
+        "corrected": 0.11599585960369324
+      }
+    },
+    {
+      "path": "train/train_crystal_0003/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0003",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.9541631937026978,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.09142232251589791,
+        "corrected": 0.09783687425278188
+      }
+    },
+    {
+      "path": "train/train_crystal_0003/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0003",
+      "trial_index": 1,
+      "trial_outcome": "rejected",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.9301528930664062,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.3421125733512856,
+        "corrected": 0.10801059766268076
+      }
+    },
+    {
+      "path": "train/train_crystal_0003/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0003",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.9485688209533691,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.17295667450335336,
+        "corrected": 0.10112512671849075
+      }
+    },
+    {
+      "path": "train/train_crystal_0004/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0004",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.3417470157146454,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.315475579333515,
+        "corrected": 0.04122657100624592
+      }
+    },
+    {
+      "path": "train/train_crystal_0004/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0004",
+      "trial_index": 1,
+      "trial_outcome": "accepted",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.49741098284721375,
+      "saturated_fraction": [
+        4.822530864197531e-07,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.2738154702695039,
+        "corrected": 0.049633533435378324
+      }
+    },
+    {
+      "path": "train/train_crystal_0004/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0004",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.47340261936187744,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.2801170432186327,
+        "corrected": 0.051667060041278245
+      }
+    },
+    {
+      "path": "train/train_crystal_0005/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0005",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.5538696050643921,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.17664718149902056,
+        "corrected": 0.07754987514523998
+      }
+    },
+    {
+      "path": "train/train_crystal_0005/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0005",
+      "trial_index": 1,
+      "trial_outcome": "rejected",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.628118634223938,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.13222300638364087,
+        "corrected": 0.13222300638364087
+      }
+    },
+    {
+      "path": "train/train_crystal_0005/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0005",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.5531549453735352,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.24086297371148105,
+        "corrected": 0.06645474037947073
+      }
+    },
+    {
+      "path": "train/train_crystal_0006/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0006",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.2845239639282227,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.16748535310711088,
+        "corrected": 0.16748535310711088
+      }
+    },
+    {
+      "path": "train/train_crystal_0006/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0006",
+      "trial_index": 1,
+      "trial_outcome": "accepted",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.3801871538162231,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.14981935816383724,
+        "corrected": 0.14981935816383832
+      }
+    },
+    {
+      "path": "train/train_crystal_0006/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0006",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.3256481885910034,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.16069274227854488,
+        "corrected": 0.16069274227854488
+      }
+    },
+    {
+      "path": "train/train_crystal_0007/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0007",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.9549814462661743,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.1472603408906987,
+        "corrected": 0.12791493283104105
+      }
+    },
+    {
+      "path": "train/train_crystal_0007/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0007",
+      "trial_index": 1,
+      "trial_outcome": "rejected",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.9590140581130981,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.149024528819057,
+        "corrected": 0.12076849705954085
+      }
+    },
+    {
+      "path": "train/train_crystal_0007/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0007",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.9505829811096191,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.1694306008850668,
+        "corrected": 0.13404427024357082
+      }
+    },
+    {
+      "path": "train/train_crystal_0008/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0008",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.24216219782829285,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.2018534569240107,
+        "corrected": 0.06050889998317185
+      }
+    },
+    {
+      "path": "train/train_crystal_0008/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0008",
+      "trial_index": 1,
+      "trial_outcome": "accepted",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.3130042254924774,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.18219506923882564,
+        "corrected": 0.06291476146098367
+      }
+    },
+    {
+      "path": "train/train_crystal_0008/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0008",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.3078468143939972,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.1907170341212987,
+        "corrected": 0.06778051659705897
+      }
+    },
+    {
+      "path": "train/train_crystal_0009/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0009",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.5553143620491028,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.16683330458397494,
+        "corrected": 0.07077643859509067
+      }
+    },
+    {
+      "path": "train/train_crystal_0009/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0009",
+      "trial_index": 1,
+      "trial_outcome": "accepted",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.5665304660797119,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.15601519309784542,
+        "corrected": 0.08499881529038375
+      }
+    },
+    {
+      "path": "train/train_crystal_0009/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0009",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.6098436713218689,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.14739425890573404,
+        "corrected": 0.10410234386051173
+      }
+    },
+    {
+      "path": "train/train_crystal_0010/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0010",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.4217555522918701,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.23657391836560712,
+        "corrected": 0.10382705322300259
+      }
+    },
+    {
+      "path": "train/train_crystal_0010/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0010",
+      "trial_index": 1,
+      "trial_outcome": "rejected",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.1900012493133545,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.2579724460041408,
+        "corrected": 0.0914275890621459
+      }
+    },
+    {
+      "path": "train/train_crystal_0010/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0010",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.1903268098831177,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.2537485972881502,
+        "corrected": 0.08908396030792512
+      }
+    },
+    {
+      "path": "train/train_crystal_0011/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0011",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.9516377449035645,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.1744194071257169,
+        "corrected": 0.08957226198435612
+      }
+    },
+    {
+      "path": "train/train_crystal_0011/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0011",
+      "trial_index": 1,
+      "trial_outcome": "accepted",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.9560608863830566,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.13519906640149515,
+        "corrected": 0.08170775092018161
+      }
+    },
+    {
+      "path": "train/train_crystal_0011/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0011",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.9446388483047485,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.23670068756337742,
+        "corrected": 0.0977263915266289
+      }
+    },
+    {
+      "path": "train/train_crystal_0012/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0012",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.43085595965385437,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.14510805048885514,
+        "corrected": 0.14510805048885417
+      }
+    },
+    {
+      "path": "train/train_crystal_0012/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0012",
+      "trial_index": 1,
+      "trial_outcome": "rejected",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.5214028358459473,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.1403053702570071,
+        "corrected": 0.14030537025700707
+      }
+    },
+    {
+      "path": "train/train_crystal_0012/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0012",
+      "trial_index": 2,
+      "trial_outcome": "accepted",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.42019250988960266,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.14098182574258855,
+        "corrected": 0.14098182574258855
+      }
+    },
+    {
+      "path": "train/train_crystal_0013/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0013",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.6507924199104309,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.10738953901778532,
+        "corrected": 0.10738953901778538
+      }
+    },
+    {
+      "path": "train/train_crystal_0013/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0013",
+      "trial_index": 1,
+      "trial_outcome": "rejected",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.5950637459754944,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.17726532740469392,
+        "corrected": 0.07104991934744805
+      }
+    },
+    {
+      "path": "train/train_crystal_0013/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0013",
+      "trial_index": 2,
+      "trial_outcome": "accepted",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.6201470494270325,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.12796649692679024,
+        "corrected": 0.12796649692679152
+      }
+    },
+    {
+      "path": "train/train_crystal_0014/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0014",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.4537726640701294,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.4004945565940382,
+        "corrected": 0.10728317506457921
+      }
+    },
+    {
+      "path": "train/train_crystal_0014/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0014",
+      "trial_index": 1,
+      "trial_outcome": "accepted",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.3263936042785645,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.4317378076590247,
+        "corrected": 0.09134210148482755
+      }
+    },
+    {
+      "path": "train/train_crystal_0014/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0014",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.3613168001174927,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.41818066657014313,
+        "corrected": 0.09848527858535001
+      }
+    },
+    {
+      "path": "train/train_crystal_0015/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0015",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.93220055103302,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.19930481297362215,
+        "corrected": 0.12258930073648013
+      }
+    },
+    {
+      "path": "train/train_crystal_0015/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0015",
+      "trial_index": 1,
+      "trial_outcome": "accepted",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.9428822994232178,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.21498310146792848,
+        "corrected": 0.11602176510439736
+      }
+    },
+    {
+      "path": "train/train_crystal_0015/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0015",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.9329068660736084,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.19981382487887664,
+        "corrected": 0.12128685167368074
+      }
+    },
+    {
+      "path": "train/train_crystal_0016/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0016",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.2394542396068573,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.29259887497242226,
+        "corrected": 0.046898832838923
+      }
+    },
+    {
+      "path": "train/train_crystal_0016/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0016",
+      "trial_index": 1,
+      "trial_outcome": "accepted",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.4647488594055176,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.23869526612420347,
+        "corrected": 0.06281180916420924
+      }
+    },
+    {
+      "path": "train/train_crystal_0016/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0016",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.4516655206680298,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.2414345844290753,
+        "corrected": 0.06373592795300223
+      }
+    },
+    {
+      "path": "train/train_crystal_0017/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0017",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.8423459529876709,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.28661105974630435,
+        "corrected": 0.12108469694231123
+      }
+    },
+    {
+      "path": "train/train_crystal_0017/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0017",
+      "trial_index": 1,
+      "trial_outcome": "rejected",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.7985199093818665,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.4113303429964336,
+        "corrected": 0.0993690445090023
+      }
+    },
+    {
+      "path": "train/train_crystal_0017/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0017",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.8077379465103149,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.3260093022393186,
+        "corrected": 0.09019899759364723
+      }
+    },
+    {
+      "path": "train/train_crystal_0018/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0018",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.4868011474609375,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.09265826914764749,
+        "corrected": 0.09265826914764778
+      }
+    },
+    {
+      "path": "train/train_crystal_0018/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0018",
+      "trial_index": 1,
+      "trial_outcome": "rejected",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.455351710319519,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.09622514144901348,
+        "corrected": 0.0962251414490137
+      }
+    },
+    {
+      "path": "train/train_crystal_0018/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0018",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.4826091527938843,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.09822179818610843,
+        "corrected": 0.09822179818610777
+      }
+    },
+    {
+      "path": "train/train_crystal_0019/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0019",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.9449915885925293,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.11790770115226103,
+        "corrected": 0.07499544381690884
+      }
+    },
+    {
+      "path": "train/train_crystal_0019/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0019",
+      "trial_index": 1,
+      "trial_outcome": "rejected",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.9416671991348267,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.12401858399841151,
+        "corrected": 0.0744743862268063
+      }
+    },
+    {
+      "path": "train/train_crystal_0019/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0019",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.9253993034362793,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.20924790196936638,
+        "corrected": 0.07835832551962264
+      }
+    },
+    {
+      "path": "train/train_crystal_0020/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0020",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.44266247749328613,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.23421208653030132,
+        "corrected": 0.034741838504169315
+      }
+    },
+    {
+      "path": "train/train_crystal_0020/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0020",
+      "trial_index": 1,
+      "trial_outcome": "rejected",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.4680308699607849,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.22648695759085025,
+        "corrected": 0.03280267485856652
+      }
+    },
+    {
+      "path": "train/train_crystal_0020/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0020",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.6298195719718933,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.179997744285221,
+        "corrected": 0.05903787518217976
+      }
+    },
+    {
+      "path": "train/train_crystal_0021/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0021",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.5094590783119202,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.1891547371385317,
+        "corrected": 0.06888338695064804
+      }
+    },
+    {
+      "path": "train/train_crystal_0021/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0021",
+      "trial_index": 1,
+      "trial_outcome": "rejected",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.5520698428153992,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.17115104987857088,
+        "corrected": 0.09090772318324311
+      }
+    },
+    {
+      "path": "train/train_crystal_0021/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0021",
+      "trial_index": 2,
+      "trial_outcome": "accepted",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.5118593573570251,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.18981570364915126,
+        "corrected": 0.06623709597335722
+      }
+    },
+    {
+      "path": "train/train_crystal_0022/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0022",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.512129545211792,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.13318804800274447,
+        "corrected": 0.13318804800274445
+      }
+    },
+    {
+      "path": "train/train_crystal_0022/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0022",
+      "trial_index": 1,
+      "trial_outcome": "accepted",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.4506170749664307,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.13379692894260603,
+        "corrected": 0.13379692894260603
+      }
+    },
+    {
+      "path": "train/train_crystal_0022/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0022",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.4841920137405396,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.13730566075285203,
+        "corrected": 0.13730566075285205
+      }
+    },
+    {
+      "path": "train/train_crystal_0023/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0023",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.9527230262756348,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.11045572927391402,
+        "corrected": 0.08921153502749501
+      }
+    },
+    {
+      "path": "train/train_crystal_0023/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0023",
+      "trial_index": 1,
+      "trial_outcome": "rejected",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.9235115051269531,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.3301325684317936,
+        "corrected": 0.09877656747760433
+      }
+    },
+    {
+      "path": "train/train_crystal_0023/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0023",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.9369806051254272,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.22883833634778125,
+        "corrected": 0.0965828392256357
+      }
+    },
+    {
+      "path": "train/train_crystal_0024/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0024",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.3096286952495575,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.3119201848346566,
+        "corrected": 0.07137577834080729
+      }
+    },
+    {
+      "path": "train/train_crystal_0024/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0024",
+      "trial_index": 1,
+      "trial_outcome": "accepted",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.31370604038238525,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.30154928607593834,
+        "corrected": 0.07466430476442747
+      }
+    },
+    {
+      "path": "train/train_crystal_0024/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0024",
+      "trial_index": 2,
+      "trial_outcome": "accepted",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.32242152094841003,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.29758932488608864,
+        "corrected": 0.07498019887604619
+      }
+    },
+    {
+      "path": "train/train_crystal_0025/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0025",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.5298408269882202,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.28139394727329614,
+        "corrected": 0.09876709834200832
+      }
+    },
+    {
+      "path": "train/train_crystal_0025/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0025",
+      "trial_index": 1,
+      "trial_outcome": "rejected",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.5365524888038635,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.30206559695455437,
+        "corrected": 0.08187837023397039
+      }
+    },
+    {
+      "path": "train/train_crystal_0025/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0025",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.5646204948425293,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.2536099792604821,
+        "corrected": 0.15130952248655102
+      }
+    },
+    {
+      "path": "train/train_crystal_0026/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0026",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.2843401432037354,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.19681410542373584,
+        "corrected": 0.08194757274063437
+      }
+    },
+    {
+      "path": "train/train_crystal_0026/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0026",
+      "trial_index": 1,
+      "trial_outcome": "rejected",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.3124144077301025,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.1941857586056431,
+        "corrected": 0.08537887739374936
+      }
+    },
+    {
+      "path": "train/train_crystal_0026/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0026",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.3617990016937256,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.18814004905119885,
+        "corrected": 0.08721868767407769
+      }
+    },
+    {
+      "path": "train/train_crystal_0027/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0027",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.9172269105911255,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.10462988885568757,
+        "corrected": 0.10462988885567664
+      }
+    },
+    {
+      "path": "train/train_crystal_0027/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0027",
+      "trial_index": 1,
+      "trial_outcome": "rejected",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.9224144220352173,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.09147668050243958,
+        "corrected": 0.09147668050244046
+      }
+    },
+    {
+      "path": "train/train_crystal_0027/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0027",
+      "trial_index": 2,
+      "trial_outcome": "accepted",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.939995288848877,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.20030806722845193,
+        "corrected": 0.05671266697993633
+      }
+    },
+    {
+      "path": "train/train_crystal_0028/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0028",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.4018959105014801,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.21217287603597854,
+        "corrected": 0.03478371885901696
+      }
+    },
+    {
+      "path": "train/train_crystal_0028/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0028",
+      "trial_index": 1,
+      "trial_outcome": "accepted",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.5038294196128845,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.19212862883450937,
+        "corrected": 0.04053893699376665
+      }
+    },
+    {
+      "path": "train/train_crystal_0028/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0028",
+      "trial_index": 2,
+      "trial_outcome": "accepted",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.5978303551673889,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.18526397212260304,
+        "corrected": 0.18526397212260304
+      }
+    },
+    {
+      "path": "train/train_crystal_0029/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0029",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.44898223876953125,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.09880854983916439,
+        "corrected": 0.09880854983916387
+      }
+    },
+    {
+      "path": "train/train_crystal_0029/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0029",
+      "trial_index": 1,
+      "trial_outcome": "rejected",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.4958176910877228,
+      "saturated_fraction": [
+        4.822530864197531e-07,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.09549278837330713,
+        "corrected": 0.09549278837330756
+      }
+    },
+    {
+      "path": "train/train_crystal_0029/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0029",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.5407406687736511,
+      "saturated_fraction": [
+        4.822530864197531e-07,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.11348449008131496,
+        "corrected": 0.10288209743392923
+      }
+    },
+    {
+      "path": "train/train_crystal_0030/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0030",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.4213988780975342,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.25000153127233604,
+        "corrected": 0.11749585937026151
+      }
+    },
+    {
+      "path": "train/train_crystal_0030/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0030",
+      "trial_index": 1,
+      "trial_outcome": "accepted",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.3915303945541382,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.25255109367467804,
+        "corrected": 0.1123481485891703
+      }
+    },
+    {
+      "path": "train/train_crystal_0030/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0030",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.3639932870864868,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.26668923885225193,
+        "corrected": 0.11373255687841173
+      }
+    },
+    {
+      "path": "train/train_crystal_0031/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0031",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.9615225791931152,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.22690629390494158,
+        "corrected": 0.16222873656766323
+      }
+    },
+    {
+      "path": "train/train_crystal_0031/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0031",
+      "trial_index": 1,
+      "trial_outcome": "rejected",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.9440337419509888,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.44506346021272297,
+        "corrected": 0.18994276363271392
+      }
+    },
+    {
+      "path": "train/train_crystal_0031/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0031",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.9469188451766968,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.38704262414284746,
+        "corrected": 0.1861626356112368
+      }
+    },
+    {
+      "path": "train/train_crystal_0032/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0032",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.45469897985458374,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.12274024299877909,
+        "corrected": 0.12274024299877963
+      }
+    },
+    {
+      "path": "train/train_crystal_0032/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0032",
+      "trial_index": 1,
+      "trial_outcome": "accepted",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.496425062417984,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.11565455205645493,
+        "corrected": 0.11565455205645414
+      }
+    },
+    {
+      "path": "train/train_crystal_0032/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0032",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.3738417625427246,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.12861344713389342,
+        "corrected": 0.12861344713389225
+      }
+    },
+    {
+      "path": "train/train_crystal_0033/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0033",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.6095499396324158,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.24746637468986588,
+        "corrected": 0.08773788816650979
+      }
+    },
+    {
+      "path": "train/train_crystal_0033/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0033",
+      "trial_index": 1,
+      "trial_outcome": "rejected",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.6106982827186584,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.2609574054690487,
+        "corrected": 0.08027729539857277
+      }
+    },
+    {
+      "path": "train/train_crystal_0033/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0033",
+      "trial_index": 2,
+      "trial_outcome": "accepted",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.6094473600387573,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.24359259996825244,
+        "corrected": 0.08853262973810354
+      }
+    },
+    {
+      "path": "train/train_crystal_0034/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0034",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.3409103155136108,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.15667781734380842,
+        "corrected": 0.15667781734380845
+      }
+    },
+    {
+      "path": "train/train_crystal_0034/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0034",
+      "trial_index": 1,
+      "trial_outcome": "accepted",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.4620712995529175,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.13857748215071153,
+        "corrected": 0.1385774821507115
+      }
+    },
+    {
+      "path": "train/train_crystal_0034/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0034",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.447533369064331,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.14032180127998728,
+        "corrected": 0.14032180127998586
+      }
+    },
+    {
+      "path": "train/train_crystal_0035/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0035",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.953171968460083,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.16652749768944378,
+        "corrected": 0.1665274976894436
+      }
+    },
+    {
+      "path": "train/train_crystal_0035/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0035",
+      "trial_index": 1,
+      "trial_outcome": "rejected",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.9345057010650635,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.279704386278419,
+        "corrected": 0.1717082572211283
+      }
+    },
+    {
+      "path": "train/train_crystal_0035/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0035",
+      "trial_index": 2,
+      "trial_outcome": "accepted",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.9588466882705688,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.1509429785328412,
+        "corrected": 0.13011301224304558
+      }
+    },
+    {
+      "path": "train/train_crystal_0036/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0036",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.3566794991493225,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.2804931146674341,
+        "corrected": 0.08040353543334189
+      }
+    },
+    {
+      "path": "train/train_crystal_0036/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0036",
+      "trial_index": 1,
+      "trial_outcome": "accepted",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.37786898016929626,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.2639431539076345,
+        "corrected": 0.08237341208574257
+      }
+    },
+    {
+      "path": "train/train_crystal_0036/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0036",
+      "trial_index": 2,
+      "trial_outcome": "accepted",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.4973181188106537,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.23636779207047773,
+        "corrected": 0.09303231255532715
+      }
+    },
+    {
+      "path": "train/train_crystal_0037/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0037",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.5366036295890808,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.15501463867521262,
+        "corrected": 0.15501463867521265
+      }
+    },
+    {
+      "path": "train/train_crystal_0037/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0037",
+      "trial_index": 1,
+      "trial_outcome": "accepted",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.5383686423301697,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.14949464800267845,
+        "corrected": 0.14949464800267845
+      }
+    },
+    {
+      "path": "train/train_crystal_0037/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0037",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.5321322679519653,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.17675343887851144,
+        "corrected": 0.057635889986777135
+      }
+    },
+    {
+      "path": "train/train_crystal_0038/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0038",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.4166507720947266,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.13541253519851587,
+        "corrected": 0.13541253519851476
+      }
+    },
+    {
+      "path": "train/train_crystal_0038/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0038",
+      "trial_index": 1,
+      "trial_outcome": "rejected",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.4255435466766357,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.1382741430929415,
+        "corrected": 0.13827414309294214
+      }
+    },
+    {
+      "path": "train/train_crystal_0038/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0038",
+      "trial_index": 2,
+      "trial_outcome": "accepted",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.2253892421722412,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.14411287541960827,
+        "corrected": 0.1441128754196095
+      }
+    },
+    {
+      "path": "train/train_crystal_0039/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0039",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.911922574043274,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.164682063287802,
+        "corrected": 0.09198128570834906
+      }
+    },
+    {
+      "path": "train/train_crystal_0039/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0039",
+      "trial_index": 1,
+      "trial_outcome": "accepted",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.9307607412338257,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.18565444290489336,
+        "corrected": 0.07237846112885943
+      }
+    },
+    {
+      "path": "train/train_crystal_0039/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0039",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.9260162115097046,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.15849663354467752,
+        "corrected": 0.07827066221700389
+      }
+    },
+    {
+      "path": "train/train_crystal_0040/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0040",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.5786620378494263,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.06318669367182377,
+        "corrected": 0.06318669367182461
+      }
+    },
+    {
+      "path": "train/train_crystal_0040/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0040",
+      "trial_index": 1,
+      "trial_outcome": "rejected",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.589040219783783,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.060845337163920085,
+        "corrected": 0.06084533716392163
+      }
+    },
+    {
+      "path": "train/train_crystal_0040/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0040",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.5704112648963928,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.06685073094459722,
+        "corrected": 0.06685073094459844
+      }
+    },
+    {
+      "path": "train/train_crystal_0041/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0041",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.5361630320549011,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.06872393227750746,
+        "corrected": 0.06872393227750752
+      }
+    },
+    {
+      "path": "train/train_crystal_0041/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0041",
+      "trial_index": 1,
+      "trial_outcome": "accepted",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.5474449396133423,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.05414705230412017,
+        "corrected": 0.054147052304119855
+      }
+    },
+    {
+      "path": "train/train_crystal_0041/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0041",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.5256207585334778,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.15182848591506418,
+        "corrected": 0.061657472913198084
+      }
+    },
+    {
+      "path": "train/train_crystal_0042/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0042",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.289151668548584,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.19261549209705617,
+        "corrected": 0.044790232272174484
+      }
+    },
+    {
+      "path": "train/train_crystal_0042/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0042",
+      "trial_index": 1,
+      "trial_outcome": "accepted",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.4674218893051147,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.1747470108347912,
+        "corrected": 0.04799131780619265
+      }
+    },
+    {
+      "path": "train/train_crystal_0042/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0042",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.3525320291519165,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.19041286779849756,
+        "corrected": 0.043156753710828756
+      }
+    },
+    {
+      "path": "train/train_crystal_0043/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0043",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.9474400281906128,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.12310901259842445,
+        "corrected": 0.12310901259842157
+      }
+    },
+    {
+      "path": "train/train_crystal_0043/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0043",
+      "trial_index": 1,
+      "trial_outcome": "accepted",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.9431949853897095,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.13720407800863726,
+        "corrected": 0.10063467015512248
+      }
+    },
+    {
+      "path": "train/train_crystal_0043/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0043",
+      "trial_index": 2,
+      "trial_outcome": "accepted",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.9545458555221558,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.12081538286060278,
+        "corrected": 0.12081538286060574
+      }
+    },
+    {
+      "path": "train/train_crystal_0044/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0044",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.584449827671051,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.25967807981693075,
+        "corrected": 0.045764627051230675
+      }
+    },
+    {
+      "path": "train/train_crystal_0044/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0044",
+      "trial_index": 1,
+      "trial_outcome": "rejected",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.4716245234012604,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.2857551497561479,
+        "corrected": 0.03688669260561749
+      }
+    },
+    {
+      "path": "train/train_crystal_0044/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0044",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.48269349336624146,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.27226418635743765,
+        "corrected": 0.039584574415963664
+      }
+    },
+    {
+      "path": "train/train_crystal_0045/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0045",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.610106885433197,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.17347953539598093,
+        "corrected": 0.17347953539598093
+      }
+    },
+    {
+      "path": "train/train_crystal_0045/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0045",
+      "trial_index": 1,
+      "trial_outcome": "rejected",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.6207360029220581,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.1540253859328154,
+        "corrected": 0.15402538593281542
+      }
+    },
+    {
+      "path": "train/train_crystal_0045/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0045",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.618751049041748,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.29559830567864004,
+        "corrected": 0.09091792974183749
+      }
+    },
+    {
+      "path": "train/train_crystal_0046/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0046",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.4231454133987427,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.1783260035192712,
+        "corrected": 0.0913781584346099
+      }
+    },
+    {
+      "path": "train/train_crystal_0046/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0046",
+      "trial_index": 1,
+      "trial_outcome": "rejected",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.3494075536727905,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.17854938420969765,
+        "corrected": 0.08960616446509817
+      }
+    },
+    {
+      "path": "train/train_crystal_0046/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0046",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.4372260570526123,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.17065421467546715,
+        "corrected": 0.09142120892059667
+      }
+    },
+    {
+      "path": "train/train_crystal_0047/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0047",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.9392833709716797,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.1794294670769536,
+        "corrected": 0.09583221791646558
+      }
+    },
+    {
+      "path": "train/train_crystal_0047/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0047",
+      "trial_index": 1,
+      "trial_outcome": "rejected",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.9492985010147095,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.1601303385075703,
+        "corrected": 0.08781562880240251
+      }
+    },
+    {
+      "path": "train/train_crystal_0047/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0047",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.9362581968307495,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.1917384312282161,
+        "corrected": 0.09797462511627796
+      }
+    },
+    {
+      "path": "train/train_crystal_0048/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0048",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.2978236675262451,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.24468970388396755,
+        "corrected": 0.0817482015585616
+      }
+    },
+    {
+      "path": "train/train_crystal_0048/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0048",
+      "trial_index": 1,
+      "trial_outcome": "rejected",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.3035554885864258,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.24743735190835517,
+        "corrected": 0.08183663298628409
+      }
+    },
+    {
+      "path": "train/train_crystal_0048/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0048",
+      "trial_index": 2,
+      "trial_outcome": "accepted",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.4602343440055847,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.1942018186023136,
+        "corrected": 0.08342918033026929
+      }
+    },
+    {
+      "path": "train/train_crystal_0049/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0049",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.8893146514892578,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.12909847453479806,
+        "corrected": 0.1290984745347977
+      }
+    },
+    {
+      "path": "train/train_crystal_0049/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0049",
+      "trial_index": 1,
+      "trial_outcome": "rejected",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.8815841674804688,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.13847657606365477,
+        "corrected": 0.13847657606365452
+      }
+    },
+    {
+      "path": "train/train_crystal_0049/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0049",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.8494012951850891,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.2921082535659907,
+        "corrected": 0.07654276277949497
+      }
+    },
+    {
+      "path": "train/train_crystal_0050/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0050",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.1194045543670654,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.3124190044238566,
+        "corrected": 0.11027285393723905
+      }
+    },
+    {
+      "path": "train/train_crystal_0050/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0050",
+      "trial_index": 1,
+      "trial_outcome": "accepted",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.1637835502624512,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.3043348755399648,
+        "corrected": 0.11332999891310068
+      }
+    },
+    {
+      "path": "train/train_crystal_0050/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0050",
+      "trial_index": 2,
+      "trial_outcome": "accepted",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.279712438583374,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.2901513472803102,
+        "corrected": 0.10900094307927022
+      }
+    },
+    {
+      "path": "train/train_crystal_0051/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0051",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.9504231214523315,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.1253424501804445,
+        "corrected": 0.06545229962225621
+      }
+    },
+    {
+      "path": "train/train_crystal_0051/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0051",
+      "trial_index": 1,
+      "trial_outcome": "rejected",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.9469176530838013,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.13967668294443097,
+        "corrected": 0.067111794717306
+      }
+    },
+    {
+      "path": "train/train_crystal_0051/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0051",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.9367731809616089,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.20656218661917455,
+        "corrected": 0.06975983359276365
+      }
+    },
+    {
+      "path": "train/train_crystal_0052/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0052",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.5254597067832947,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.1534862634961544,
+        "corrected": 0.15348626349615427
+      }
+    },
+    {
+      "path": "train/train_crystal_0052/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0052",
+      "trial_index": 1,
+      "trial_outcome": "rejected",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.4383992552757263,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.163538994552691,
+        "corrected": 0.163538994552691
+      }
+    },
+    {
+      "path": "train/train_crystal_0052/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0052",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.4925607144832611,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.1667154084621475,
+        "corrected": 0.16671540846214727
+      }
+    },
+    {
+      "path": "train/train_crystal_0053/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0053",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.482711523771286,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.10183881155088538,
+        "corrected": 0.10183881155088446
+      }
+    },
+    {
+      "path": "train/train_crystal_0053/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0053",
+      "trial_index": 1,
+      "trial_outcome": "rejected",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.5274773240089417,
+      "saturated_fraction": [
+        4.822530864197531e-07,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.10585631157821199,
+        "corrected": 0.12116609196544617
+      }
+    },
+    {
+      "path": "train/train_crystal_0053/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0053",
+      "trial_index": 2,
+      "trial_outcome": "accepted",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.47872909903526306,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.13737557626259736,
+        "corrected": 0.13737557626259592
+      }
+    },
+    {
+      "path": "train/train_crystal_0054/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0054",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.3939130306243896,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.10205215074679524,
+        "corrected": 0.10205215074679524
+      }
+    },
+    {
+      "path": "train/train_crystal_0054/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0054",
+      "trial_index": 1,
+      "trial_outcome": "rejected",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.3835138082504272,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.10509984093747207,
+        "corrected": 0.10509984093747206
+      }
+    },
+    {
+      "path": "train/train_crystal_0054/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0054",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.4440759420394897,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.10654545831608637,
+        "corrected": 0.10654545831608553
+      }
+    },
+    {
+      "path": "train/train_crystal_0055/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0055",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.9343844652175903,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.29028066374075717,
+        "corrected": 0.1976239852182368
+      }
+    },
+    {
+      "path": "train/train_crystal_0055/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0055",
+      "trial_index": 1,
+      "trial_outcome": "accepted",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.9417306184768677,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.2721474367458965,
+        "corrected": 0.18511591187574047
+      }
+    },
+    {
+      "path": "train/train_crystal_0055/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0055",
+      "trial_index": 2,
+      "trial_outcome": "accepted",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.936181902885437,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.2860742196025485,
+        "corrected": 0.1956272810988469
+      }
+    },
+    {
+      "path": "train/train_crystal_0056/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0056",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.3453398048877716,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.1689425937689803,
+        "corrected": 0.1689425937689803
+      }
+    },
+    {
+      "path": "train/train_crystal_0056/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0056",
+      "trial_index": 1,
+      "trial_outcome": "rejected",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.45285162329673767,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.16191096502602306,
+        "corrected": 0.16191096502602514
+      }
+    },
+    {
+      "path": "train/train_crystal_0056/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0056",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.3810732364654541,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.17225655337197718,
+        "corrected": 0.17225655337197715
+      }
+    },
+    {
+      "path": "train/train_crystal_0057/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0057",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.5664117336273193,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.21586077760287561,
+        "corrected": 0.09559542241856187
+      }
+    },
+    {
+      "path": "train/train_crystal_0057/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0057",
+      "trial_index": 1,
+      "trial_outcome": "rejected",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.5865909457206726,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.2023357829222462,
+        "corrected": 0.10048251862993386
+      }
+    },
+    {
+      "path": "train/train_crystal_0057/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0057",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.5569378137588501,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.2678486215451702,
+        "corrected": 0.07825901406717872
+      }
+    },
+    {
+      "path": "train/train_crystal_0058/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0058",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.2410234212875366,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.26579214468642903,
+        "corrected": null
+      }
+    },
+    {
+      "path": "train/train_crystal_0058/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0058",
+      "trial_index": 1,
+      "trial_outcome": "rejected",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.2042502164840698,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.26924710987467076,
+        "corrected": null
+      }
+    },
+    {
+      "path": "train/train_crystal_0058/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0058",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.3122879266738892,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.26557440185203895,
+        "corrected": null
+      }
+    },
+    {
+      "path": "train/train_crystal_0059/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0059",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.9500081539154053,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.1791223883164669,
+        "corrected": 0.09546803905440128
+      }
+    },
+    {
+      "path": "train/train_crystal_0059/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0059",
+      "trial_index": 1,
+      "trial_outcome": "rejected",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.9236963987350464,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.3736303266147805,
+        "corrected": 0.11229849989443218
+      }
+    },
+    {
+      "path": "train/train_crystal_0059/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0059",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.9502638578414917,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.1815354598041676,
+        "corrected": 0.09476545184803736
+      }
+    },
+    {
+      "path": "train/train_crystal_0060/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0060",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.708275318145752,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.24795243092294947,
+        "corrected": 0.07610761574557938
+      }
+    },
+    {
+      "path": "train/train_crystal_0060/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0060",
+      "trial_index": 1,
+      "trial_outcome": "accepted",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.71488356590271,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.24902984699709343,
+        "corrected": 0.08007161861356464
+      }
+    },
+    {
+      "path": "train/train_crystal_0060/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0060",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.47278743982315063,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.2856946539090141,
+        "corrected": 0.06458635366519928
+      }
+    },
+    {
+      "path": "train/train_crystal_0061/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0061",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.5082194805145264,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.13482392604996185,
+        "corrected": 0.1348239260499619
+      }
+    },
+    {
+      "path": "train/train_crystal_0061/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0061",
+      "trial_index": 1,
+      "trial_outcome": "accepted",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.504767894744873,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.1395182136569317,
+        "corrected": 0.1395182136569317
+      }
+    },
+    {
+      "path": "train/train_crystal_0061/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0061",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.5125448107719421,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.13097912783065185,
+        "corrected": 0.1309791278306517
+      }
+    },
+    {
+      "path": "train/train_crystal_0062/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0062",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.2653993368148804,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.255936032902191,
+        "corrected": 0.08580125331902017
+      }
+    },
+    {
+      "path": "train/train_crystal_0062/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0062",
+      "trial_index": 1,
+      "trial_outcome": "accepted",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.3985261917114258,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.23366658754454275,
+        "corrected": 0.09042291886967052
+      }
+    },
+    {
+      "path": "train/train_crystal_0062/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0062",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.3624897003173828,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.24073148689669813,
+        "corrected": 0.09087652391913198
+      }
+    },
+    {
+      "path": "train/train_crystal_0063/point_000.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0063",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.9504832029342651,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.11178473120896334,
+        "corrected": 0.08928261573284625
+      }
+    },
+    {
+      "path": "train/train_crystal_0063/point_001.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0063",
+      "trial_index": 1,
+      "trial_outcome": "rejected",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.927664875984192,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.28863315336873424,
+        "corrected": 0.108884497022807
+      }
+    },
+    {
+      "path": "train/train_crystal_0063/point_002.json",
+      "split": "train",
+      "crystal_id": "train_crystal_0063",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.9383059740066528,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.20166188457987755,
+        "corrected": 0.10326217547822159
+      }
+    },
+    {
+      "path": "validation/validation_crystal_0064/point_000.json",
+      "split": "validation",
+      "crystal_id": "validation_crystal_0064",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.3073531985282898,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.2986098507769497,
+        "corrected": 0.0571627198597051
+      }
+    },
+    {
+      "path": "validation/validation_crystal_0064/point_001.json",
+      "split": "validation",
+      "crystal_id": "validation_crystal_0064",
+      "trial_index": 1,
+      "trial_outcome": "rejected",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.26477742195129395,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.30981030816539423,
+        "corrected": 0.043812512072204
+      }
+    },
+    {
+      "path": "validation/validation_crystal_0064/point_002.json",
+      "split": "validation",
+      "crystal_id": "validation_crystal_0064",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.2802160382270813,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.3007701028517131,
+        "corrected": 0.055391457049175315
+      }
+    },
+    {
+      "path": "validation/validation_crystal_0065/point_000.json",
+      "split": "validation",
+      "crystal_id": "validation_crystal_0065",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.674314022064209,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.24223158836932038,
+        "corrected": 0.21151467696692322
+      }
+    },
+    {
+      "path": "validation/validation_crystal_0065/point_001.json",
+      "split": "validation",
+      "crystal_id": "validation_crystal_0065",
+      "trial_index": 1,
+      "trial_outcome": "rejected",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.655993640422821,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.2971256117780623,
+        "corrected": 0.1848641128459662
+      }
+    },
+    {
+      "path": "validation/validation_crystal_0065/point_002.json",
+      "split": "validation",
+      "crystal_id": "validation_crystal_0065",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.6594225168228149,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.2985087516623548,
+        "corrected": 0.1822080431527981
+      }
+    },
+    {
+      "path": "validation/validation_crystal_0066/point_000.json",
+      "split": "validation",
+      "crystal_id": "validation_crystal_0066",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.231316089630127,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.24816030702681874,
+        "corrected": 0.09450765940120605
+      }
+    },
+    {
+      "path": "validation/validation_crystal_0066/point_001.json",
+      "split": "validation",
+      "crystal_id": "validation_crystal_0066",
+      "trial_index": 1,
+      "trial_outcome": "accepted",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.44944429397583,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.2110769666442672,
+        "corrected": 0.10637182211391248
+      }
+    },
+    {
+      "path": "validation/validation_crystal_0066/point_002.json",
+      "split": "validation",
+      "crystal_id": "validation_crystal_0066",
+      "trial_index": 2,
+      "trial_outcome": "accepted",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.450420618057251,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.20690410789492156,
+        "corrected": 0.10355109067674323
+      }
+    },
+    {
+      "path": "validation/validation_crystal_0067/point_000.json",
+      "split": "validation",
+      "crystal_id": "validation_crystal_0067",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.9309033155441284,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.22219777367425192,
+        "corrected": 0.14181972234816495
+      }
+    },
+    {
+      "path": "validation/validation_crystal_0067/point_001.json",
+      "split": "validation",
+      "crystal_id": "validation_crystal_0067",
+      "trial_index": 1,
+      "trial_outcome": "accepted",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.9481085538864136,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.22377057246317697,
+        "corrected": 0.12038695378639351
+      }
+    },
+    {
+      "path": "validation/validation_crystal_0067/point_002.json",
+      "split": "validation",
+      "crystal_id": "validation_crystal_0067",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.928836703300476,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.23018328613175776,
+        "corrected": 0.1414262770805981
+      }
+    },
+    {
+      "path": "validation/validation_crystal_0068/point_000.json",
+      "split": "validation",
+      "crystal_id": "validation_crystal_0068",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.5629146099090576,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.14388107893989752,
+        "corrected": 0.04619483062407049
+      }
+    },
+    {
+      "path": "validation/validation_crystal_0068/point_001.json",
+      "split": "validation",
+      "crystal_id": "validation_crystal_0068",
+      "trial_index": 1,
+      "trial_outcome": "rejected",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.6741477251052856,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.12122719855031855,
+        "corrected": 0.0500074202517895
+      }
+    },
+    {
+      "path": "validation/validation_crystal_0068/point_002.json",
+      "split": "validation",
+      "crystal_id": "validation_crystal_0068",
+      "trial_index": 2,
+      "trial_outcome": "accepted",
+      "target": "Gaussian TEM00",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.46873924136161804,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.18096273991608877,
+        "corrected": 0.043147319493422015
+      }
+    },
+    {
+      "path": "validation/validation_crystal_0069/point_000.json",
+      "split": "validation",
+      "crystal_id": "validation_crystal_0069",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.6293290853500366,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.3781583790341522,
+        "corrected": 0.05709467506514098
+      }
+    },
+    {
+      "path": "validation/validation_crystal_0069/point_001.json",
+      "split": "validation",
+      "crystal_id": "validation_crystal_0069",
+      "trial_index": 1,
+      "trial_outcome": "accepted",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.6336293816566467,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.37948086586635166,
+        "corrected": 0.05517658807144643
+      }
+    },
+    {
+      "path": "validation/validation_crystal_0069/point_002.json",
+      "split": "validation",
+      "crystal_id": "validation_crystal_0069",
+      "trial_index": 2,
+      "trial_outcome": "accepted",
+      "target": "Flattop super-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 0.7091763019561768,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.3426153204530433,
+        "corrected": 0.08441606753121182
+      }
+    },
+    {
+      "path": "validation/validation_crystal_0070/point_000.json",
+      "split": "validation",
+      "crystal_id": "validation_crystal_0070",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.3724312782287598,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.1994742652106228,
+        "corrected": 0.08001662332672475
+      }
+    },
+    {
+      "path": "validation/validation_crystal_0070/point_001.json",
+      "split": "validation",
+      "crystal_id": "validation_crystal_0070",
+      "trial_index": 1,
+      "trial_outcome": "accepted",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.4741122722625732,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.1807250775007195,
+        "corrected": 0.08381686078560481
+      }
+    },
+    {
+      "path": "validation/validation_crystal_0070/point_002.json",
+      "split": "validation",
+      "crystal_id": "validation_crystal_0070",
+      "trial_index": 2,
+      "trial_outcome": "accepted",
+      "target": "Helical LG(0,+1)",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.4604954719543457,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.18379513464035754,
+        "corrected": 0.082739064743044
+      }
+    },
+    {
+      "path": "validation/validation_crystal_0071/point_000.json",
+      "split": "validation",
+      "crystal_id": "validation_crystal_0071",
+      "trial_index": 0,
+      "trial_outcome": "baseline_accepted",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.9492313861846924,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.13515692460038353,
+        "corrected": 0.09864900792059864
+      }
+    },
+    {
+      "path": "validation/validation_crystal_0071/point_001.json",
+      "split": "validation",
+      "crystal_id": "validation_crystal_0071",
+      "trial_index": 1,
+      "trial_outcome": "rejected",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.9327406883239746,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.2153688869959719,
+        "corrected": 0.10636273731500763
+      }
+    },
+    {
+      "path": "validation/validation_crystal_0071/point_002.json",
+      "split": "validation",
+      "crystal_id": "validation_crystal_0071",
+      "trial_index": 2,
+      "trial_outcome": "rejected",
+      "target": "Needle Bessel-Gaussian",
+      "yb_at_percent": 10.0,
+      "planes": 2,
+      "phase_diversity_relative_L1": 1.936558723449707,
+      "saturated_fraction": [
+        0.0,
+        0.0
+      ],
+      "wavefront_rms_rad": {
+        "uncorrected": 0.1819026244342282,
+        "corrected": 0.10292157805606049
+      }
+    }
+  ],
+  "correction_labels": {
+    "verified": 237,
+    "rejected": 3
+  },
+  "physical_validity_limits": [
+    "Yb:YAG hot gain unavailable; all accepted states are room-temperature lumped-phase approximations.",
+    "Thickness uses an optical-column and static geometric-phase approximation; the FEM retains nominal thickness.",
+    "Background absorption uses first-order pre-pump attenuation and distributed heat.",
+    "Photoelasticity and stress tensor are not solved in this scalar Yb amplifier.",
+    "Phase-only labels are best passing commands from a bounded, solver-verified candidate search, not guaranteed global optima.",
+    "Response-matrix teacher, when selected, probes privileged simulated complex fields; these are not experimentally measured calibration data.",
+    "Instrument distributions are illustrative until calibrated."
+  ],
+  "camera_calibration": {
+    "source": null,
+    "specification_examples": [
+      "https://www.hamamatsu.com/us/en/product/cameras/cmos-cameras/C13440-20CU.html",
+      "https://www.hamamatsu.com/eu/en/product/cameras/ingaas-cameras/C12741-03-02.html"
+    ],
+    "status": "illustrative",
+    "unmeasured_at_1030_nm": [
+      "quantum efficiency",
+      "point-spread function",
+      "optical throughput",
+      "fixed-pattern noise",
+      "SLM phase transfer"
+    ]
+  }
+}

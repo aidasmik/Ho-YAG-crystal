@@ -29,6 +29,16 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from hoyag.local_supervisor import BudgetLedger, Limits, run_bounded
 from hoyag.structured_beam_gallery import BEAM_NAMES, PHASE_MASKS, SOLVER_MODES
+from ybluag.multipass_geometry import dataset_defaults as multipass_defaults
+
+# The Yb:YAG pulsed multipass uses the dataset generator's mirror array.
+MULTIPASS = multipass_defaults()
+# Structured targets the V3 NN was trained on (kept free of a torch import).
+NN_TARGETS = ("Gaussian TEM00", "Flattop super-Gaussian", "Helical LG(0,+1)",
+              "Needle Bessel-Gaussian")
+MULTIPASS_KEYS = {"multipass_layout", "relay_focal_m", "max_incidence_deg",
+                  "relay_defocus_error_mm", "array_distance_m", "array_half_height_m",
+                  "array_mirror_incidence_deg", "mirror_tilt_error_urad", "mirror_tilt_seed"}
 from structured_beam_app import (budget_status, latest_completed_run,
                                  run_calculation,
                                  validate_request)
@@ -45,7 +55,7 @@ NUMERIC_RANGES = {
     "phase_strength_rad": (-50, 50), "seed_energy_nj": (.001, 100000),
     "source_fwhm_fs": (50, 10000), "seed_fwhm_ps": (.1, 1000),
     "repetition_rate_kHz": (.01, 100), "pump_passes": (1, 48),
-    "signal_traversals": (1, 10), "regen_round_trips": (1, 60),
+    "signal_traversals": (1, 48), "regen_round_trips": (1, 60),
     "cavity_length_m": (.01, 2), "mirror_radius_m": (.02, 10),
     "disk_hr_reflectivity": (.5, 1), "held_retention": (.01, 1),
     "injection_efficiency": (.01, 1), "extraction_efficiency": (.01, 1),
@@ -57,13 +67,19 @@ NUMERIC_RANGES = {
     "probe_seed": (0, 2**31-1),
     "cooling_h_max_W_m2K": (10000, 200000),
     "ideal_relay_power_retention": (.001, 1),
+    "relay_focal_m": (.01, 5), "max_incidence_deg": (0, 30), "relay_defocus_error_mm": (0, 50),
+    "yb_map_rotation_deg": (-360, 360), "yb_map_offset_x_mm": (-10, 10),
+    "yb_map_offset_y_mm": (-10, 10),
+    "array_distance_m": (.05, 5), "array_half_height_m": (0, 1),
+    "array_mirror_incidence_deg": (0, 30), "mirror_tilt_error_urad": (0, 1000),
+    "mirror_tilt_seed": (0, 2**31-1),
     "grid_n": (32, 768), "field_size_mm": (8, 24),
     "optical_z_steps": (1, 16), "thermal_nr": (4, 48),
     "thermal_nphi": (4, 96), "thermal_nz": (1, 24),
 }
 INTEGER_KEYS = {"grid_n", "optical_z_steps", "thermal_nr", "thermal_nphi",
                 "thermal_nz", "pump_passes", "signal_traversals", "regen_round_trips",
-                "density_seed", "cluster_count", "probe_seed"}
+                "density_seed", "cluster_count", "probe_seed", "mirror_tilt_seed"}
 
 
 def validate_yb_payload(kind: str, values: dict) -> dict:
@@ -99,6 +115,9 @@ def validate_yb_payload(kind: str, values: dict) -> dict:
     if kind in ("pulsed", "pump_sweep") and payload["architecture"] not in (
             "ideal_multipass", "regenerative"):
         raise ValueError("unknown amplifier architecture")
+    if payload.get("multipass_layout", MULTIPASS["multipass_layout"]) not in (
+            "image_relay", "mirror_array", "ideal_relay"):
+        raise ValueError("unknown multipass layout")
     if kind == "structured" and not .1 <= payload["radius_mm"] <= 5:
         raise ValueError("structured pump radius must be 0.1–5 mm")
     if yag and payload.get("thermal_optical_mode") == "coupled_steady":
@@ -155,6 +174,18 @@ YB_FIELDS = (
     field("signal_traversals", "Signal traversals", 10),
     field("regen_round_trips", "Cavity round trips", 10),
     field("ideal_relay_power_retention", "Ideal relay power retention", 1),
+    field("multipass_layout", "Multipass layout", MULTIPASS["multipass_layout"],
+          ("image_relay", "mirror_array", "ideal_relay")),
+    field("relay_focal_m", "Image relay focal length (m)", MULTIPASS["relay_focal_m"]),
+    field("max_incidence_deg", "Image relay max incidence (°)", MULTIPASS["max_incidence_deg"]),
+    field("relay_defocus_error_mm", "Relay focus error (mm RMS)", MULTIPASS["relay_defocus_error_mm"]),
+    field("array_distance_m", "Disk to mirror array (m)", MULTIPASS["array_distance_m"]),
+    field("array_half_height_m", "Array half height (m)", MULTIPASS["array_half_height_m"]),
+    field("array_mirror_incidence_deg", "Array mirror incidence (°)",
+          MULTIPASS["array_mirror_incidence_deg"]),
+    field("mirror_tilt_error_urad", "Mirror pointing error (µrad RMS)",
+          MULTIPASS["mirror_tilt_error_urad"]),
+    field("mirror_tilt_seed", "Mirror error seed", 0),
     field("cavity_length_m", "Disk to mirror (m)", 0.25),
     field("mirror_radius_m", "Mirror curvature radius (m)", 0.5),
     field("disk_hr_reflectivity", "Disk HR reflectivity", 0.9995),
@@ -166,6 +197,10 @@ YB_FIELDS = (
     field("density_seed", "Yb cluster seed", 17),
     field("cluster_count", "Yb clusters", 24),
     field("cluster_contrast", "Cluster contrast", 0.27),
+    field("yb_distribution", "Yb distribution", "measured", ("measured", "random_clusters")),
+    field("yb_map_rotation_deg", "Measured Yb map rotation (°)", 0),
+    field("yb_map_offset_x_mm", "Measured Yb map offset x (mm)", 0),
+    field("yb_map_offset_y_mm", "Measured Yb map offset y (mm)", 0),
     field("escape_yield", "Fluorescence escape yield", 0),
     field("operation_duration_s", "Operating time (s)", 30),
     field("cooling_mode", "Cooler control", "feedback", ("feedback", "sensor_feedback", "fixed")),
@@ -176,7 +211,9 @@ YB_FIELDS = (
 YAG_FIELDS = tuple(
     (key, label,
      {"yb_at_percent": "20", "pump_nm": "969",
-                  "assembly_property_model": "yag_rt_proxy"}.get(key, default),
+                  "assembly_property_model": "yag_rt_proxy",
+                  # Same pass count as the dataset generator's multipass.
+                  "signal_traversals": str(MULTIPASS["signal_traversals"])}.get(key, default),
      ("cold", "lumped_phase") if key == "thermal_optical_mode" else
      ("yag_rt_proxy",) if key == "assembly_property_model" else
      ("5", "10", "15", "20") if key == "yb_at_percent" else choices)
@@ -236,12 +273,15 @@ YB_CONTROL_GROUPS = {
                      "waist_mm", "seed_energy_nj", "source_fwhm_fs", "seed_fwhm_ps",
                      "repetition_rate_kHz", "signal_W", "seed_W"},
     "Yb crystal": {"kind", "thickness_um", "yb_at_percent", "disk_radius_mm",
-                   "assembly_property_model", "density_seed", "cluster_count", "cluster_contrast"},
+                   "assembly_property_model", "density_seed", "cluster_count", "cluster_contrast",
+                   "yb_distribution", "yb_map_rotation_deg", "yb_map_offset_x_mm",
+                   "yb_map_offset_y_mm"},
     "Pump & cooling": {"kind", "pump_W", "radius_mm", "pump_nm", "pulsed_pump_nm", "pump_passes",
                        "escape_yield", "thermal_optical_mode", "operation_duration_s",
                        "cooling_mode", "cooling_target_C", "cooling_h_max_W_m2K"},
     "Amplifier & optics": {"kind", "architecture", "solver_mode", "signal_nm", "signal_traversals",
-                           "regen_round_trips", "ideal_relay_power_retention", "cavity_length_m",
+                           "regen_round_trips", "ideal_relay_power_retention", *MULTIPASS_KEYS,
+                           "cavity_length_m",
                            "mirror_radius_m", "disk_hr_reflectivity", "held_retention",
                            "injection_efficiency", "extraction_efficiency", "distance_m", "slm_to_disk_m"},
     "Numerical settings": {"kind", "grid_n", "field_size_mm", "optical_z_steps", "thermal_nr",
@@ -546,7 +586,7 @@ class DesktopSimulation(tk.Tk):
                                            sweep=sweep, camera=camera, dataset=dataset,
                                            control=control,
                                            last_payload=None)
-            for key in ("kind", "architecture"):
+            for key in ("kind", "architecture", "yb_distribution"):
                 inputs.vars[key].trace_add("write", lambda *_, name=material: self.update_yb_fields(name))
             self.update_yb_fields(material)
             if material == "Yb:YAG":
@@ -625,6 +665,15 @@ class DesktopSimulation(tk.Tk):
                          "injection_efficiency", "extraction_efficiency"}
         if material == "Yb:YAG":
             keys.add("yb_at_percent")
+            if kind != "cw" and kind != "structured" and \
+                    inputs.vars["architecture"].get() == "ideal_multipass":
+                keys |= MULTIPASS_KEYS
+            if kind != "cw" and kind != "structured":
+                keys.add("yb_distribution")
+                if inputs.vars["yb_distribution"].get() == "measured":
+                    # The measured map replaces the seeded random clusters.
+                    keys -= {"density_seed", "cluster_count", "cluster_contrast"}
+                    keys |= {"yb_map_rotation_deg", "yb_map_offset_x_mm", "yb_map_offset_y_mm"}
             if kind == "structured":
                 keys.add("pulsed_pump_nm")
         page["keys"] = keys
@@ -1012,7 +1061,9 @@ class DesktopSimulation(tk.Tk):
             ("target","Structured target",current["selected_beam"],BEAM_NAMES),
             ("correction_enabled","Correction enabled","yes",("yes","no")),
             ("mode","Episode mode","in_situ",("snapshot","in_situ")),
-            ("method","Controller method","hybrid",("hybrid","interferometric","response_matrix","spgd")),
+            ("method","Controller method","hybrid",("hybrid","interferometric","response_matrix","spgd","nn_v3")),
+            ("nn_model","NN model folder (nn_v3)","models/ybyag_v3_model_b",None),
+            ("nn_device","NN device (nn_v3)","cpu",("cpu","cuda")),
             ("enable_material","Crystal/contact variation","yes",("yes","no")),
             ("enable_slm_error","Imperfect SLM","yes",("yes","no")),
             ("enable_external_optics","External optical phase","yes",("yes","no")),
@@ -1066,7 +1117,7 @@ class DesktopSimulation(tk.Tk):
                 "probe_noise_scale","photodiode_noise_fraction","exposure_s",
                 "slm_delay_s","slm_settle_s","control_period_s"}),
             ("CONTROL / LIMITS", {
-                "correction_enabled","method","mode_count","perturbation_rad",
+                "correction_enabled","method","nn_model","nn_device","mode_count","perturbation_rad",
                 "spgd_gain","phase_gain_rad","phase_smoothing_pixels",
                 "phase_target_rms_rad",
                 "improvement_tolerance",
@@ -1101,6 +1152,16 @@ class DesktopSimulation(tk.Tk):
                 variables["iterations"].set("30")
                 variables["evaluation_limit"].set("400")
                 variables["control_period_s"].set("0.1")
+            elif variables["method"].get()=="nn_v3":
+                # One NN correction per measured cycle; grid, passes, seed,
+                # pump and camera are taken from the trained model.
+                variables["mode"].set("in_situ")
+                variables["iterations"].set("6")
+                variables["evaluation_limit"].set("30")
+                variables["control_period_s"].set("0.1")
+                variables["slm_delay_s"].set("0")
+                if variables["target"].get() not in NN_TARGETS:
+                    variables["target"].set("Needle Bessel-Gaussian")
             else:
                 variables["iterations"].set("3")
                 variables["evaluation_limit"].set("100")
@@ -1116,7 +1177,9 @@ class DesktopSimulation(tk.Tk):
                       row=3,column=0,columnspan=3,sticky="w",pady=(10,4))
         def submit():
             try:
-                config=json.loads((ROOT/"config/ybyag_control.json").read_text(encoding="utf-8"))
+                preset=("config/ybyag_control_nn_v3.json" if variables["method"].get()=="nn_v3"
+                        else "config/ybyag_control.json")
+                config=json.loads((ROOT/preset).read_text(encoding="utf-8"))
                 ep=config["episode"];ctrl=config["controller"]
                 ep.update(target=variables["target"].get(),mode=variables["mode"].get(),
                     correction_enabled=variables["correction_enabled"].get()=="yes",
@@ -1146,7 +1209,7 @@ class DesktopSimulation(tk.Tk):
                     slm_delay_s=float(variables["slm_delay_s"].get()),
                     slm_settle_s=float(variables["slm_settle_s"].get()),
                     control_period_s=float(variables["control_period_s"].get()),
-                    slm_drift_fraction_per_sqrt_s=(0.0005 if variables["method"].get() in ("spgd","interferometric","hybrid")
+                    slm_drift_fraction_per_sqrt_s=(0.0005 if variables["method"].get() in ("spgd","interferometric","hybrid","nn_v3")
                                                   else 0.),
                     exposure_s=float(variables["exposure_s"].get()),
                     thickness_um=float(current["thickness_um"]),
@@ -1171,6 +1234,15 @@ class DesktopSimulation(tk.Tk):
                     max_update_rad=float(variables["max_update_rad"].get()),
                     iterations=int(variables["iterations"].get()),
                     evaluation_limit=int(variables["evaluation_limit"].get()))
+                if variables["method"].get()=="nn_v3":
+                    if ep["target"] not in NN_TARGETS:
+                        raise ValueError("nn_v3 was trained only for: "+", ".join(NN_TARGETS))
+                    ctrl.update(nn_model=variables["nn_model"].get(),
+                                nn_device=variables["nn_device"].get())
+                    model=Path(ctrl["nn_model"])
+                    model=model if model.is_absolute() else ROOT/model
+                    if not (model/"model.json").exists():
+                        raise ValueError(f"no trained NN model in {model}")
                 from ybyag_control.adapter import EpisodeConfig
                 from ybyag_control import ControllerConfig
                 EpisodeConfig(**ep);ControllerConfig(**ctrl)

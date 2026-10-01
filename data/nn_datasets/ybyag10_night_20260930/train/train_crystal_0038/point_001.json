@@ -1,0 +1,235 @@
+{
+  "split": "train",
+  "crystal_id": "train_crystal_0038",
+  "setup_id": "train_crystal_0038",
+  "sequence_id": "train_crystal_0038",
+  "point_index": 1,
+  "sample_seed": [
+    252351005,
+    3946515669,
+    3840671968,
+    3723022068,
+    2154345339
+  ],
+  "trial_index": 1,
+  "trial_outcome": "rejected",
+  "trial_policy": "measured_camera_coordinate_search",
+  "trial_improvement_tolerance": 1e-05,
+  "measured_camera_shape_loss": 0.08527351567032079,
+  "retained_camera_shape_loss": 0.08399750432934194,
+  "selected_target": "Helical LG(0,+1)",
+  "sequence_time_s": 30.1,
+  "thermal_interval_s": 0.1,
+  "thermal_initial_state_kind": "previous_solved_state",
+  "setup_seed": [
+    147725350,
+    1169437990,
+    764873426,
+    3689120470,
+    1500852442,
+    785813978,
+    3729064914,
+    2232267182,
+    2651948635
+  ],
+  "setup_npz_sha256": "a8a4547e76ceabcb1e30e8edcd6e1cb0e5324c8feb39fe684e136eff26a87b7d",
+  "physical_parameters": {
+    "pump": {
+      "pump_W": 0.1978583554018708,
+      "radius_mm": 0.9990673603861181,
+      "coolant_temperature_K": 293.7858191071226,
+      "pump_center_m": [
+        1.1547695487975809e-05,
+        -0.0001021982195504975
+      ]
+    },
+    "beam": {
+      "seed_energy_nj": 10.634212888925966,
+      "waist_mm": 0.5605543140891472,
+      "seed_center_m": [
+        4.336134199914491e-06,
+        9.481586367738764e-05
+      ],
+      "seed_angle_rad": [
+        4.175057241053231e-05,
+        -2.058171745710298e-05
+      ],
+      "seed_ellipticity": 1.0320945638539052
+    },
+    "yb_at_percent": 10.0,
+    "contact_scale_shape": [
+      8,
+      12
+    ],
+    "external_optics": {
+      "zernike_random_coefficients": {
+        "tip": 1.0941997594668869,
+        "tilt": -0.5112522155616546,
+        "defocus": -2.0461813588628934,
+        "astigmatism_0": 1.4476550519261426,
+        "astigmatism_45": -0.8220030375263132,
+        "coma_x": 1.4882943605542591,
+        "coma_y": 0.035897219958000715,
+        "spherical": -0.8638278105487887,
+        "trefoil_x": -0.21408534007345625,
+        "trefoil_y": 0.1439693295913656,
+        "secondary_astigmatism": 0.1635269611572217
+      },
+      "achieved_rms_waves": 0.2391491669929866,
+      "plane": "SLM/upstream_optics",
+      "wavelength_m": 1.03e-06
+    }
+  },
+  "slm_command_delayed": false,
+  "camera_settings": {
+    "width": 1920,
+    "height": 1080,
+    "object_fov_width_mm": 10.0,
+    "qe_at_signal": 0.05,
+    "optical_throughput": 0.002255767898830962,
+    "pulses_per_exposure": 100,
+    "exposure_s": 0.01,
+    "full_well_e": 30000.0,
+    "read_noise_e": 1.6,
+    "dark_current_e_s": 0.05,
+    "background_e": 1.0,
+    "prnu_rms": 0.005,
+    "dsnu_rms_e": 0.25,
+    "hot_pixel_fraction": 1e-05,
+    "dead_pixel_fraction": 1e-05,
+    "psf_sigma_pixels": 1.0,
+    "adc_bits": 12,
+    "black_level_adu": 32,
+    "sensor_temperature_C": 20.0,
+    "sensor_temperature_jitter_C": 0.05,
+    "sensor_temperature_correlation": 0.9,
+    "dark_current_doubling_C": 6.0
+  },
+  "camera_diagnostics": [
+    {
+      "saturated_fraction": 0.0,
+      "expected_electron_peak": 17018.37209704659,
+      "sensor_temperature_C": 20.065997502716275,
+      "pulse_energy_sum": 99.98901298781284,
+      "pulse_mean_shift_pixels": [
+        -0.015664699279622774,
+        0.004766041571897535
+      ],
+      "pulse_pointing_blur_sigma_pixels": 0.10002604171599574,
+      "pulse_variation_scope": "Gaussian effective blur from the sampled pulse shifts; individual fields are not propagated"
+    },
+    {
+      "saturated_fraction": 0.0,
+      "expected_electron_peak": 3546.5269628384253,
+      "sensor_temperature_C": 20.065997502716275,
+      "pulse_energy_sum": 100.03229947159674,
+      "pulse_mean_shift_pixels": [
+        0.005185796076015538,
+        0.009570525694792451
+      ],
+      "pulse_pointing_blur_sigma_pixels": 0.10191437418512568,
+      "pulse_variation_scope": "Gaussian effective blur from the sampled pulse shifts; individual fields are not propagated"
+    }
+  ],
+  "phase_diversity_relative_L1": 1.4255435466766357,
+  "sensor_parameters": {
+    "bias_K": [
+      0.3638632400194726,
+      0.5022233656237395,
+      -0.0750136234146192,
+      0.05539102234797012,
+      -0.24300025504393008
+    ],
+    "response_time_s": [
+      0.07791786598670877,
+      0.14853498552059852,
+      0.09617121234702301,
+      0.2153145924236421,
+      0.06035059926420405
+    ]
+  },
+  "room_temperature_assumption": "Illustrative room temperature equals fixed heat-sink boundary temperature; no independent ambient coupling is solved.",
+  "source_config_sha256": "8bcf8c057e9658992b5c86c6b798b62262af951591405adc0431a3cdf2e9912b",
+  "source_generator_sha256": "b96b378c876e3acb85266219b301dfb6b7baa2bd04302df4feb366747be8bc53",
+  "numerical_source_sha256": "900d4980d98d0c9ccb8ae70d7f3fa58402649acce07caf39a3d392422b43e5ce",
+  "measurements_file": "point_001_measurements.npz",
+  "measurements_sha256": "5a5b36c4927ec587fd6d81d726ca37a15cc6fff2f1bd5c0b8ad6f0a71021ef9a",
+  "truth_file": "point_001_truth.npz",
+  "truth_sha256": "2d23c489d338e87739070e422b6d139ee7a5296e2c7876e6d96824dcf8f7c41d",
+  "wavefront_rms_rad": {
+    "uncorrected": 0.1382741430929415,
+    "corrected": 0.13827414309294214
+  },
+  "shape_overlap": {
+    "uncorrected": 0.9796030700055525,
+    "corrected": 0.9796030700055526
+  },
+  "coherent_fidelity": {
+    "uncorrected": 0.9569709957731937,
+    "corrected": 0.956970995773193
+  },
+  "modal_teacher_status": "task_success",
+  "passive_phase_only_fidelity_limit": 0.9666324449649054,
+  "best_improved_coherent_fidelity": null,
+  "modal_basis_names": [
+    "Z_1_-1",
+    "Z_1_+1",
+    "Z_2_-2",
+    "Z_2_+0",
+    "Z_2_+2",
+    "Z_3_-3",
+    "Z_3_-1",
+    "Z_3_+1",
+    "Z_3_+3",
+    "Z_4_-4",
+    "Z_4_-2",
+    "Z_4_+0",
+    "Z_4_+2",
+    "Z_4_+4"
+  ],
+  "modal_reference_evaluations": 1,
+  "corrected_energy_fraction": 1.0000000000000002,
+  "correction_label_valid": true,
+  "correction_label_method": "modal:hold",
+  "correction_label_rejection_reason": null,
+  "correction_label_thresholds": {
+    "phase_rad": 0.01,
+    "shape_overlap": 0.9676030700055525,
+    "max_shape_drop": 0.012,
+    "min_shape_overlap": 0.95,
+    "objective": "coherent_fidelity",
+    "min_coherent_gain": 0.01,
+    "target_fidelity": 0.9466324449649054,
+    "configured_target_fidelity": 0.96,
+    "passive_limit_margin": 0.02,
+    "min_energy_fraction": 0.8
+  },
+  "correction_candidate_checks": [
+    {
+      "kind": "modal_stage",
+      "stage": "zernike"
+    },
+    {
+      "kind": "reachability",
+      "passive_fidelity_limit": 0.9666324449649054,
+      "baseline_model_overlap": 0.9999962598652639,
+      "assumption": "frozen passive full-field phase-only operator"
+    },
+    {
+      "kind": "reference_budget",
+      "limit": 1,
+      "reason": "configured limit"
+    },
+    {
+      "kind": "reference_verification",
+      "candidate": "hold",
+      "coherent_fidelity": 0.9569709957731933,
+      "shape_overlap": 0.9796030700055526,
+      "passed": true
+    }
+  ],
+  "correction_target_scope": "Modal teacher: passive optical proposal, continuous Zernike coefficients, exact SLM rendering and independent full-solver checks. Passive reachability is conditional; task success requires absolute coherent fidelity.",
+  "thermal_validity": "extrapolated_unvalidated",
+  "scope": "Yb and thickness maps alter effective optical column density; Yb concentration also sets local thermal conductivity from measured-fit concentration trends (a cross-family relative-slope proxy near 15 at.%). Background loss is a first-order pre-pump absorption and distributed heat term. The FEM retains nominal thickness. Yb:YAG hot gain remains unavailable.",
+  "dataset_ready": false
+}

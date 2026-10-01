@@ -114,9 +114,12 @@ def run_bounded_episode(
         cwd=ROOT,
         log_path=output_dir / "execution.log",
         summary_path=output_dir / "execution.json",
-        ledger=BudgetLedger(ROOT / ".local_runtime/budget.json", Limits()),
+        # NN episodes at the dataset grid need longer; `time_limit_s` in the
+        # request sets the supervised wall-time limit (default 900 s).
+        ledger=BudgetLedger(ROOT / ".local_runtime/budget.json",
+                            Limits(case_seconds=max(900, float(config.get("time_limit_s", 900))))),
         label="ybyag_closed_loop_smoke" if smoke else "ybyag_closed_loop",
-        configured_seconds=180 if smoke else 900,
+        configured_seconds=180 if smoke else float(config.get("time_limit_s", 900)),
         category="coupled",
         cancel=cancel,
     )
